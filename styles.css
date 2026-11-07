@@ -1,0 +1,43 @@
+/* CYD Satellite Tracker — Space Blue / Apple-inspired refresh */
+:root{
+  --bg:#050d18;--surface:#0b1929;--surface2:#10243a;--line:rgba(150,190,225,.13);
+  --text:#f4f8fc;--muted:#9aafc4;--blue:#62c4ff;--blue2:#9cddff;--green:#65e2b2;
+  --radius:24px;--shadow:0 28px 80px rgba(0,0,0,.38)
+}
+body{background:radial-gradient(ellipse at 50% -18%,rgba(42,133,194,.22),transparent 48%),linear-gradient(180deg,#071321 0%,#050d18 65%,#071321 100%);letter-spacing:-.018em}
+header{background:rgba(5,13,24,.78);border-bottom-color:rgba(151,197,232,.12)}
+.brand{letter-spacing:.075em}.brandmark{border-radius:50%;background:linear-gradient(145deg,#12314b,#071523);box-shadow:0 0 24px rgba(85,186,255,.13),inset 0 0 14px rgba(85,186,255,.12)}
+nav{gap:30px}nav a{transition:color .2s ease}
+.nav-cta{background:rgba(255,255,255,.035);border-color:rgba(155,199,232,.2)}
+.hero{min-height:610px;padding-top:104px;padding-bottom:92px}
+h1{font-weight:680;letter-spacing:-.075em}
+h1 span{background:linear-gradient(105deg,#d6f1ff 0%,#75caff 55%,#4a9fe6 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{color:#b0c2d3;max-width:550px}
+.button{padding:13px 19px;border-radius:13px}
+.button.primary{background:linear-gradient(135deg,#a2e0ff,#53b6f4 60%,#398fe0);box-shadow:0 10px 34px rgba(53,157,224,.22)}
+.button.secondary{background:rgba(255,255,255,.035)}
+.visual{filter:drop-shadow(0 28px 45px rgba(0,0,0,.18))}
+.globe{width:252px;height:252px;background:radial-gradient(circle at 31% 26%,#b8e9ff 0,#56a9df 11%,#1b5b8c 37%,#0a2540 69%);box-shadow:inset -30px -25px 48px #020914,0 0 100px rgba(43,153,220,.23)}
+.orbit{width:410px;height:142px;border-color:rgba(117,202,255,.58)}
+.visual-label{border-radius:17px;background:rgba(8,24,40,.88);backdrop-filter:blur(18px);border-color:rgba(135,194,235,.2)}
+.section{border-top-color:rgba(255,255,255,.065);padding-top:88px;padding-bottom:88px}
+.section-head h2{font-weight:640;letter-spacing:-.055em}
+.card,.doc-card,.arch-node{background:linear-gradient(155deg,rgba(17,39,61,.92),rgba(8,22,37,.94));border-color:rgba(145,190,225,.15);box-shadow:0 15px 42px rgba(0,0,0,.13);transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
+.card:hover,.doc-card:hover,.arch-node:hover{transform:translateY(-4px);border-color:rgba(98,196,255,.38);box-shadow:0 22px 48px rgba(0,0,0,.24)}
+.iconbox{border-radius:14px;background:linear-gradient(145deg,rgba(86,183,245,.16),rgba(52,124,183,.07));border-color:rgba(98,196,255,.3)}
+.arch-main{border-color:rgba(98,196,255,.32);background:radial-gradient(ellipse at 90% 0,rgba(69,159,216,.2),transparent 55%),linear-gradient(145deg,#102b44,#091a2b)}
+.arch-node{border-radius:19px}
+.devices{gap:27px}
+.phone,.android{border-color:rgba(148,190,224,.38);background:linear-gradient(155deg,#162d43,#060e19 72%);box-shadow:0 30px 65px rgba(0,0,0,.48),inset 0 0 0 1px rgba(255,255,255,.025)}
+.tablet{border-color:rgba(148,190,224,.45);box-shadow:0 30px 65px rgba(0,0,0,.48)}
+.tablet-screen{background:radial-gradient(ellipse at 80% 0,rgba(33,93,137,.55),transparent 50%),linear-gradient(145deg,#0d2034,#071321)}
+.metric{background:linear-gradient(145deg,rgba(24,52,77,.9),rgba(12,30,48,.95));border-color:rgba(140,190,230,.14);border-radius:14px}
+.metric b{letter-spacing:-.055em}
+.track-button{border-radius:12px;box-shadow:0 8px 24px rgba(48,155,226,.2)}
+.stop{box-shadow:0 7px 20px rgba(185,47,73,.2)}
+.demo-note{max-width:700px;line-height:1.7}
+.status-note{background:rgba(70,160,220,.07);border-color:rgba(98,196,255,.2);border-radius:16px}
+footer{background:rgba(2,8,15,.25)}
+@media(max-width:850px){.hero{min-height:auto;padding-top:72px}.section{padding-top:68px;padding-bottom:68px}}
+@media(max-width:560px){.hero{padding-top:58px}.visual{height:255px}.globe{width:184px;height:184px}.orbit{width:300px;height:105px}.section{padding-top:58px;padding-bottom:58px}.button{padding:12px 15px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}

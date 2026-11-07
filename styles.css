@@ -41,3 +41,38 @@ footer{background:rgba(2,8,15,.25)}
 @media(max-width:850px){.hero{min-height:auto;padding-top:72px}.section{padding-top:68px;padding-bottom:68px}}
 @media(max-width:560px){.hero{padding-top:58px}.visual{height:255px}.globe{width:184px;height:184px}.orbit{width:300px;height:105px}.section{padding-top:58px;padding-bottom:58px}.button{padding:12px 15px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+
+/* Visual layer: starfield, orbital HUD and instrument details */
+body{position:relative;isolation:isolate}
+body:before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.34;background-image:radial-gradient(1px 1px at 8% 16%,#d8f2ff 98%,transparent),radial-gradient(1px 1px at 22% 72%,#8bcfff 98%,transparent),radial-gradient(1.5px 1.5px at 41% 28%,#eaf8ff 98%,transparent),radial-gradient(1px 1px at 63% 12%,#9bdcff 98%,transparent),radial-gradient(1px 1px at 79% 63%,#d8f2ff 98%,transparent),radial-gradient(1px 1px at 92% 35%,#8bcfff 98%,transparent),radial-gradient(1px 1px at 54% 88%,#d8f2ff 98%,transparent);background-size:440px 360px;animation:starDrift 90s linear infinite}
+@keyframes starDrift{to{background-position:440px 360px}}
+.hero{position:relative}
+.hero:after{content:"";position:absolute;left:-7%;top:13%;width:180px;height:180px;border:1px solid rgba(105,190,244,.07);border-radius:50%;box-shadow:0 0 0 24px rgba(105,190,244,.018),0 0 0 48px rgba(105,190,244,.014);pointer-events:none}
+.visual:before{content:"";position:absolute;width:390px;height:390px;border:1px solid rgba(109,190,242,.08);border-radius:50%;background:repeating-radial-gradient(circle,transparent 0 47px,rgba(109,190,242,.055) 48px 49px);mask-image:linear-gradient(transparent,#000 20%,#000 80%,transparent)}
+.visual:after{content:"";position:absolute;width:330px;height:330px;border:1px dashed rgba(120,204,255,.22);border-radius:50%;transform:rotateX(67deg) rotateZ(-22deg);animation:orbitTurn 34s linear infinite}
+@keyframes orbitTurn{to{transform:rotateX(67deg) rotateZ(338deg)}}
+.orbit{animation:orbitGlow 5s ease-in-out infinite}
+@keyframes orbitGlow{50%{border-color:rgba(142,220,255,.88);filter:drop-shadow(0 0 8px rgba(85,186,255,.22))}}
+.eyebrow{text-shadow:0 0 18px rgba(98,196,255,.25)}
+.eyebrow:before{box-shadow:0 0 9px rgba(98,196,255,.7)}
+.card,.doc-card,.arch-node{position:relative;overflow:hidden}
+.card:before,.doc-card:before{content:"";position:absolute;left:24px;right:24px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(111,203,255,.55),transparent);opacity:.65}
+.iconbox{box-shadow:inset 0 0 18px rgba(85,186,255,.06),0 0 18px rgba(85,186,255,.04)}
+.metric{position:relative;overflow:hidden}
+.metric:after{content:"";position:absolute;right:-15px;top:-20px;width:55px;height:55px;border:1px solid rgba(106,194,246,.1);border-radius:50%;box-shadow:0 0 0 8px rgba(106,194,246,.025)}
+.satellite-orb{position:relative}
+.satellite-orb:after{content:"";position:absolute;inset:-6px;border:1px dashed rgba(112,204,255,.42);border-radius:50%;animation:orbitTurn 18s linear infinite}
+.radar-circle{position:relative;overflow:hidden}
+.radar-circle:after{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 72%,rgba(92,196,255,.28) 89%,transparent 100%);animation:radarSweep 5s linear infinite}
+@keyframes radarSweep{to{transform:rotate(360deg)}}
+.radar-circle{box-shadow:0 0 18px rgba(69,173,235,.1),inset 0 0 18px rgba(69,173,235,.08)}
+.dpad span{box-shadow:inset 0 1px rgba(255,255,255,.08);transition:background .2s,transform .2s}
+.dpad span:not(:empty){background:linear-gradient(145deg,#245b83,#143653)}
+.track-button,.stop{letter-spacing:.13em}
+.device-title b{letter-spacing:.02em}
+.device-title span{padding:5px 8px;border:1px solid rgba(112,190,237,.18);border-radius:99px;background:rgba(85,186,255,.045)}
+.specs span{padding:5px 0}
+.status-note:before{content:"";display:inline-block;width:6px;height:6px;margin:0 9px 1px 0;border-radius:50%;background:#65e2b2;box-shadow:0 0 10px #65e2b2}
+footer .footer-row b{color:#cceaff;letter-spacing:.1em}
+@media(max-width:560px){.visual:before{width:270px;height:270px}.visual:after{width:245px;height:245px}.hero:after{display:none}}
+@media(prefers-reduced-motion:reduce){body:before,.visual:after,.orbit,.satellite-orb:after,.radar-circle:after{animation:none!important}}

@@ -20,9 +20,13 @@ footer{border-top:1px solid var(--line);padding:28px 0 38px;color:#718aa2;font-s
 @media(max-width:560px){.wrap{width:min(100% - 32px,1160px)}header{height:65px}.nav-cta{padding:9px 12px;font-size:11px}.brand{font-size:12px}.hero{padding:55px 0 45px}h1{font-size:48px}.lead{font-size:15px}.visual{height:260px}.globe{width:175px;height:175px}.orbit{width:285px;height:100px}.visual-label{right:0;bottom:0}.section{padding:58px 0}.cards,.docs,.devices{grid-template-columns:1fr}.device-card:nth-child(2){grid-column:auto;grid-row:auto}.phone,.android{height:475px}.tablet-screen{min-height:300px}.tablet-layout{grid-template-columns:75px 1fr}.tablet-metrics .metric b{font-size:11px}.arch-side{grid-template-columns:1fr 1fr}.footer-row{display:block}.footer-row span{display:block;margin-top:8px}}
 </style>
 <link rel="stylesheet" href="styles.css">
+<style>
+.nav-tools{display:flex;align-items:center;gap:9px}.lang-toggle{min-width:42px;padding:9px 11px;border:1px solid rgba(98,196,255,.35);border-radius:999px;background:rgba(85,186,255,.09);color:#9cddff;font:700 11px ui-monospace,monospace;cursor:pointer;transition:.2s}.lang-toggle:hover{background:rgba(85,186,255,.18);border-color:#62c4ff}
+@media(max-width:560px){.nav-tools{gap:6px}.lang-toggle{padding:8px 9px}}
+</style>
 </head>
 <body>
-<header><div class="wrap nav"><a class="brand" href="#"><span class="brandmark">◉</span> CYD <span>TRACKER</span></a><nav><a href="#features">Возможности</a><a href="#system">Система</a><a href="#apps">Приложения</a><a href="#docs">Документы</a></nav><a class="nav-cta" href="https://github.com/OlympicBearBoss/CYD-Satellite-Tracker">GitHub <span>↗</span></a></div></header>
+<header><div class="wrap nav"><a class="brand" href="#"><span class="brandmark">◉</span> CYD <span>TRACKER</span></a><nav><a href="#features">Возможности</a><a href="#system">Система</a><a href="#apps">Приложения</a><a href="#docs">Документы</a></nav><div class="nav-tools"><button class="lang-toggle" id="languageToggle" type="button" aria-label="Переключить язык">EN</button><a class="nav-cta" href="https://github.com/OlympicBearBoss/CYD-Satellite-Tracker">GitHub <span>↗</span></a></div></div></header>
 <main>
 <section class="wrap hero"><div><div class="eyebrow">OPEN HARDWARE · SATELLITE TRACKING</div><h1>Space,<br><span>in control.</span></h1><p class="lead">Открытая платформа для спутникового слежения и управления двухосевым ротатором. Контроллер CYD, точная механика и единый интерфейс на всех устройствах.</p><div class="hero-actions"><a class="button primary" href="#system">Исследовать проект <span>→</span></a><a class="button secondary" href="#apps">Посмотреть приложения</a></div><div class="specs"><span>ESP32 · CYD 2.8″</span><span>AZ / EL ROTATOR</span><span>FLUTTER · WI-FI</span></div></div><div class="visual"><div class="orbit"></div><div class="globe"></div><div class="visual-label"><small>TRACKING PREVIEW</small><b>ISS / ZARYA</b><em>DEMO DATA · NOT LIVE</em></div></div></section>
 <section class="section" id="features"><div class="wrap"><div class="section-head"><div><div class="eyebrow">CORE CAPABILITIES</div><h2>Технологии под контролем</h2></div><p>Продуманная система для наблюдения, позиционирования и безопасного управления антенной.</p></div><div class="cards"><article class="card"><div class="iconbox">⌖</div><h3>Позиционирование AZ / EL</h3><p>Две управляемые оси, обратная связь по углу, калибровка и контроль предельных положений.</p></article><article class="card"><div class="iconbox">◎</div><h3>Спутниковое сопровождение</h3><p>Каталог объектов, прогноз пролётов и расчёт направления на спутник — основа будущего tracking.</p></article><article class="card"><div class="iconbox">⌁</div><h3>Единая экосистема</h3><p>Локальное управление по Wi-Fi, телеметрия и интерфейсы для телефона, планшета и браузера.</p></article></div></div></section>
@@ -35,4 +39,89 @@ footer{border-top:1px solid var(--line);padding:28px 0 38px;color:#718aa2;font-s
 <section class="section" id="docs"><div class="wrap"><div class="section-head"><div><div class="eyebrow">PROJECT RESOURCES</div><h2>От идеи к реальному устройству</h2></div><p>Открытая документация фиксирует архитектуру, интерфейсы и аппаратные решения по мере разработки.</p></div><div class="docs"><div class="doc-card"><div class="iconbox">⌘</div><b>Firmware</b><p>Структура прошивки CYD, UI, Wi-Fi API и safety logic.</p></div><div class="doc-card"><div class="iconbox">▣</div><b>Mobile application</b><p>План Flutter-клиента для iOS, iPadOS и Android.</p></div><div class="doc-card"><div class="iconbox">⌁</div><b>Hardware & mechanics</b><p>Драйверы, двигатели, датчики, питание и механическая часть.</p></div></div><div class="status-note"><strong>Текущий статус:</strong> сайт и интерфейсные макеты — концепция проекта. Прошивка, мобильное приложение и реальное подключение к ротатору ещё находятся в планировании.</div><a class="doc-link" href="https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/tree/main/docs">Открыть документацию на GitHub ↗</a></div></section>
 </main>
 <footer><div class="wrap footer-row"><b>◉ CYD SATELLITE TRACKER</b><span>SPACE BLUE DESIGN · OPEN HARDWARE PROJECT</span><span>DEMO VALUES ARE NOT LIVE TELEMETRY</span></div></footer>
+
+<script>
+(() => {
+  const translations = {
+    en: {
+      "Возможности":"Features","Система":"System","Приложения":"Apps","Документы":"Docs",
+      "Исследовать проект":"Explore project","Посмотреть приложения":"View apps",
+      "Технологии под контролем":"Technology, under control",
+      "Продуманная система для наблюдения, позиционирования и безопасного управления антенной.":"A carefully designed system for observing, positioning and safely controlling an antenna.",
+      "Позиционирование AZ / EL":"AZ / EL positioning","Спутниковое сопровождение":"Satellite tracking",
+      "Единая экосистема":"Unified ecosystem",
+      "Две управляемые оси, обратная связь по углу, калибровка и контроль предельных положений.":"Two controlled axes, angle feedback, calibration and limit monitoring.",
+      "Каталог объектов, прогноз пролётов и расчёт направления на спутник — основа будущего tracking.":"Object catalog, pass predictions and satellite pointing calculations — the foundation for future tracking.",
+      "Локальное управление по Wi-Fi, телеметрия и интерфейсы для телефона, планшета и браузера.":"Local Wi-Fi control, telemetry and interfaces for phone, tablet and browser.",
+      "Один контроллер. Полная картина.":"One controller. The full picture.",
+      "CYD выступает локальным центром управления. Клиенты подключаются через домашнюю сеть или точку доступа контроллера.":"CYD acts as the local control center. Clients connect through a home network or the controller's access point.",
+      "Широкая панель оператора с радаром и ручным контролем.":"A wide operator panel with radar and manual control.",
+      "Быстрый статус и управление одной рукой.":"Quick status and one-handed control.",
+      "Крупные значения, направляющие кнопки и STOP.":"Large readings, directional controls and STOP.",
+      "Управление на любом экране":"Control on every screen",
+      "Общий визуальный язык для Flutter-приложения: спокойная типографика, читаемая телеметрия, понятные действия и заметная аварийная остановка.":"A shared visual language for the Flutter app: calm typography, readable telemetry, clear actions and a prominent emergency stop.",
+      "Все значения и статусы на макетах иллюстративные. Это дизайн-концепция, а не работающий интерфейс управления ESP32.":"All values and statuses in these mockups are illustrative. This is a design concept, not a working ESP32 control interface.",
+      "От идеи к реальному устройству":"From concept to real hardware",
+      "Открытая документация фиксирует архитектуру, интерфейсы и аппаратные решения по мере разработки.":"Open documentation records the architecture, interfaces and hardware decisions as development progresses.",
+      "Структура прошивки CYD, UI, Wi-Fi API и safety logic.":"CYD firmware structure, UI, Wi-Fi API and safety logic.",
+      "План Flutter-клиента для iOS, iPadOS и Android.":"Flutter client plan for iOS, iPadOS and Android.",
+      "Драйверы, двигатели, датчики, питание и механическая часть.":"Drivers, motors, sensors, power and mechanical design.",
+      "Текущий статус:":"Current status:",
+      "сайт и интерфейсные макеты — концепция проекта. Прошивка, мобильное приложение и реальное подключение к ротатору ещё находятся в планировании.":"the website and interface mockups are project concepts. Firmware, the mobile app and real rotator connectivity are still in the planning stage.",
+      "Открыть документацию на GitHub ↗":"Open documentation on GitHub ↗",
+      "OPEN HARDWARE · SATELLITE TRACKING":"ОТКРЫТОЕ ОБОРУДОВАНИЕ · СПУТНИКОВОЕ СЛЕЖЕНИЕ",
+      "Space,":"Космос","in control.":"под контролем.",
+      "TRACKING PREVIEW":"ПРЕДВАРИТЕЛЬНЫЙ ПРОСМОТР","DEMO DATA · NOT LIVE":"ДЕМО-ДАННЫЕ · НЕ В РЕАЛЬНОМ ВРЕМЕНИ",
+      "CORE CAPABILITIES":"КЛЮЧЕВЫЕ ВОЗМОЖНОСТИ","SYSTEM OVERVIEW":"ОБЗОР СИСТЕМЫ",
+      "CONTROL UNIT":"БЛОК УПРАВЛЕНИЯ","Mobile & Web":"Телефон и веб","Communication":"Связь",
+      "Motion system":"Система движения","Sensors & safety":"Датчики и безопасность",
+      "iPhone":"iPhone","Android":"Android","QUICK CONTROL":"БЫСТРОЕ УПРАВЛЕНИЕ",
+      "MISSION CONTROL":"ЦЕНТР УПРАВЛЕНИЯ","ROTATOR CONTROL":"УПРАВЛЕНИЕ РОТАТОРОМ",
+      "CONTROLLER CONNECTED":"КОНТРОЛЛЕР ПОДКЛЮЧЁН","ACTIVE TARGET":"АКТИВНАЯ ЦЕЛЬ",
+      "MANUAL CONTROL":"РУЧНОЕ УПРАВЛЕНИЕ","PASS RADAR · DEMO":"РАДАР ПРОЛЁТА · ДЕМО",
+      "START TRACKING　↗":"НАЧАТЬ СОПРОВОЖДЕНИЕ　↗","EMERGENCY STOP":"АВАРИЙНАЯ ОСТАНОВКА",
+      "OVERVIEW":"ОБЗОР","TRACKING":"СЛЕЖЕНИЕ","ROTATOR":"РОТАТОР","SATELLITES":"СПУТНИКИ",
+      "RADIO":"РАДИО","SYSTEM":"СИСТЕМА","YOUR ROTATOR":"ВАШ РОТАТОР",
+      "GPS FIX　 ·　 ROTATOR READY":"GPS НАЙДЕН　 ·　 РОТАТОР ГОТОВ",
+      "AZIMUTH":"АЗИМУТ","ELEVATION":"УГОЛ МЕСТА","ALTITUDE":"ВЫСОТА",
+      "DEMO VALUES ARE NOT LIVE TELEMETRY":"ДЕМО-ДАННЫЕ НЕ ЯВЛЯЮТСЯ ТЕЛЕМЕТРИЕЙ В РЕАЛЬНОМ ВРЕМЕНИ",
+      "SPACE BLUE DESIGN · OPEN HARDWARE PROJECT":"ДИЗАЙН SPACE BLUE · ПРОЕКТ ОТКРЫТОГО ОБОРУДОВАНИЯ"
+    },
+    ru: {}
+  };
+  const button = document.getElementById('languageToggle');
+  if (!button) return;
+  let language = 'ru';
+  const original = new WeakMap();
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (node.parentElement && !['SCRIPT','STYLE'].includes(node.parentElement.tagName)) {
+      nodes.push(node);
+      original.set(node, node.nodeValue);
+    }
+  }
+  const reverse = {};
+  Object.entries(translations.en).forEach(([ru,en]) => { reverse[en] = ru; });
+  function setLanguage(next) {
+    language = next;
+    for (const node of nodes) {
+      const source = original.get(node);
+      const key = source.trim();
+      const translated = language === 'en' ? translations.en[key] : reverse[key];
+      if (translated) {
+        const leading = source.match(/^\s*/)[0];
+        const trailing = source.match(/\s*$/)[0];
+        node.nodeValue = leading + translated + trailing;
+      } else node.nodeValue = source;
+    }
+    document.documentElement.lang = language;
+    button.textContent = language === 'ru' ? 'EN' : 'RU';
+    button.setAttribute('aria-label', language === 'ru' ? 'Switch language to English' : 'Переключить язык на русский');
+  }
+  button.addEventListener('click', () => setLanguage(language === 'ru' ? 'en' : 'ru'));
+})();
+</script>
+
 </body></html>

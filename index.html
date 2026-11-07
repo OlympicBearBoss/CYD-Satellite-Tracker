@@ -102,14 +102,18 @@ footer{border-top:1px solid var(--line);padding:28px 0 38px;color:#718aa2;font-s
       original.set(node, node.nodeValue);
     }
   }
-  const reverse = {};
-  Object.entries(translations.en).forEach(([ru,en]) => { reverse[en] = ru; });
+  const ruToEn = {};
+  const enToRu = {};
+  Object.entries(translations.en).forEach(([left,right]) => {
+    if (/[А-Яа-яЁё]/.test(left)) { ruToEn[left] = right; enToRu[right] = left; }
+    else { enToRu[left] = right; ruToEn[right] = left; }
+  });
   function setLanguage(next) {
     language = next;
     for (const node of nodes) {
       const source = original.get(node);
       const key = source.trim();
-      const translated = language === 'en' ? translations.en[key] : reverse[key];
+      const translated = language === 'en' ? ruToEn[key] : enToRu[key];
       if (translated) {
         const leading = source.match(/^\s*/)[0];
         const trailing = source.match(/\s*$/)[0];
@@ -121,6 +125,7 @@ footer{border-top:1px solid var(--line);padding:28px 0 38px;color:#718aa2;font-s
     button.setAttribute('aria-label', language === 'ru' ? 'Switch language to English' : 'Переключить язык на русский');
   }
   button.addEventListener('click', () => setLanguage(language === 'ru' ? 'en' : 'ru'));
+  setLanguage('ru');
 })();
 </script>
 

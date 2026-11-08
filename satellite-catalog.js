@@ -21,12 +21,13 @@
     $("favoriteCount").textContent=ids.length+" ОБЪЕКТОВ";
     if(!ids.length){root.innerHTML='<span class="subtle">Нажмите ☆ у спутника, чтобы добавить его сюда</span>';return;}
     root.innerHTML=ids.map(id=>{const item=records.find(x=>String(x.NORAD_CAT_ID)===id);const name=item?item.OBJECT_NAME:(favoriteNames[id]||("NORAD "+id));return '<button type="button" class="btn favorite-chip" data-favorite-open="'+esc(id)+'" style="border-color:#8a713e;color:#ffe0a0">★ '+esc(name)+' <span style="opacity:.65">· '+esc(id)+'</span></button>';}).join("");
-    root.querySelectorAll("[data-favorite-open]").forEach(button=>button.addEventListener("click",()=>{
+    root.querySelectorAll("[data-favorite-open]").forEach(button=>button.addEventListener("click",event=>{
+       event.preventDefault();event.stopPropagation();
       const id=button.dataset.favoriteOpen, item=records.find(x=>String(x.NORAD_CAT_ID)===id);
       // Быстрый выбор из избранного синхронизирует каталог и выбранную цель наведения.
       const targetByNorad={"25544":"iss","33591":"noaa","43017":"ao91"};
-      if(targetByNorad[id]&&typeof window.selectTarget==="function"){
-        window.selectTarget(targetByNorad[id],false);
+      if(targetByNorad[id]&&typeof window.selectTargetFromFavorite==="function"){
+        window.selectTargetFromFavorite(targetByNorad[id]);
       }
       if(item){
         selected=item;

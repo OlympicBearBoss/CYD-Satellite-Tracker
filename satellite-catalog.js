@@ -78,7 +78,7 @@
     }
     status(records.length + " спутников · " + (cachedGroups ? cachedGroups + " из " + results.length + " из кэша" : "данные обновлены"));
     const freshness = ageHours === null ? "Эпоха TLE не определена" :
-      ageHours > 168 ? "Внимание: в каталоге есть данные старше 7 суток" :
+      ageHours > 168 ? "Внимание: есть элементы старше 7 суток — точность прогноза снижена" :
       ageHours > 72 ? "Некоторые орбитальные элементы старше 72 часов" : "Возраст орбитальных данных проверен";
     catalogNotice = '<div class="note" style="margin-bottom:8px">Источник: CelesTrak GP · ' + esc(freshness) +
       (oldest ? '<br>Самая старая эпоха в выборке: ' + esc(oldest.toLocaleString()) : '') +
@@ -95,10 +95,16 @@
     const query = $("satSearch").value.trim().toLowerCase();
     const visible = records.filter(item => categoryMatch(item) &&
       (String(item.OBJECT_NAME).toLowerCase().includes(query) || String(item.NORAD_CAT_ID).includes(query)));
-    $("liveSatelliteList").innerHTML = catalogNotice + visible.slice(0, 100).map(item =>
-      '<button type="button" class="object-row" data-live-id="' + esc(item.NORAD_CAT_ID) + '" style="width:100%;text-align:left;color:inherit;cursor:pointer"><span><b>' +
-      esc(item.OBJECT_NAME) + '</b><small>NORAD ' + esc(item.NORAD_CAT_ID) + ' · ' + esc(item._categoryLabel || item._category) + '</small></span><strong>Выбрать ↗</strong></button>'
-    ).join("") || '<div class="note">По запросу ничего не найдено.</div>';
+    $("liveSatelliteList").innerHTML = catalogNotice + visible.slice(0, 100).map(item => {
+      const age = item.EPOCH ? (Date.now() - Date.parse(item.EPOCH)) / 3600000 : null;
+      const ageLabel = age === null ? "эпоха не указана" : age < 0 ? "эпоха из будущего — проверьте источник" :
+        age > 168 ? "устарело: " + (age / 24).toFixed(1) + " сут." :
+        "эпоха " + age.toFixed(1) + " ч назад";
+      const ageColor = age !== null && age > 168 ? "#ffb36b" : "#8da5bc";
+      return '<button type="button" class="object-row" data-live-id="' + esc(item.NORAD_CAT_ID) + '" style="width:100%;text-align:left;color:inherit;cursor:pointer"><span><b>' +
+        esc(item.OBJECT_NAME) + '</b><small>NORAD ' + esc(item.NORAD_CAT_ID) + ' · ' + esc(item._categoryLabel || item._category) +
+        ' · <span style="color:' + ageColor + '">' + esc(ageLabel) + '</span></small></span><strong>Выбрать ↗</strong></button>';
+    }).join("") || '<div class="note">По запросу ничего не найдено.</div>';
     $("liveSatelliteList").querySelectorAll("[data-live-id]").forEach(button => button.addEventListener("click", () => {
       selected = records.find(item => String(item.NORAD_CAT_ID) === button.dataset.liveId);
       showDetails().catch(error => { $("liveSatelliteDetails").textContent = error.message; });

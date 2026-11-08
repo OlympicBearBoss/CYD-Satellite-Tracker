@@ -91,6 +91,58 @@
     const category = $("satCategory").value;
     return category === "all" || item._category === category;
   }
+
+  const satelliteInfo = {
+    "25544": {title:"Международная космическая станция · ISS",image:"https://images-assets.nasa.gov/image/iss067e004502/iss067e004502~large.jpg",history:"Первый модуль выведен на орбиту в 1998 году. Постоянно обитаемый международный комплекс для научных экспериментов и наблюдения Земли.",tech:"Пилотируемая многоцелевая станция на низкой околоземной орбите, масса порядка 400 т. NORAD 25544.",frequencies:"Голос: приём 145.800 MHz FM; передача в ITU Region 1 — 145.200 MHz FM. APRS: 145.825 MHz. Репитер: uplink 145.990 MHz (CTCSS 67 Hz) / downlink 437.800 MHz. Активность режимов меняется.",source:"https://www.ariss.org/contact-the-iss.html"},
+    "43017": {title:"AO-91 · Fox-1B",image:"https://www.amsat.org/wordpress/wp-content/uploads/2017/11/Fox-1B.jpg",history:"Любительский CubeSat AMSAT-NA, запущен в 2017 году для экспериментов и радиолюбительской связи.",tech:"CubeSat 1U с FM ретранслятором типа bent-pipe. NORAD 43017.",frequencies:"Uplink 435.250 MHz FM; downlink 145.960 MHz FM. По данным AMSAT работа ограничена состоянием аккумулятора и солнечным освещением; проверьте текущий статус.",source:"https://www.amsat.org/two-way-satellites/ao-91/"},
+    "33591": {title:"NOAA-19 · метеоспутник",image:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/NOAA-19.jpg/640px-NOAA-19.jpg",history:"Запущен в феврале 2009 года в рамках программы NOAA POES для наблюдения облачности, температуры и атмосферы.",tech:"Полярно-орбитальная метеоплатформа с радиометрами и передачей изображений APT. NORAD 33591.",frequencies:"APT: 137.100 MHz (при активной передаче). Это приёмная частота изображений, не канал управления. Актуальную активность следует проверить.",source:"https://www.noaa.gov/"}
+  };
+  const categoryInfo = {
+    stations:{history:"Орбитальные станции и транспортные корабли обслуживают экипажи, эксперименты и инфраструктуру на орбите.",tech:"Низкая околоземная орбита; конструкция и оборудование зависят от конкретного аппарата.",frequencies:"Частоты индивидуальны для каждого корабля и радиослужбы. Проверенная карточка частот для этого объекта пока не добавлена."},
+    weather:{history:"Метеоспутники собирают данные об облачности, температуре поверхности и атмосфере.",tech:"Полярные и геостационарные платформы с радиометрами и каналами передачи метеоданных.",frequencies:"Частоты зависят от модели и режима (APT, HRPT, LRPT, HRIT). Не указываем типовую частоту без подтверждения для данного аппарата."},
+    amateur:{history:"Радиолюбительские спутники предназначены для связи, экспериментов, телеметрии и обучения.",tech:"Часто это малые CubeSat с VHF/UHF радиолиниями, маяками или транспондерами.",frequencies:"Uplink/downlink индивидуальны и могут меняться. Проверенные значения для этого NORAD ID пока не добавлены."},
+    gnss:{history:"Навигационные аппараты обеспечивают глобальное определение координат и точного времени.",tech:"Средняя околоземная орбита и навигационные сигналы в нескольких диапазонах L-band.",frequencies:"Частоты зависят от системы и блока спутника; требуется идентификация конкретного аппарата."},
+    science:{history:"Научные аппараты исследуют Землю, Солнце, космос и физические процессы.",tech:"Полезная нагрузка, орбита и радиолинии определяются научной миссией.",frequencies:"Подтверждённые каналы для этого NORAD ID не добавлены."},
+    cubesat:{history:"CubeSat — стандартизированный формат малых спутников для университетских, научных и коммерческих миссий.",tech:"Модульная платформа; базовый модуль 1U имеет размер около 10×10×10 см.",frequencies:"Радиочастоты индивидуальны для миссии. Без подтверждённой координации оператора не указываются."},
+    visual:{history:"Объект включён в каталог наблюдаемых спутников проекта.",tech:"Орбитальные элементы загружаются из OMM/CelesTrak и рассчитываются методом SGP4.",frequencies:"Рабочие частоты зависят от назначения и оборудования. Для точных значений требуется идентификация радиосистемы."}
+  };
+  let previewHideTimer=null, previewHoldTimer=null;
+  function ensureSatellitePreview(){
+    if($("satelliteHoverPreview")) return;
+    const css=document.createElement("style");
+    css.textContent="#satelliteHoverPreview{position:fixed;z-index:99999;width:min(370px,calc(100vw - 24px));max-height:72vh;overflow:auto;padding:13px;border:1px solid #52718c;border-radius:16px;background:rgba(12,22,36,.97);color:#edf6ff;box-shadow:0 18px 55px #0009;backdrop-filter:blur(18px);font:13px/1.45 -apple-system,BlinkMacSystemFont,sans-serif}#satelliteHoverPreview[hidden]{display:none}#satelliteHoverPreview img{width:100%;height:140px;object-fit:cover;border-radius:10px;margin-bottom:8px}#satelliteHoverPreview h3{font-size:15px;margin:0 0 7px}#satelliteHoverPreview p{margin:6px 0}#satelliteHoverPreview b,#satelliteHoverPreview a{color:#8ed7ff}";
+    document.head.appendChild(css);
+    const box=document.createElement("aside");box.id="satelliteHoverPreview";box.hidden=true;box.setAttribute("role","tooltip");
+    box.addEventListener("pointerenter",()=>clearTimeout(previewHideTimer));
+    box.addEventListener("pointerleave",hideSatellitePreview);
+    document.body.appendChild(box);
+  }
+  function hideSatellitePreview(){clearTimeout(previewHideTimer);previewHideTimer=setTimeout(()=>{if($("satelliteHoverPreview"))$("satelliteHoverPreview").hidden=true;},200);}
+  function showSatellitePreview(item,x,y){
+    ensureSatellitePreview();
+    const box=$("satelliteHoverPreview"),info=satelliteInfo[String(item.NORAD_CAT_ID)]||{},generic=categoryInfo[item._category]||categoryInfo.visual;
+    const img=info.image?'<img src="'+esc(info.image)+'" alt="Изображение '+esc(item.OBJECT_NAME)+'" loading="lazy">':'';
+    box.innerHTML=img+'<h3>'+esc(info.title||item.OBJECT_NAME)+'</h3>'+
+      '<p><b>История:</b> '+esc(info.history||generic.history)+'</p>'+
+      '<p><b>Технически:</b> '+esc(info.tech||generic.tech)+'</p>'+
+      '<p><b>Рабочие частоты:</b> '+esc(info.frequencies||generic.frequencies)+'</p>'+
+      (info.source?'<p><a href="'+esc(info.source)+'" target="_blank" rel="noopener">Источник характеристик ↗</a></p>':'')+
+      '<p style="font-size:11px;color:#9eb1c5">Справочные частоты. Перед передачей проверьте действующий статус и требования радиолюбительской лицензии.</p>';
+    box.hidden=false;
+    const w=Math.min(370,window.innerWidth-24),h=Math.min(box.offsetHeight,window.innerHeight-24);
+    box.style.left=Math.max(12,Math.min(x+16,window.innerWidth-w-12))+"px";
+    box.style.top=Math.max(12,Math.min(y+16,window.innerHeight-h-12))+"px";
+  }
+  function attachSatellitePreview(button,item){
+    button.addEventListener("pointerenter",e=>{if(e.pointerType!=="touch")showSatellitePreview(item,e.clientX,e.clientY);});
+    button.addEventListener("pointermove",e=>{if(e.pointerType!=="touch"&&!$("satelliteHoverPreview")?.hidden)showSatellitePreview(item,e.clientX,e.clientY);});
+    button.addEventListener("pointerleave",hideSatellitePreview);
+    button.addEventListener("focus",()=>{const r=button.getBoundingClientRect();showSatellitePreview(item,r.right,r.top);});
+    button.addEventListener("blur",hideSatellitePreview);
+    button.addEventListener("touchstart",e=>{const t=e.touches[0];clearTimeout(previewHoldTimer);previewHoldTimer=setTimeout(()=>showSatellitePreview(item,t.clientX,t.clientY),450);},{passive:true});
+    button.addEventListener("touchend",()=>clearTimeout(previewHoldTimer),{passive:true});
+    button.addEventListener("touchmove",()=>clearTimeout(previewHoldTimer),{passive:true});
+  }
   let catalogSortToken = 0;
   async function rankByVisibility(items) {
     const token = ++catalogSortToken;
@@ -160,10 +212,14 @@
         esc(item.OBJECT_NAME) + '</b><small>NORAD ' + esc(item.NORAD_CAT_ID) + ' · ' + esc(item._categoryLabel || item._category) +
         ' · <span style="color:' + passColor + '">' + esc(passLabel) + '</span><br><span style="color:' + ageColor + '">' + esc(ageLabel) + '</span></small></span><strong>Выбрать ↗</strong></button>';
     }).join("");
-    list.querySelectorAll("[data-live-id]").forEach(button => button.addEventListener("click", () => {
-      selected = records.find(item => String(item.NORAD_CAT_ID) === button.dataset.liveId);
-      showDetails().catch(error => { $("liveSatelliteDetails").textContent = error.message; });
-    }));
+    list.querySelectorAll("[data-live-id]").forEach(button => {
+      const item=records.find(entry=>String(entry.NORAD_CAT_ID)===button.dataset.liveId);
+      if(item) attachSatellitePreview(button,item);
+      button.addEventListener("click", () => {
+        selected=item;
+        showDetails().catch(error => { $("liveSatelliteDetails").textContent = error.message; });
+      });
+    });
   }
   async function showDetails() {
     if (!selected) return;

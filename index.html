@@ -582,4 +582,33 @@ if(host){
  <div class="pass-notice-body"><div><div class="pass-notice-label" id="passNoticeLabel">До начала пролёта</div><div class="pass-notice-count" id="passNoticeCountdown">--:--</div></div><div class="pass-notice-detail"><div id="passNoticeMax">Макс. высота: —</div><div id="passNoticeWindow">Длительность: —</div></div></div>
  <div class="pass-notice-progress"><i id="passNoticeProgress"></i></div>
 </aside>
+<script>
+(()=>{
+ const button=document.getElementById('enableDeviceSensors');
+ if(!button||button.dataset.sensorHandler==='ready')return;
+ button.dataset.sensorHandler='ready';
+ const status=document.getElementById('gpsStatus'),note=document.getElementById('deviceSensorNote');
+ const setStatus=v=>{if(status)status.textContent=v;};
+ button.addEventListener('click',()=>{
+  setStatus('ЗАПРОС GPS');
+  if(note)note.textContent='Запрашиваю доступ к геопозиции устройства…';
+  if(!window.isSecureContext){setStatus('НУЖЕН HTTPS');if(note)note.textContent='Откройте защищённый адрес HTTPS.';return;}
+  if(!navigator.geolocation){setStatus('GPS НЕДОСТУПЕН');if(note)note.textContent='Браузер не предоставил геолокацию. Проверьте настройки iPadOS.';return;}
+  navigator.geolocation.getCurrentPosition(pos=>{
+   const c=pos.coords,lat=c.latitude,lon=c.longitude;
+   document.getElementById('gpsLat').textContent=Math.abs(lat).toFixed(5)+'° '+(lat>=0?'N':'S');
+   document.getElementById('gpsLon').textContent=Math.abs(lon).toFixed(5)+'° '+(lon>=0?'E':'W');
+   document.getElementById('gpsAlt').textContent=Number.isFinite(c.altitude)?Math.round(c.altitude)+' м':'—';
+   document.getElementById('gpsAccuracy').textContent='±'+Math.round(c.accuracy)+' м';
+   document.getElementById('gpsTime').textContent=new Date(pos.timestamp).toLocaleTimeString('ru-RU');
+   setStatus('GPS УСТРОЙСТВА');if(note)note.textContent='Координаты получены от службы геолокации iPadOS.';
+  },err=>{
+   const msg=err.code===1?'Доступ запрещён. Разрешите геолокацию для Яндекс Браузера в настройках iPadOS.':err.code===2?'iPad не смог определить местоположение. Проверьте службы геолокации.':'Истекло время ожидания координат. Повторите запрос.';
+   setStatus(err.code===1?'ДОСТУП ЗАПРЕЩЁН':err.code===2?'НЕТ СИГНАЛА':'ТАЙМ-АУТ');if(note)note.textContent=msg;
+  },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+  const D=window.DeviceOrientationEvent;
+  if(D&&typeof D.requestPermission==='function')D.requestPermission().catch(()=>{if(note)note.textContent+=' Компас недоступен или запрещён.';});
+ });
+})();
+</script>
 </body></html>

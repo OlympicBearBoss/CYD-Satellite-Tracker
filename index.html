@@ -1477,7 +1477,7 @@ body>.realistic-earth-scene.orbit-large-screen .orbit-live-info{position:fixed!i
 .admin-open{display:none!important}.admin-open.visible{display:block!important}.admin-overlay{position:fixed;inset:0;z-index:100700;background:#020914ed;display:grid;place-items:center;padding:14px}.admin-overlay[hidden]{display:none}.admin-card{width:min(1100px,100%);max-height:92dvh;overflow:auto;background:#081a2b;border:1px solid #2e6385;border-radius:16px;padding:18px;color:#eaf6ff}.admin-head{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:-18px;background:#081a2b;padding:4px 0 14px;z-index:2}.admin-head h2{margin:0}.admin-tools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.admin-tools input,.admin-card select{background:#061322;color:#eaf6ff;border:1px solid #31516b;border-radius:8px;padding:9px}.admin-table-wrap{overflow:auto}.admin-table{width:100%;border-collapse:collapse;font-size:12px;min-width:760px}.admin-table th,.admin-table td{padding:10px;border-bottom:1px solid #24435b;text-align:left}.admin-table button,.admin-close{background:#123653;color:#dff4ff;border:1px solid #37617e;border-radius:7px;padding:6px 8px;margin:2px;cursor:pointer}.admin-muted{color:#91abc1;font-size:12px}.admin-tabs{display:flex;gap:7px;flex-wrap:wrap}.admin-tabs button.active{border-color:#55c4ff;background:#17466a}
 </style>
 
-<div class="account-popover" id="accountPopover" hidden><strong id="accountPopoverName"></strong><small id="accountPopoverEmail"></small><button type="button" id="adminOpen" class="admin-open">Администрирование</button><button type="button" id="accountLogout">Выйти из аккаунта</button></div>
+<div class="account-popover" id="accountPopover" hidden><strong id="accountPopoverName"></strong><small id="accountPopoverEmail"></small><button type="button" id="adminOpen" class="admin-open">Администрирование</button><button type="button" id="accountProfileOpen">Профиль и устройства</button><button type="button" id="accountLogout">Выйти из аккаунта</button></div>
 <div class="auth-overlay" id="authDialog" hidden role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="auth-card"><button type="button" class="auth-close" id="authClose" aria-label="Закрыть">✕</button><div class="auth-brand">◉ CYD SATELLITE TRACKER</div><h2 id="authTitle">Вход в аккаунт</h2><p class="auth-subtitle" id="authSubtitle">Один аккаунт для сайта и мобильного приложения.</p><div class="auth-tabs"><button type="button" id="authTabLogin" class="active">Войти</button><button type="button" id="authTabRegister">Создать аккаунт</button></div><form id="authForm"><label class="auth-field" id="authNameField" hidden><span>Имя</span><input id="authName" name="name" autocomplete="name" maxlength="80" placeholder="Как к вам обращаться"></label><label class="auth-field"><span>Email</span><input id="authEmail" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="name@example.com"></label><label class="auth-field"><span>Пароль</span><input id="authPassword" name="password" type="password" autocomplete="current-password" required minlength="12" maxlength="128" placeholder="Не менее 12 символов"></label><button type="submit" class="auth-submit" id="authSubmit">Войти</button></form><div class="auth-divider"><span>ИЛИ</span></div><button type="button" class="auth-google" id="authGoogle" disabled>Google · скоро</button><p class="auth-hint" id="authHint">Пароль должен содержать не менее 12 символов. Перед запуском регистрации будет включено подтверждение email.</p><div class="auth-error" id="authMessage" role="status" aria-live="polite"></div><div class="auth-account-note">Вход через Google подключим после настройки OAuth-реквизитов в Cloudflare. Apple ID можно добавить позднее, когда появится Apple Developer Program.</div></div></div>
 <script id="cyd-auth-ui">
 (()=>{
@@ -1512,4 +1512,59 @@ body>.realistic-earth-scene.orbit-large-screen .orbit-live-info{position:fixed!i
 <script id="gps-startup-prompt-handler">
 (()=>{const root=document.getElementById('gpsStartupPrompt');if(!root)return;const allow=document.getElementById('gpsStartupAllow'),later=document.getElementById('gpsStartupLater');allow?.addEventListener('click',()=>{root.hidden=true;const gpsButton=document.getElementById('enableDeviceSensors');if(gpsButton)gpsButton.click();});later?.addEventListener('click',()=>{root.hidden=true;});})();
 </script>
+
+<style id="profile-devices-style">
+#profileDevicesDialog{position:fixed;inset:0;z-index:100800;background:#020914ed;display:grid;place-items:center;padding:14px}
+#profileDevicesDialog[hidden]{display:none}
+.pd-card{width:min(760px,100%);max-height:92dvh;overflow:auto;background:#081a2b;border:1px solid #2e6385;border-radius:16px;padding:20px;color:#eaf6ff}
+.pd-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+.pd-head h2{margin:0;font-size:20px}.pd-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.pd-tabs button,.pd-card button{background:#123653;color:#dff4ff;border:1px solid #37617e;border-radius:8px;padding:9px 12px;cursor:pointer}
+.pd-tabs button.active{border-color:#55c4ff;background:#17466a}
+.pd-field{display:grid;gap:6px;margin:12px 0;color:#a9c7dc;font-size:12px}
+.pd-field input{width:100%;background:#061322;color:#eaf6ff;border:1px solid #31516b;border-radius:8px;padding:11px}
+.pd-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #24435b}
+.pd-muted{color:#91abc1;font-size:12px}.pd-code{font:700 28px ui-monospace,monospace;letter-spacing:.18em;color:#8cddff;padding:14px;text-align:center;background:#061322;border:1px dashed #397da5;border-radius:10px;margin:12px 0}
+.pd-danger{border-color:#a7485b!important;background:#652b3b!important}
+</style>
+<div id="profileDevicesDialog" hidden role="dialog" aria-modal="true" aria-labelledby="pdTitle">
+ <section class="pd-card">
+  <div class="pd-head"><h2 id="pdTitle">Профиль и устройства</h2><button type="button" id="pdClose">Закрыть ✕</button></div>
+  <div class="pd-tabs"><button type="button" class="active" data-pd-tab="profile">Профиль</button><button type="button" data-pd-tab="devices">Мои устройства</button></div>
+  <div id="pdMessage" class="pd-muted" role="status"></div>
+  <section id="pdProfile">
+   <label class="pd-field">Отображаемое имя<input id="pdName" maxlength="80" autocomplete="name"></label>
+   <label class="pd-field">Email<input id="pdEmail" disabled></label>
+   <label class="pd-field">URL аватара (HTTPS)<input id="pdAvatar" type="url" maxlength="500" placeholder="https://…"></label>
+   <button type="button" id="pdSave">Сохранить профиль</button>
+  </section>
+  <section id="pdDevices" hidden>
+   <p class="pd-muted">Создай одноразовый код и введи его в прошивке CYD ESP32. Код действует 10 минут и используется один раз.</p>
+   <label class="pd-field">Название устройства<input id="pdDeviceName" maxlength="80" value="CYD ESP32"></label>
+   <button type="button" id="pdCreateCode">Создать код привязки</button>
+   <div id="pdCodeWrap" hidden><div class="pd-code" id="pdCode"></div><div class="pd-muted" id="pdCodeExpiry"></div></div>
+   <h3>Привязанные устройства</h3><div id="pdDeviceList" class="pd-muted">Загрузка…</div>
+  </section>
+ </section>
+</div>
+<script id="cyd-profile-devices-ui">
+(()=> {
+ const $=id=>document.getElementById(id),dialog=$('profileDevicesDialog');if(!dialog||!$('accountProfileOpen'))return;
+ let tab='profile',profile=null;
+ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const fmt=v=>v?new Date(Number(v)*1000).toLocaleString():'—';
+ async function api(path,method='GET',body){const r=await fetch(path,{method,credentials:'same-origin',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Ошибка запроса');return d;}
+ function message(s){$('pdMessage').textContent=s||'';}
+ function setTab(t){tab=t;document.querySelectorAll('[data-pd-tab]').forEach(b=>b.classList.toggle('active',b.dataset.pdTab===t));$('pdProfile').hidden=t!=='profile';$('pdDevices').hidden=t!=='devices';message('');if(t==='devices')loadDevices();}
+ async function open(){dialog.hidden=false;setTab('profile');try{const d=await api('/api/account/profile');profile=d.user;$('pdName').value=profile.display_name||'';$('pdEmail').value=profile.email||'';$('pdAvatar').value=profile.avatar_url||'';}catch(e){message(e.message);}}
+ async function loadDevices(){try{const d=await api('/api/devices');const list=$('pdDeviceList');list.replaceChildren();if(!d.devices.length){list.textContent='Пока нет привязанных устройств.';return;}for(const device of d.devices){const row=document.createElement('div');row.className='pd-row';const info=document.createElement('div');info.innerHTML='<strong>'+esc(device.device_name)+'</strong><div class="pd-muted">'+esc(device.platform)+' · '+(device.revoked_at?'Отключено':device.linked_at?'Подключено':'Ожидает привязки')+' · активность: '+esc(fmt(device.last_seen_at))+'</div>';row.append(info);if(!device.revoked_at){const b=document.createElement('button');b.className='pd-danger';b.textContent='Отключить';b.addEventListener('click',async()=>{if(!confirm('Отключить '+device.device_name+'?'))return;try{await api('/api/devices?id='+encodeURIComponent(device.id),'DELETE');message('Устройство отключено.');loadDevices();}catch(e){message(e.message);}});row.append(b);}list.append(row);}}catch(e){message(e.message);}}
+ $('accountProfileOpen').addEventListener('click',()=>{$('accountPopover').hidden=true;open();});
+ $('pdClose').addEventListener('click',()=>dialog.hidden=true);dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.hidden=true;});
+ document.querySelectorAll('[data-pd-tab]').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.pdTab)));
+ $('pdSave').addEventListener('click',async()=>{try{const d=await api('/api/account/profile','POST',{display_name:$('pdName').value,avatar_url:$('pdAvatar').value});profile=d.user;message('Профиль сохранён.');const label=$('accountTriggerLabel');if(label)label.textContent=profile.display_name||profile.email.split('@')[0];}catch(e){message(e.message);}});
+ $('pdCreateCode').addEventListener('click',async()=>{try{const d=await api('/api/devices','POST',{device_name:$('pdDeviceName').value});$('pdCode').textContent=d.code;$('pdCodeWrap').hidden=false;$('pdCodeExpiry').textContent='Код действует 10 минут. Введите его на устройстве до '+fmt(d.expires_at)+'.';message('Код создан. Он будет показан только сейчас.');loadDevices();}catch(e){message(e.message);}});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')dialog.hidden=true;});
+})();
+</script>
+
 </body></html>

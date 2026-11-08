@@ -241,11 +241,31 @@ if(host){
     const boom=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.13,10),matDark);boom.rotation.z=Math.PI/2;boom.position.x=side*.36;wing.add(boom);
   }
   // High-gain parabolic radio reflector, rim, mast and feed.
-  const dishMat=new THREE.MeshStandardMaterial({color:0xd8e0e5,metalness:.82,roughness:.25,side:THREE.DoubleSide});
-  const dish=new THREE.Mesh(new THREE.SphereGeometry(.075,32,20,0,Math.PI*2,0,Math.PI/2),dishMat);dish.rotation.x=Math.PI;sat.add(dish);dish.position.set(0,.145,-.015);
-  const dishRim=new THREE.Mesh(new THREE.TorusGeometry(.074,.004,8,40),matWhite);dishRim.position.set(0,.145,-.015);sat.add(dishRim);
-  const mast=new THREE.Mesh(new THREE.CylinderGeometry(.003,.003,.085,10),matWhite);mast.position.set(0,.105,-.015);sat.add(mast);
-  const feed=new THREE.Mesh(new THREE.SphereGeometry(.012,12,10),matGold);feed.position.set(0,.065,-.015);sat.add(feed);
+  const dishMat=new THREE.MeshStandardMaterial({color:0xe2e7eb,metalness:.86,roughness:.22,side:THREE.DoubleSide});
+  // True shallow parabolic reflector, open toward the camera (+Z).
+  const dishGeo=new THREE.BufferGeometry(), dishVerts=[], dishIdx=[];
+  const dishRings=12,dishSegments=48,dishRadius=.078,dishDepth=.026;
+  for(let ring=0;ring<=dishRings;ring++){
+    const r=ring/dishRings;
+    for(let seg=0;seg<=dishSegments;seg++){
+      const a=seg/dishSegments*Math.PI*2;
+      dishVerts.push(dishRadius*r*Math.cos(a),dishRadius*r*Math.sin(a),-dishDepth*(1-r*r));
+    }
+  }
+  for(let ring=0;ring<dishRings;ring++)for(let seg=0;seg<dishSegments;seg++){
+    const p=ring*(dishSegments+1)+seg,q=p+dishSegments+1;
+    dishIdx.push(p,q,p+1,p+1,q,q+1);
+  }
+  dishGeo.setAttribute('position',new THREE.Float32BufferAttribute(dishVerts,3));dishGeo.setIndex(dishIdx);dishGeo.computeVertexNormals();
+  const dish=new THREE.Mesh(dishGeo,dishMat);dish.position.set(0,.105,.12);sat.add(dish);
+  const dishRim=new THREE.Mesh(new THREE.TorusGeometry(dishRadius,.004,8,48),matWhite);dishRim.position.set(0,.105,.12);sat.add(dishRim);
+  const feedArm=new THREE.Mesh(new THREE.CylinderGeometry(.0025,.0025,.06,8),matWhite);feedArm.position.set(0,.105,.151);sat.add(feedArm);
+  const feed=new THREE.Mesh(new THREE.SphereGeometry(.009,12,10),matGold);feed.position.set(0,.105,.18);sat.add(feed);
+  for(let i=0;i<8;i++){
+    const angle=i*Math.PI/4;
+    const rib=new THREE.Mesh(new THREE.CylinderGeometry(.0012,.0012,.075,6),matWhite);
+    rib.position.set(Math.cos(angle)*.038,.105+Math.sin(angle)*.038,.121);rib.rotation.z=-angle;sat.add(rib);
+  }
   // GNSS / telemetry antennas, star tracker, radiator strips and attitude-control thrusters.
   for(const x of [-.055,.055]){
     const rod=new THREE.Mesh(new THREE.CylinderGeometry(.002,.002,.105,8),matWhite);rod.position.set(x,.13,.065);sat.add(rod);
@@ -257,7 +277,7 @@ if(host){
   }
   for(const side of [-1,1])for(let i=0;i<3;i++)addBox(sat,[.012,.055,.008],[side*.096,-.015,-.055+i*.05],matWhite);
   // Enlarged modestly for visibility in the orbital overview.
-  sat.scale.setScalar(.9);
+  sat.scale.setScalar(1.45);
   const orbit=new THREE.Group(); earthGroup.add(orbit); const orbitPts=[]; const inclination=.68;
   for(let i=0;i<=240;i++){const a=i/240*Math.PI*2;orbitPts.push(new THREE.Vector3(1.32*Math.cos(a),1.32*Math.sin(a)*Math.sin(inclination),1.32*Math.sin(a)*Math.cos(inclination)));}
   const orbitLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(orbitPts),new THREE.LineBasicMaterial({color:0x55c7ff,transparent:true,opacity:.7})); orbit.add(orbitLine); sat.position.copy(orbitPts[0]); orbit.add(sat);

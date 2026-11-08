@@ -1143,6 +1143,7 @@ if(host){
   });
   passTimer=setInterval(()=>{
    updatePassNotice();
+   if(arrivalToastRoot){const notice=document.getElementById('passNotice');const visible=notice&&!notice.hidden;arrivalToastRoot.style.bottom='calc(14px + env(safe-area-inset-bottom, 0px) + '+(visible?(notice.offsetHeight+10):0)+'px)';}
    if(nextVisiblePass&&new Date()>nextVisiblePass.end)calculateNextVisiblePass();
   },1000);
   setInterval(calculateNextVisiblePass,5*60*1000);

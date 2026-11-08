@@ -288,7 +288,12 @@ if(host){
   if(modelPicker)modelPicker.addEventListener('change',()=>loadSpacecraftModel(modelPicker.value));
   loadSpacecraftModel('iss');
   // Реальные положения рассчитываются по свежим OMM/CelesTrak через SGP4.
-  const satellite=await import('https://cdn.jsdelivr.net/npm/satellite.js@6.0.1/+esm');
+  let satellite;
+  try{satellite=await import('https://cdn.jsdelivr.net/npm/satellite.js@6.0.1/+esm');}
+  catch(primaryImportError){
+   console.warn('Primary satellite.js CDN failed; trying unpkg',primaryImportError);
+   satellite=await import('https://unpkg.com/satellite.js@6.0.1/dist/satellite.es.js');
+  }
   const satelliteFeeds=[
    {id:'iss',group:'stations',norad:'25544',name:'МКС',color:0x55c7ff},
    {id:'noaa',group:'weather',norad:'33591',name:'NOAA 19',color:0x5de1a7},
@@ -313,7 +318,7 @@ if(host){
   }
   function buildSatelliteVisual(def){
    const group=new THREE.Group();earthGroup.add(group);
-   const orbitLine=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:def.color,transparent:true,opacity:.5}));
+   const orbitLine=new THREE.Mesh(new THREE.BufferGeometry(),new THREE.MeshBasicMaterial({color:def.color,transparent:true,opacity:.92,depthWrite:false}));
    group.add(orbitLine);
    const body=new THREE.Group();group.add(body);
    if(def.id==='iss'){body.add(sat);sat.scale.multiplyScalar(.72);}
@@ -325,6 +330,12 @@ if(host){
      panelMesh.position.x=side*.026;body.add(panelMesh);
     }
    }
+   // Яркая точка-маркер остаётся заметной даже если детальная модель спутника мала.
+   const beacon=new THREE.Mesh(new THREE.SphereGeometry(.022,16,12),new THREE.MeshBasicMaterial({color:def.color}));
+   beacon.renderOrder=3;body.add(beacon);
+   const beaconGlow=new THREE.Mesh(new THREE.SphereGeometry(.043,16,12),new THREE.MeshBasicMaterial({color:def.color,transparent:true,opacity:.22,depthWrite:false}));
+   beaconGlow.renderOrder=2;body.add(beaconGlow);
+   orbitLine.renderOrder=1;
    orbitObjects[def.id]={...def,group,body,orbitLine,satrec:null,record:null};
   }
   satelliteFeeds.forEach(buildSatelliteVisual);
@@ -389,7 +400,10 @@ if(host){
       if(future)points.push(toThree(future,item.id==='iss'?.5:1));
      }
      item.orbitLine.geometry.dispose();
-     item.orbitLine.geometry=new THREE.BufferGeometry().setFromPoints(points);
+     if(points.length>1){
+      const curve=new THREE.CatmullRomCurve3(points);
+      item.orbitLine.geometry=new THREE.TubeGeometry(curve,160,.0038,6,false);
+     }
     }
     item.body.rotation.y=now.getTime()/1000*.15;
    }

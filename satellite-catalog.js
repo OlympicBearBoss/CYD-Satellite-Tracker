@@ -23,8 +23,19 @@
     root.innerHTML=ids.map(id=>{const item=records.find(x=>String(x.NORAD_CAT_ID)===id);const name=item?item.OBJECT_NAME:(favoriteNames[id]||("NORAD "+id));return '<button type="button" class="btn favorite-chip" data-favorite-open="'+esc(id)+'" style="border-color:#8a713e;color:#ffe0a0">★ '+esc(name)+' <span style="opacity:.65">· '+esc(id)+'</span></button>';}).join("");
     root.querySelectorAll("[data-favorite-open]").forEach(button=>button.addEventListener("click",()=>{
       const id=button.dataset.favoriteOpen, item=records.find(x=>String(x.NORAD_CAT_ID)===id);
-      if(item){selected=item;showDetails().catch(error=>{$("liveSatelliteDetails").textContent=error.message;});$("liveSatelliteDetails").scrollIntoView({behavior:"smooth",block:"nearest"});}
-      else {$("satSearch").value=id;$("satCategory").value="all";render();}
+      // Быстрый выбор из избранного синхронизирует каталог и выбранную цель наведения.
+      const targetByNorad={"25544":"iss","33591":"noaa","43017":"ao91"};
+      if(targetByNorad[id]&&typeof window.selectTarget==="function"){
+        window.selectTarget(targetByNorad[id]);
+      }
+      if(item){
+        selected=item;
+        showDetails().catch(error=>{$("liveSatelliteDetails").textContent=error.message;});
+        $("liveSatelliteDetails").scrollIntoView({behavior:"smooth",block:"nearest"});
+      } else {
+        $("satSearch").value=id;$("satCategory").value="all";render();
+      }
+      renderFavorites();
     }));
   }
   function toggleFavorite(id){id=String(id);if(favorites.has(id))favorites.delete(id);else favorites.add(id);saveFavorites();renderFavorites();renderFavoriteButtons();}

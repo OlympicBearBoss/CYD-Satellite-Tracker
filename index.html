@@ -202,7 +202,9 @@ if(host){
   const atmosphere=new THREE.Mesh(new THREE.SphereGeometry(1.035,64,48),new THREE.MeshBasicMaterial({color:0x4aaeff,transparent:true,opacity:.10,side:THREE.BackSide})); earthGroup.add(atmosphere);
   // Geographic marker: Ekaterinburg, 56.8389 N, 60.6057 E.
   const lat=THREE.MathUtils.degToRad(56.8389), lon=THREE.MathUtils.degToRad(60.6057);
-  const markerPos=new THREE.Vector3(-Math.cos(lat)*Math.sin(lon),Math.sin(lat),Math.cos(lat)*Math.cos(lon)).multiplyScalar(1.018);
+  // Match Three.js SphereGeometry UV longitude: u=(longitude+180)/360.
+  // This places 60.6057°E, 56.8389°N on the correct textured location.
+  const markerPos=new THREE.Vector3(Math.cos(lat)*Math.cos(lon),Math.sin(lat),-Math.cos(lat)*Math.sin(lon)).multiplyScalar(1.018);
   const marker=new THREE.Mesh(new THREE.SphereGeometry(.018,20,16),new THREE.MeshBasicMaterial({color:0xff263f})); marker.position.copy(markerPos); earthGroup.add(marker);
   const halo=new THREE.Mesh(new THREE.SphereGeometry(.035,20,16),new THREE.MeshBasicMaterial({color:0xff263f,transparent:true,opacity:.25})); halo.position.copy(markerPos); earthGroup.add(halo);
   // Stylized 3D low-Earth-orbit satellite: bus + solar arrays + antenna.

@@ -806,6 +806,14 @@ if(host){
   if(orbitExpandBtn)orbitExpandBtn.addEventListener('click',()=>setOrbitLargeScreen(true));
   if(orbitFullscreenClose)orbitFullscreenClose.addEventListener('click',()=>setOrbitLargeScreen(false));
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&earthScene&&earthScene.classList.contains('orbit-large-screen'))setOrbitLargeScreen(false);});
+  function setOrbitObjectVisibility(id,visible){
+   const item=orbitObjects[id];if(!item)return;
+   item.group.visible=visible;
+   const original=document.querySelector('[data-orbit-toggle="'+id+'"]');
+   if(original)original.checked=visible;
+   const large=orbitLiveList&&orbitLiveList.querySelector('[data-large-orbit-toggle="'+id+'"]');
+   if(large)large.checked=visible;
+  }
   function renderOrbitLiveInfo(){
    if(!orbitLiveList)return;
    const labels={iss:'МКС',noaa:'NOAA-19',ao91:'AO-91',starlink:'Starlink · представитель группы'};
@@ -813,20 +821,19 @@ if(host){
    const entries=Object.values(orbitObjects).map(item=>{
     const pos=window.cydRadarPositions&&window.cydRadarPositions[item.id];
     const visible=!!(pos&&pos.el>=10);
-    const input=document.querySelector('[data-orbit-toggle="'+item.id+'"]');
-    const checked=input?input.checked:true;
+    const checked=item.group.visible!==false;
     const status=!item.satrec?'Нет актуальных данных':!pos?'Расчёт недоступен':visible?'Виден над горизонтом':'Ниже порога видимости';
     const coords=pos?'Азимут '+pos.az.toFixed(1)+'° · высота '+pos.el.toFixed(1)+'°':'';
     const label=labels[item.id]||item.name||item.id;
     const color=colors[item.id]||'#8cddff';
-    return '<div class="orbit-live-row"><input type="checkbox" data-large-orbit-toggle="'+item.id+'" '+(checked?'checked':'')+' aria-label="Показывать '+label+'"><div><b style="color:'+color+'">'+label+'</b><small class="'+(visible?'':'not-visible')+'">'+status+(coords?' · '+coords:'')+'</small></div></div>';
+    const safeLabel=String(label).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    return '<div class="orbit-live-row"><input type="checkbox" data-large-orbit-toggle="'+item.id+'" '+(checked?'checked':'')+' aria-label="Показывать '+safeLabel+'"><div><b style="color:'+color+'">'+safeLabel+'</b><small class="'+(visible?'':'not-visible')+'">'+status+(coords?' · '+coords:'')+'</small></div></div>';
    });
-   orbitLiveList.innerHTML=entries.join('')||'<small>Нет объектов для отображения</small>';
-   orbitLiveList.querySelectorAll('[data-large-orbit-toggle]').forEach(input=>input.addEventListener('change',()=>{
-    const original=document.querySelector('[data-orbit-toggle="'+input.dataset.largeOrbitToggle+'"]');
-    if(original){original.checked=input.checked;original.dispatchEvent(new Event('change',{bubbles:true}));}
-    else if(orbitObjects[input.dataset.largeOrbitToggle])orbitObjects[input.dataset.largeOrbitToggle].group.visible=input.checked;
-   }));
+   orbitLiveList.innerHTML='<div class="orbit-visibility-actions"><button type="button" data-orbit-show-all>ПОКАЗАТЬ ВСЕ</button><button type="button" data-orbit-hide-all>СКРЫТЬ ВСЕ</button></div>'+(entries.join('')||'<small>Нет объектов для отображения</small>');
+   orbitLiveList.querySelectorAll('[data-large-orbit-toggle]').forEach(input=>input.addEventListener('change',()=>setOrbitObjectVisibility(input.dataset.largeOrbitToggle,input.checked)));
+   const showAll=orbitLiveList.querySelector('[data-orbit-show-all]'),hideAll=orbitLiveList.querySelector('[data-orbit-hide-all]');
+   if(showAll)showAll.addEventListener('click',()=>{Object.keys(orbitObjects).forEach(id=>setOrbitObjectVisibility(id,true));renderOrbitLiveInfo();});
+   if(hideAll)hideAll.addEventListener('click',()=>{Object.keys(orbitObjects).forEach(id=>setOrbitObjectVisibility(id,false));renderOrbitLiveInfo();});
   }
   const orbitVisibilityPanel=document.getElementById('orbitVisibilityPanel');
   const orbitVisibilityCollapse=document.getElementById('orbitVisibilityCollapse');
@@ -1140,42 +1147,61 @@ if(host){
   },1000);
   setInterval(calculateNextVisiblePass,5*60*1000);
 
-  // Краткое всплывающее уведомление только в момент восходящего пересечения 10°.
+  // Уведомление для каждого отслеживаемого спутника при восходящем пересечении порога 10°.
   let arrivalEnabled=true;
-  const arrivalStates=new Map(),arrivalElevations=new Map();
-  let arrivalToastTimer=null;
+  const arrivalElevations=new Map(),arrivalNotified=new Map();
+  const arrivalQueue=[];
+  let arrivalToastTimer=null,arrivalToastRoot=null;
+  function renderArrivalQueue(){
+   if(!arrivalQueue.length){if(arrivalToastRoot)arrivalToastRoot.remove();arrivalToastRoot=null;return;}
+   if(!arrivalToastRoot){
+    arrivalToastRoot=document.createElement('aside');arrivalToastRoot.id='satelliteArrivalToast';
+    arrivalToastRoot.setAttribute('role','status');arrivalToastRoot.setAttribute('aria-live','polite');
+    arrivalToastRoot.style.cssText='position:fixed;z-index:2147483100;right:14px;top:82px;width:min(350px,calc(100vw - 28px));max-height:55dvh;overflow:auto;display:grid;gap:8px;pointer-events:auto';
+    document.body.appendChild(arrivalToastRoot);
+   }
+   arrivalToastRoot.innerHTML='';
+   arrivalQueue.forEach((entry,index)=>{
+    const card=document.createElement('div');
+    card.style.cssText='padding:12px 14px;border:1px solid rgba(91,196,255,.58);border-radius:12px;background:rgba(5,20,36,.98);box-shadow:0 12px 34px #0009;color:#e8f7ff;font:12px/1.45 system-ui';
+    const title=document.createElement('b');title.textContent=(entry.name||'Спутник')+' появился в зоне видимости';title.style.cssText='display:block;font-size:13px;margin-bottom:4px';
+    const detail=document.createElement('small');detail.textContent='Восходящий пролёт · высота '+entry.elevation.toFixed(1)+'°';detail.style.cssText='display:block;color:#a9c9dc;margin-bottom:9px';
+    const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;align-items:center';
+    const follow=document.createElement('button');follow.type='button';follow.textContent='СЛЕДИТЬ';follow.style.cssText='border:1px solid #54b9ed;border-radius:7px;background:#123c59;color:#e8f7ff;padding:7px 12px;font-weight:700';
+    follow.addEventListener('click',()=>{if(typeof window.selectTargetFromFavorite==='function')window.selectTargetFromFavorite(entry.id);else if(typeof window.selectTarget==='function')window.selectTarget(entry.id,false);arrivalQueue.splice(index,1);renderArrivalQueue();});
+    const close=document.createElement('button');close.type='button';close.textContent='×';close.setAttribute('aria-label','Закрыть уведомление');close.style.cssText='border:1px solid #35566d;border-radius:7px;background:#10283a;color:#cce8f8;padding:6px 11px;font-size:16px';
+    close.addEventListener('click',()=>{arrivalQueue.splice(index,1);renderArrivalQueue();});
+    actions.append(follow,close);card.append(title,detail,actions);arrivalToastRoot.appendChild(card);
+   });
+   clearTimeout(arrivalToastTimer);
+   arrivalToastTimer=setTimeout(()=>{arrivalQueue.shift();renderArrivalQueue();},15000);
+  }
   function showSatelliteArrival(item,elevation){
    if(!arrivalEnabled)return;
-   let toast=document.getElementById('satelliteArrivalToast');
-   if(!toast){
-    toast=document.createElement('aside');toast.id='satelliteArrivalToast';toast.setAttribute('role','status');toast.setAttribute('aria-live','polite');
-    toast.style.cssText='position:fixed;z-index:1300;right:14px;top:82px;width:min(330px,calc(100vw - 28px));padding:13px 14px;border:1px solid rgba(91,196,255,.55);border-radius:12px;background:rgba(5,20,36,.97);box-shadow:0 12px 34px #0009;color:#e8f7ff;font:12px/1.45 system-ui';
-    document.body.appendChild(toast);
-   }
-   toast.innerHTML='';
-   const title=document.createElement('b');title.textContent=(item.name||'Спутник')+' появился над горизонтом';title.style.cssText='display:block;font-size:13px;margin-bottom:4px';
-   const detail=document.createElement('small');detail.textContent='Восходящий пролёт · высота '+elevation.toFixed(1)+'°';detail.style.cssText='display:block;color:#a9c9dc;margin-bottom:9px';
-   const follow=document.createElement('button');follow.type='button';follow.textContent='СЛЕДИТЬ';follow.style.cssText='border:1px solid #54b9ed;border-radius:7px;background:#123c59;color:#e8f7ff;padding:7px 12px;font-weight:700';
-   follow.addEventListener('click',()=>{if(typeof window.selectTargetFromFavorite==='function')window.selectTargetFromFavorite(item.id);else if(typeof window.selectTarget==='function')window.selectTarget(item.id,false);toast.remove();});
-   toast.append(title,detail,follow);
-   clearTimeout(arrivalToastTimer);arrivalToastTimer=setTimeout(()=>toast.remove(),12000);
+   arrivalQueue.push({id:item.id,name:item.name||item.id,elevation,time:Date.now()});
+   renderArrivalQueue();
   }
   function scanSatelliteArrivals(){
-   const now=new Date();
+   const now=new Date(),loc=window.cydObserverLocation||demoObserver;
+   const observerNow={latitude:THREE.MathUtils.degToRad(loc.latitude),longitude:THREE.MathUtils.degToRad(loc.longitude),height:Number(loc.height)||0};
    for(const item of Object.values(orbitObjects)){
     if(!item.satrec)continue;
     const ecf=propagatedEcf(item.satrec,now);if(!ecf)continue;
-    const look=satellite.ecfToLookAngles(observer,ecf);if(!look)continue;
-    const elevation=THREE.MathUtils.radToDeg(look.elevation),visible=elevation>=10;
-    const previousElevation=arrivalElevations.get(item.id);
-    if(previousElevation!==undefined&&previousElevation<10&&visible&&elevation>previousElevation)showSatelliteArrival(item,elevation);
+    const look=satellite.ecfToLookAngles(observerNow,ecf);if(!look)continue;
+    const elevation=THREE.MathUtils.radToDeg(look.elevation);
+    const previous=arrivalElevations.get(item.id);
+    const rising=previous!==undefined&&elevation>previous;
+    const crossed=previous!==undefined&&previous<10&&elevation>=10;
+    if(crossed&&rising&&arrivalNotified.get(item.id)!==Math.floor(now.getTime()/60000)) {
+     arrivalNotified.set(item.id,Math.floor(now.getTime()/60000));
+     showSatelliteArrival(item,elevation);
+    }
     arrivalElevations.set(item.id,elevation);
-    arrivalStates.set(item.id,visible);
    }
   }
   scanSatelliteArrivals();
-  setInterval(scanSatelliteArrivals,5000);
-  window.addEventListener('cyd-observer-change',()=>{arrivalStates.clear();arrivalElevations.clear();scanSatelliteArrivals();});
+  setInterval(scanSatelliteArrivals,3000);
+  window.addEventListener('cyd-observer-change',()=>{arrivalElevations.clear();scanSatelliteArrivals();});
   window.addEventListener('cyd-orbit-update',scanSatelliteArrivals);
 
 
@@ -1308,4 +1334,10 @@ body>.realistic-earth-scene.orbit-large-screen .orbit-live-info{position:fixed!i
  body>.realistic-earth-scene.orbit-large-screen .orbit-live-info{right:10px!important;left:10px!important;top:auto!important;bottom:max(12px,env(safe-area-inset-bottom))!important;width:auto!important;max-height:30dvh!important;padding:10px!important}
  body>.realistic-earth-scene.orbit-large-screen .orbit-live-row{padding:6px 0!important}
 }
+</style><style id="orbit-visibility-controls">
+.orbit-visibility-actions{display:flex;gap:7px;margin:2px 0 8px}
+.orbit-visibility-actions button{flex:1;min-height:32px;border:1px solid #3b7297;border-radius:7px;background:#102b42;color:#cceeff;font-size:9px;font-weight:750;letter-spacing:.04em;cursor:pointer}
+.orbit-visibility-actions button:active{background:#1b4969}
+.orbit-live-info{max-width:calc(100vw - 24px)}
+@media(max-width:760px){.orbit-large-screen .orbit-live-info{max-height:38dvh!important}.orbit-large-screen .orbit-visibility-actions button{min-height:36px}}
 </style></body></html>

@@ -17,7 +17,17 @@
 
 
 </style>
-</head>
+<style>
+/* Realistic interactive Earth scene */
+.realistic-earth-scene{height:360px;isolation:isolate;background:radial-gradient(ellipse at 50% 52%,#0a3552 0,#061625 58%,#04101c 100%);border-radius:12px}
+#earth3d{position:absolute;inset:0;cursor:grab}
+#earth3d:active{cursor:grabbing}
+#earth3d canvas{display:block;width:100%;height:100%}
+.earth-location-key{position:absolute;right:14px;top:14px;z-index:4;padding:8px 10px;border:1px solid #7d4051;background:#071522dd;border-radius:8px;color:#ffd8df;font-size:10px}
+.earth-location-key i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff334f;box-shadow:0 0 9px #ff334f;margin-right:6px}
+.earth-model-status{position:absolute;right:14px;bottom:14px;z-index:4;color:#8bb5d0;font:9px 'Space Mono';background:#061522cc;padding:6px 8px;border-radius:6px}
+@media(max-width:700px){.realistic-earth-scene{height:300px}.earth-location-key{font-size:9px;max-width:190px}}
+</style></head>
 <body>
 <div class="shell">
 <aside class="sidebar">
@@ -43,7 +53,7 @@
 <section class="view active" id="view-overview">
 <div class="page-heading"><div><div class="eyebrow" data-i18n="eyebrow">ЦЕНТР УПРАВЛЕНИЯ · CYD ESP32</div><h1 data-i18n="welcome">Добро пожаловать на станцию</h1><p data-i18n="welcome_desc">Мониторинг спутников, положение антенны и состояние оборудования.</p></div><div class="heading-actions"><span class="date-label" id="today"></span><button class="btn btn-primary" data-go="control" data-i18n="open_control">Открыть управление ↗</button></div></div>
 <div class="overview-grid">
-<article class="panel globe-panel"><div class="panel-title"><div><span class="section-icon">◉</span><h2 data-i18n="earth_view">Орбитальная обстановка</h2></div><span class="subtle">LIVE SIMULATION</span></div><div class="earth-scene"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="earth"><div class="earth-shade"></div></div><span class="satellite satellite-one">✦</span><span class="satellite satellite-two">✦</span><div class="earth-caption"><b>EARTH / LEO</b><small data-i18n="orbit_demo">Схематичное отображение орбит</small></div></div><div class="globe-foot"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div></article>
+<article class="panel globe-panel"><div class="panel-title"><div><span class="section-icon">◉</span><h2 data-i18n="earth_view">Орбитальная обстановка</h2></div><span class="subtle">LIVE SIMULATION</span></div><div class="earth-scene realistic-earth-scene"><div id="earth3d" role="img" aria-label="Трёхмерная модель Земли, спутник на орбите и красная точка наблюдения в Екатеринбурге"></div><div class="earth-caption"><b>ЗЕМЛЯ / ОРБИТА LEO</b><small>Екатеринбург · 56.8389° с. ш. · 60.6057° в. д.</small></div><div class="earth-location-key"><i></i> Точка наблюдения · Екатеринбург</div><div class="earth-model-status" id="earthModelStatus">Загрузка 3D-модели…</div></div><div class="globe-foot"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div></article>
 <article class="panel target-panel"><div class="panel-title"><div><span class="section-icon">⌖</span><h2 data-i18n="selected_sat">Выбранный спутник</h2></div><span class="status-pill"><i></i><span data-i18n="tracking_demo">ДЕМО</span></span></div><div class="target-name"><div class="sat-avatar">✦</div><div><h3 id="selectedName">МКС (ZARYA)</h3><small id="selectedNorad">NORAD 25544 · НОО</small></div></div><div class="target-coords"><div><small data-i18n="azimuth">АЗИМУТ</small><b id="overviewAz">132.4°</b></div><div><small data-i18n="elevation">УГОЛ МЕСТА</small><b id="overviewEl">67.8°</b></div></div><div class="pass-card"><span data-i18n="next_pass">СЛЕДУЮЩИЙ ПРОЛЁТ</span><b data-i18n="in_12">Через 12 минут</b><small data-i18n="max_elev">Максимальная высота: 78.4°</small></div><button class="text-link" data-go="satellites" data-i18n="all_satellites">Каталог спутников →</button></article>
 </div>
 <div class="kpi-grid">
@@ -168,4 +178,43 @@ $("clearLog").addEventListener("click",()=>{logItems=[];renderLog();});
 function tick(){const d=new Date();$("clock").textContent=d.toLocaleTimeString(lang==="ru"?"ru-RU":"en-GB");$("today").textContent=d.toLocaleDateString(lang==="ru"?"ru-RU":"en-GB",{day:"2-digit",month:"long",year:"numeric"});}
 tick();setInterval(tick,1000);setAxes(objectData.iss.az,objectData.iss.el);renderRadarObjects();renderLog();setLanguage("ru");
 </script>
-</body></html>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+import { TextureLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/src/loaders/TextureLoader.js';
+const host=document.getElementById('earth3d'), status=document.getElementById('earthModelStatus');
+if(host){
+ try{
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(35,1,.1,100); camera.position.set(0,0,4.15);
+  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.outputColorSpace=THREE.SRGBColorSpace; host.appendChild(renderer.domElement);
+  const controls=new OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.enablePan=false; controls.minDistance=2.7; controls.maxDistance=6; controls.autoRotate=true; controls.autoRotateSpeed=.45;
+  scene.add(new THREE.AmbientLight(0x9bbbd8,1.45)); const sun=new THREE.DirectionalLight(0xffffff,2.2); sun.position.set(4,2,5); scene.add(sun);
+  const earthGroup=new THREE.Group(); scene.add(earthGroup);
+  const loader=new THREE.TextureLoader(); loader.setCrossOrigin('anonymous');
+  const earthMap=await loader.loadAsync('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+  earthMap.colorSpace=THREE.SRGBColorSpace;
+  const earth=new THREE.Mesh(new THREE.SphereGeometry(1,96,64),new THREE.MeshPhongMaterial({map:earthMap,specular:0x223344,shininess:12})); earthGroup.add(earth);
+  const cloudMap=await loader.loadAsync('https://threejs.org/examples/textures/planets/earth_clouds_1024.png');
+  const clouds=new THREE.Mesh(new THREE.SphereGeometry(1.008,72,48),new THREE.MeshLambertMaterial({map:cloudMap,transparent:true,opacity:.23,depthWrite:false})); earthGroup.add(clouds);
+  const atmosphere=new THREE.Mesh(new THREE.SphereGeometry(1.035,64,48),new THREE.MeshBasicMaterial({color:0x4aaeff,transparent:true,opacity:.10,side:THREE.BackSide})); earthGroup.add(atmosphere);
+  // Geographic marker: Ekaterinburg, 56.8389 N, 60.6057 E.
+  const lat=THREE.MathUtils.degToRad(56.8389), lon=THREE.MathUtils.degToRad(60.6057);
+  const markerPos=new THREE.Vector3(-Math.cos(lat)*Math.sin(lon),Math.sin(lat),Math.cos(lat)*Math.cos(lon)).multiplyScalar(1.018);
+  const marker=new THREE.Mesh(new THREE.SphereGeometry(.018,20,16),new THREE.MeshBasicMaterial({color:0xff263f})); marker.position.copy(markerPos); earthGroup.add(marker);
+  const halo=new THREE.Mesh(new THREE.SphereGeometry(.035,20,16),new THREE.MeshBasicMaterial({color:0xff263f,transparent:true,opacity:.25})); halo.position.copy(markerPos); earthGroup.add(halo);
+  // Stylized 3D low-Earth-orbit satellite: bus + solar arrays + antenna.
+  const sat=new THREE.Group(); const body=new THREE.Mesh(new THREE.BoxGeometry(.105,.075,.09),new THREE.MeshStandardMaterial({color:0xd8e2e9,metalness:.72,roughness:.28})); sat.add(body);
+  const panelMat=new THREE.MeshStandardMaterial({color:0x1765a1,metalness:.45,roughness:.35,emissive:0x071a36});
+  for(const side of [-1,1]){const panel=new THREE.Mesh(new THREE.BoxGeometry(.24,.012,.105),panelMat);panel.position.x=side*.18;sat.add(panel);for(let k=-2;k<=2;k++){const line=new THREE.Mesh(new THREE.BoxGeometry(.24,.002,.003),new THREE.MeshBasicMaterial({color:0x78cfff}));line.position.set(side*.18,.008,k*.018);sat.add(line);}}
+  const antenna=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.13,8),new THREE.MeshStandardMaterial({color:0xe9edf0}));antenna.position.y=.09;sat.add(antenna);
+  const orbit=new THREE.Group(); earthGroup.add(orbit); const orbitPts=[]; const inclination=.68;
+  for(let i=0;i<=240;i++){const a=i/240*Math.PI*2;orbitPts.push(new THREE.Vector3(1.32*Math.cos(a),1.32*Math.sin(a)*Math.sin(inclination),1.32*Math.sin(a)*Math.cos(inclination)));}
+  const orbitLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(orbitPts),new THREE.LineBasicMaterial({color:0x55c7ff,transparent:true,opacity:.7})); orbit.add(orbitLine); sat.position.copy(orbitPts[0]); orbit.add(sat);
+  if(status)status.textContent='3D · спутник на орбите · Екатеринбург отмечен красным';
+  const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();};
+  new ResizeObserver(resize).observe(host); resize();
+  let t=0; function animate(){requestAnimationFrame(animate);t+=.003;const idx=Math.floor((t%(Math.PI*2))/(Math.PI*2)*240);sat.position.copy(orbitPts[idx]);sat.rotation.y=t*1.8;clouds.rotation.y+=.00018;controls.update();renderer.render(scene,camera);} animate();
+ }catch(e){if(status)status.textContent='3D не загрузилось: '+e.message;console.error(e);}
+}
+</script></body></html>

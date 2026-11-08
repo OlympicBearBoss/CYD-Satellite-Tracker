@@ -26,7 +26,7 @@
       // Быстрый выбор из избранного синхронизирует каталог и выбранную цель наведения.
       const targetByNorad={"25544":"iss","33591":"noaa","43017":"ao91"};
       if(targetByNorad[id]&&typeof window.selectTarget==="function"){
-        window.selectTarget(targetByNorad[id]);
+        window.selectTarget(targetByNorad[id],false);
       }
       if(item){
         selected=item;

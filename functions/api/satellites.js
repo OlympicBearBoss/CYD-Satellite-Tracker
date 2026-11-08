@@ -4,7 +4,9 @@ const ALLOWED_GROUPS = new Set([
 
 export async function onRequest(context) {
   const { request } = context;
-  const group = (new URL(request.url).searchParams.get("group") || "").toLowerCase();
+  const params = new URL(request.url).searchParams;
+  const group = (params.get("group") || "").toLowerCase();
+  const norad = (params.get("norad") || "").trim();
   const cors = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -14,12 +16,15 @@ export async function onRequest(context) {
   if (request.method !== "GET") {
     return new Response("Method not allowed", { status: 405, headers: cors });
   }
-  if (!ALLOWED_GROUPS.has(group)) {
+  if (norad && !/^\\d{1,6}$/.test(norad)) {
+    return new Response("Invalid NORAD catalog number", { status: 400, headers: cors });
+  }
+  if (!norad && !ALLOWED_GROUPS.has(group)) {
     return new Response("Unsupported satellite group", { status: 400, headers: cors });
   }
 
   const cache = caches.default;
-  const cacheUrl = new URL("/api/satellites?group=" + group, request.url);
+  const cacheUrl = new URL(norad ? "/api/satellites?norad=" + norad : "/api/satellites?group=" + group, request.url);
   const cacheKey = new Request(cacheUrl.toString(), { method: "GET" });
   const cached = await cache.match(cacheKey);
   if (cached) {
@@ -28,8 +33,9 @@ export async function onRequest(context) {
     return new Response(cached.body, { status: cached.status, headers });
   }
 
-  const upstreamUrl = "https://celestrak.org/NORAD/elements/gp.php?GROUP=" +
-    encodeURIComponent(group.toUpperCase()) + "&FORMAT=JSON";
+  const upstreamUrl = norad
+    ? "https://celestrak.org/NORAD/elements/gp.php?CATNR=" + encodeURIComponent(norad) + "&FORMAT=JSON"
+    : "https://celestrak.org/NORAD/elements/gp.php?GROUP=" + encodeURIComponent(group.toUpperCase()) + "&FORMAT=JSON";
   try {
     const upstream = await fetch(upstreamUrl, {
       headers: { "User-Agent": "CYD-Satellite-Tracker/1.0 (+https://github.com/OlympicBearBoss/CYD-Satellite-Tracker)" }

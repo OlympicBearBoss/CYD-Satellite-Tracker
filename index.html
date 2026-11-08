@@ -291,6 +291,8 @@ function renderTarget(){
 function selectTarget(id,openControl=true){selected=id;const o=objectData[id];renderTarget();setAxes(o.az,o.el);$("targetSelect").value=id;addLog("SELECT",lang==="ru"?"Выбран объект "+o.name:"Selected target "+o.name);if(openControl)go("control");}
 // Expose the target selector to the satellite catalog quick-access panel.
 window.selectTarget=selectTarget;
+// Dedicated quick-access selection never changes the active view.
+window.selectTargetFromFavorite=function(id){if(!objectData[id])return false;selectTarget(id,false);return true;};
 document.querySelectorAll("[data-select]").forEach(b=>b.addEventListener("click",()=>selectTarget(b.dataset.select)));
 $("targetSelect").addEventListener("change",e=>{selected=e.target.value;renderTarget();const o=objectData[selected];setAxes(o.az,o.el);});
 $("centerBtn").addEventListener("click",()=>{setAxes(180,45);$("controlStatus").textContent=t("centered");addLog("CTRL",t("centered"));});

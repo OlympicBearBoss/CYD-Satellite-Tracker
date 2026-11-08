@@ -922,6 +922,10 @@ if(host){
   try{await refreshRealOrbits();}
   catch(error){console.error('Initial orbit download failed:',error);if(orbitStatus)orbitStatus.textContent='Ошибка загрузки орбит: '+(error&&error.message?error.message:String(error));}
   setInterval(()=>updateRealPositions(false),2000);
+  window.addEventListener('cyd-selected-target-change',()=>{
+   const item=orbitObjects[window.cydSelectedSatelliteId||'iss'];
+   if(item){item.group.visible=true;updateRealPositions(true);renderOrbitLiveInfo();}
+  });
   // CelesTrak обновляет GP примерно раз в 2 часа; соблюдаем интервал источника.
   setInterval(()=>refreshRealOrbits(),2*60*60*1000);
 

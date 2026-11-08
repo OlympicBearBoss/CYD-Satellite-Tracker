@@ -16,7 +16,7 @@ export async function onRequest(context) {
   if (request.method !== "GET") {
     return new Response("Method not allowed", { status: 405, headers: cors });
   }
-  if (norad && !/^\\d{1,6}$/.test(norad)) {
+  if (norad && !/^\d{1,6}$/.test(norad)) {
     return new Response("Invalid NORAD catalog number", { status: 400, headers: cors });
   }
   if (!norad && !ALLOWED_GROUPS.has(group)) {

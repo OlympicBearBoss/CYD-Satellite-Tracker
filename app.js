@@ -33,9 +33,23 @@ $("centerBtn").addEventListener("click",()=>{setAxes(180,45);$("controlStatus").
 $("trackBtn").addEventListener("click",()=>{const o=objectData[selected];setAxes(o.az,o.el);$("controlStatus").textContent=t("tracking")+o.name;addLog("CTRL",t("tracking")+o.name);});
 $("stopBtn").addEventListener("click",()=>{$("controlStatus").textContent=t("stopped");addLog("STOP",t("stopped"));});
 $("testConnection").addEventListener("click",()=>{$("connectionResult").textContent=t("connection_test_ok");addLog("NET",t("connection_test_ok"));});
-function renderRadarObjects(){$("radarObjects").innerHTML=Object.entries(objectData).map(([id,o])=>'<div class="object-row"><div><b>'+o.name+'</b><small>'+o.norad+'</small></div><strong>'+o.az.toFixed(1)+'° / '+o.el.toFixed(1)+'°</strong></div>').join("");}
+function renderRadarObjects(){
+ const rotor=$("radarRotor"),cardinals=$("radarCardinals");if(!rotor||!cardinals)return;
+ rotor.querySelectorAll(".radar-dot").forEach(n=>n.remove());const heading=window.demoDeviceHeading||42;
+ [["N","С"],["E","В"],["S","Ю"],["W","З"]].forEach(([key,label],i)=>{const angle=(i*90-heading)*Math.PI/180,r=.465,el=cardinals.querySelector('[data-dir="'+key+'"]');el.textContent=label;el.style.left=(50+Math.sin(angle)*r*100)+"%";el.style.top=(50-Math.cos(angle)*r*100)+"%";});
+ Object.entries(objectData).forEach(([id,o])=>{const rel=(o.az-heading)*Math.PI/180,radius=.88-(o.el/90)*.65,dot=document.createElement("span");dot.className="radar-dot "+id;dot.style.left=(50+Math.sin(rel)*radius*45)+"%";dot.style.top=(50-Math.cos(rel)*radius*45)+"%";const label=document.createElement("span");label.className="radar-dot-label";label.textContent=id==="iss"?"МКС":id==="noaa"?"NOAA 19":"AO-91";dot.appendChild(label);rotor.appendChild(dot);});
+}
+const compassNames=["СЕВЕР","СЕВЕРО-ВОСТОК","ВОСТОК","ЮГО-ВОСТОК","ЮГ","ЮГО-ЗАПАД","ЗАПАД","СЕВЕРО-ЗАПАД"];
+function updateDemoNavigation(){
+ const now=Date.now()/1000,heading=(42+Math.sin(now/18)*7+Math.sin(now/41)*2+360)%360;window.demoDeviceHeading=heading;
+ const h=heading.toFixed(1),dir=compassNames[Math.round(heading/45)%8];
+ $("compassRose").style.transform="rotate("+(-heading)+"deg)";
+ $("compassRose").querySelectorAll(".compass-label").forEach(el=>el.style.transform="translate(-50%,-50%) rotate("+heading+"deg)");
+ $("compassValue").textContent=h+"°";$("compassDirection").textContent=dir;
+ $("radarHeading").textContent=String(Math.round(heading)).padStart(3,"0")+"° · "+dir;$("gpsTime").textContent=new Date().toLocaleTimeString("ru-RU");renderRadarObjects();
+}
 function addLog(code,message){const d=new Date();logItems.unshift([d.toLocaleTimeString("ru-RU"),code,message,message]);logItems=logItems.slice(0,30);renderLog();}
 function renderLog(){$("fullLog").innerHTML=logItems.map(row=>'<div class="log-row"><i class="event-dot '+(row[1]==="STOP"?"orange":row[1]==="NET"?"green":"blue")+'"></i><time>'+row[0]+'</time><code>'+row[1]+'</code><p>'+(lang==="en"?row[3]:row[2])+'</p></div>').join("");$("logCount").textContent=logItems.length+" EVENTS";}
 $("clearLog").addEventListener("click",()=>{logItems=[];renderLog();});
 function tick(){const d=new Date();$("clock").textContent=d.toLocaleTimeString(lang==="ru"?"ru-RU":"en-GB");$("today").textContent=d.toLocaleDateString(lang==="ru"?"ru-RU":"en-GB",{day:"2-digit",month:"long",year:"numeric"});}
-tick();setInterval(tick,1000);setAxes(objectData.iss.az,objectData.iss.el);renderRadarObjects();renderLog();setLanguage("ru");
+tick();setInterval(tick,1000);setAxes(objectData.iss.az,objectData.iss.el);updateDemoNavigation();setInterval(updateDemoNavigation,1000);renderRadarObjects();renderLog();setLanguage("ru");

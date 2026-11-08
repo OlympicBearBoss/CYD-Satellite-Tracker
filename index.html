@@ -207,11 +207,57 @@ if(host){
   const markerPos=new THREE.Vector3(Math.cos(lat)*Math.cos(lon),Math.sin(lat),-Math.cos(lat)*Math.sin(lon)).multiplyScalar(1.018);
   const marker=new THREE.Mesh(new THREE.SphereGeometry(.018,20,16),new THREE.MeshBasicMaterial({color:0xff263f})); marker.position.copy(markerPos); earthGroup.add(marker);
   const halo=new THREE.Mesh(new THREE.SphereGeometry(.035,20,16),new THREE.MeshBasicMaterial({color:0xff263f,transparent:true,opacity:.25})); halo.position.copy(markerPos); earthGroup.add(halo);
-  // Stylized 3D low-Earth-orbit satellite: bus + solar arrays + antenna.
-  const sat=new THREE.Group(); const body=new THREE.Mesh(new THREE.BoxGeometry(.105,.075,.09),new THREE.MeshStandardMaterial({color:0xd8e2e9,metalness:.72,roughness:.28})); sat.add(body);
-  const panelMat=new THREE.MeshStandardMaterial({color:0x1765a1,metalness:.45,roughness:.35,emissive:0x071a36});
-  for(const side of [-1,1]){const panel=new THREE.Mesh(new THREE.BoxGeometry(.24,.012,.105),panelMat);panel.position.x=side*.18;sat.add(panel);for(let k=-2;k<=2;k++){const line=new THREE.Mesh(new THREE.BoxGeometry(.24,.002,.003),new THREE.MeshBasicMaterial({color:0x78cfff}));line.position.set(side*.18,.008,k*.018);sat.add(line);}}
-  const antenna=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.13,8),new THREE.MeshStandardMaterial({color:0xe9edf0}));antenna.position.y=.09;sat.add(antenna);
+  // Detailed generic Earth-observation spacecraft: bus, optical payload, solar wings and RF antenna.
+  const sat=new THREE.Group();
+  const matGold=new THREE.MeshStandardMaterial({color:0xb78b43,metalness:.72,roughness:.48});
+  const matFoil=new THREE.MeshStandardMaterial({color:0xc7a96d,metalness:.58,roughness:.62});
+  const matWhite=new THREE.MeshStandardMaterial({color:0xdce4e8,metalness:.48,roughness:.3});
+  const matDark=new THREE.MeshStandardMaterial({color:0x263746,metalness:.72,roughness:.34});
+  const matBlue=new THREE.MeshStandardMaterial({color:0x123c78,metalness:.38,roughness:.28,emissive:0x07152d});
+  const matCell=new THREE.MeshStandardMaterial({color:0x2866a8,metalness:.34,roughness:.3,emissive:0x06152c});
+  const matGlass=new THREE.MeshPhysicalMaterial({color:0x163c58,metalness:.25,roughness:.12,clearcoat:1});
+  const addBox=(parent,size,pos,material)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(...size),material);m.position.set(...pos);parent.add(m);return m;};
+  // Thermal-blanketed instrument bus with exposed structural rails.
+  addBox(sat,[.17,.16,.18],[0,0,0],matGold);
+  addBox(sat,[.176,.115,.184],[0,0,0],matFoil);
+  for(const x of [-.087,.087])for(const z of [-.094,.094])addBox(sat,[.009,.17,.009],[x,0,z],matWhite);
+  for(const y of [-.055,.055])addBox(sat,[.18,.009,.185],[0,y,0],matGold);
+  // Earth-observation telescope: dark optical baffle, coated lens and retaining ring.
+  const baffle=new THREE.Mesh(new THREE.CylinderGeometry(.043,.052,.07,32),matDark);baffle.rotation.x=Math.PI/2;baffle.position.set(0,.005,.125);sat.add(baffle);
+  const lens=new THREE.Mesh(new THREE.CircleGeometry(.036,32),matGlass);lens.position.set(0,.005,.162);sat.add(lens);
+  const lensRim=new THREE.Mesh(new THREE.TorusGeometry(.045,.004,8,32),matWhite);lensRim.position.set(0,.005,.164);sat.add(lensRim);
+  // Twin deployable solar arrays with individual photovoltaic cells, busbars and hinges.
+  for(const side of [-1,1]){
+    const wing=new THREE.Group();wing.position.set(side*.105,0,0);wing.rotation.z=side*.035;sat.add(wing);
+    addBox(wing,[.34,.012,.19],[side*.18,0,0],matDark);
+    addBox(wing,[.325,.004,.177],[side*.18,.009,0],matBlue);
+    for(let col=0;col<4;col++)for(let row=0;row<3;row++){
+      const x=side*.035+side*(col*.079),z=-.06+row*.06;
+      addBox(wing,[.073,.002,.052],[x,.012,z],matCell);
+    }
+    for(let row=0;row<4;row++)addBox(wing,[.33,.0015,.002],[side*.18,.014,-.075+row*.05],matWhite);
+    for(let col=0;col<5;col++)addBox(wing,[.0015,.0015,.17],[side*(.025+col*.077),.014,0],matWhite);
+    const hinge=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.045,16),matWhite);hinge.rotation.z=Math.PI/2;hinge.position.x=-side*.012;wing.add(hinge);
+    const boom=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.13,10),matDark);boom.rotation.z=Math.PI/2;boom.position.x=side*.36;wing.add(boom);
+  }
+  // High-gain parabolic radio reflector, rim, mast and feed.
+  const dishMat=new THREE.MeshStandardMaterial({color:0xd8e0e5,metalness:.82,roughness:.25,side:THREE.DoubleSide});
+  const dish=new THREE.Mesh(new THREE.SphereGeometry(.075,32,20,0,Math.PI*2,0,Math.PI/2),dishMat);dish.rotation.x=Math.PI;sat.add(dish);dish.position.set(0,.145,-.015);
+  const dishRim=new THREE.Mesh(new THREE.TorusGeometry(.074,.004,8,40),matWhite);dishRim.position.set(0,.145,-.015);sat.add(dishRim);
+  const mast=new THREE.Mesh(new THREE.CylinderGeometry(.003,.003,.085,10),matWhite);mast.position.set(0,.105,-.015);sat.add(mast);
+  const feed=new THREE.Mesh(new THREE.SphereGeometry(.012,12,10),matGold);feed.position.set(0,.065,-.015);sat.add(feed);
+  // GNSS / telemetry antennas, star tracker, radiator strips and attitude-control thrusters.
+  for(const x of [-.055,.055]){
+    const rod=new THREE.Mesh(new THREE.CylinderGeometry(.002,.002,.105,8),matWhite);rod.position.set(x,.13,.065);sat.add(rod);
+    const tip=new THREE.Mesh(new THREE.SphereGeometry(.006,10,8),matGold);tip.position.set(x,.184,.065);sat.add(tip);
+  }
+  const starTracker=new THREE.Mesh(new THREE.CylinderGeometry(.018,.021,.035,20),matDark);starTracker.rotation.x=Math.PI/2;starTracker.position.set(.055,.055,.115);sat.add(starTracker);
+  for(const x of [-.055,.055])for(const z of [-.045,.045]){
+    const thruster=new THREE.Mesh(new THREE.CylinderGeometry(.009,.014,.035,12),matDark);thruster.rotation.x=Math.PI/2;thruster.position.set(x,-.075,z);sat.add(thruster);
+  }
+  for(const side of [-1,1])for(let i=0;i<3;i++)addBox(sat,[.012,.055,.008],[side*.096,-.015,-.055+i*.05],matWhite);
+  // Enlarged modestly for visibility in the orbital overview.
+  sat.scale.setScalar(.9);
   const orbit=new THREE.Group(); earthGroup.add(orbit); const orbitPts=[]; const inclination=.68;
   for(let i=0;i<=240;i++){const a=i/240*Math.PI*2;orbitPts.push(new THREE.Vector3(1.32*Math.cos(a),1.32*Math.sin(a)*Math.sin(inclination),1.32*Math.sin(a)*Math.cos(inclination)));}
   const orbitLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(orbitPts),new THREE.LineBasicMaterial({color:0x55c7ff,transparent:true,opacity:.7})); orbit.add(orbitLine); sat.position.copy(orbitPts[0]); orbit.add(sat);

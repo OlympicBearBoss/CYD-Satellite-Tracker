@@ -205,6 +205,33 @@ body[data-theme="terminal"] .radar-display{background-color:#07150d;border-color
 body[data-theme="terminal"] .progress{background:#1d3924}
 body[data-theme="terminal"] footer{color:#7fa583;border-color:#244b31}
 @media(max-width:700px){.top-actions{gap:7px}.theme-picker{min-width:92px;padding-left:7px;font-size:10px}.clock{display:none}}
+/* Technical station / telemetry visual language */
+:root{--tech-line:color-mix(in srgb,var(--cyan) 24%,transparent);--tech-glow:color-mix(in srgb,var(--blue) 18%,transparent)}
+.content{position:relative;isolation:isolate}
+.content:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.23;background-image:linear-gradient(var(--tech-line) 1px,transparent 1px),linear-gradient(90deg,var(--tech-line) 1px,transparent 1px);background-size:34px 34px;mask-image:linear-gradient(180deg,#000 0,transparent 72%)}
+.content:after{content:"";position:absolute;top:12px;right:16px;width:44px;height:44px;pointer-events:none;opacity:.55;background:linear-gradient(90deg,var(--cyan) 1px,transparent 1px) 0 0/8px 8px,linear-gradient(var(--cyan) 1px,transparent 1px) 0 0/8px 8px;mask-image:radial-gradient(circle,#000 0,transparent 72%)}
+.panel,.kpi{position:relative;overflow:hidden}
+.panel:after,.kpi:after{content:"";position:absolute;top:0;right:0;width:17px;height:17px;border-top:1px solid var(--cyan);border-right:1px solid var(--cyan);opacity:.62;pointer-events:none}
+.panel:before{content:"";position:absolute;left:0;top:0;width:34px;height:2px;background:linear-gradient(90deg,var(--cyan),transparent);opacity:.65;pointer-events:none}
+.panel-title{position:relative}
+.panel-title:after{content:"SYS / TELEMETRY";font:8px 'Space Mono',monospace;letter-spacing:.13em;color:var(--muted);opacity:.72;margin-left:auto;white-space:nowrap}
+.eyebrow{display:flex;align-items:center;gap:9px}
+.eyebrow:before{content:"";display:inline-block;width:17px;height:1px;background:var(--cyan);box-shadow:0 0 7px var(--cyan)}
+.subtle,.section-icon,.date-label,.connection-chip,.clock,.status-pill,.demo-tag{font-family:'Space Mono',ui-monospace,monospace}
+.kpi{background-image:linear-gradient(135deg,var(--tech-glow),transparent 58%)}
+.kpi:before{content:"";position:absolute;left:12px;right:12px;bottom:0;height:1px;background:linear-gradient(90deg,transparent,var(--tech-line),transparent)}
+.topbar{box-shadow:0 1px 0 var(--tech-line),0 8px 24px #0000000b}
+.connection-chip{letter-spacing:.06em;text-transform:uppercase}
+.sidebar-bottom:before{content:"SYSTEM STATUS  /  ";font:8px 'Space Mono',monospace;letter-spacing:.12em;color:var(--cyan);display:block;margin-bottom:9px}
+button,.nav-item,.theme-picker{transition:filter .18s ease,border-color .18s ease,transform .18s ease}
+button:active,.nav-item:active{transform:translateY(1px)}
+body[data-theme="arctic"] .content:before{opacity:.34}
+body[data-theme="arctic"] .panel:after,body[data-theme="arctic"] .kpi:after{opacity:.5}
+body[data-theme="terminal"]{font-family:'Space Mono',ui-monospace,monospace}
+body[data-theme="terminal"] .panel-title:after{color:#79c985}
+body[data-theme="terminal"] .content:before{opacity:.28}
+@media(max-width:700px){.panel-title:after{font-size:7px;letter-spacing:.06em}.content:after{right:8px;top:8px}.content:before{background-size:28px 28px}}
+
 </style></head>
 <body>
 <div class="shell">

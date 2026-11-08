@@ -11,6 +11,7 @@
   ];
   let records = [];
   let catalogNotice = "";
+  const CACHE_TTL = 2 * 60 * 60 * 1000;
   let selected = null;
   let satelliteLibReady = null;
   const $ = id => document.getElementById(id);
@@ -31,26 +32,39 @@
     status("Загрузка актуальных данных…");
     $("liveSatelliteList").innerHTML = '<div class="note">Получение орбитальных элементов CelesTrak…</div>';
     const results = await Promise.all(sources.map(async source => {
-      const url = "https://celestrak.org/NORAD/elements/gp.php?GROUP=" + encodeURIComponent(source.group) + "&FORMAT=json";
+      const cacheKey = "cyd-omm-v1-" + source.group;
+      let cached = null;
+      try { cached = JSON.parse(localStorage.getItem(cacheKey) || "null"); } catch (_) {}
+      if (cached && Array.isArray(cached.data) && Date.now() - cached.savedAt < CACHE_TTL) {
+        return { source, data: cached.data, error: null, cached: true };
+      }
+      const url = "https://celestrak.org/NORAD/elements/gp.php?GROUP=" + encodeURIComponent(source.group) + "&FORMAT=JSON";
       try {
-        const response = await fetch(url, { cache: "no-store" });
+        const response = await fetch(url);
         if (!response.ok) throw new Error("HTTP " + response.status);
         const data = await response.json();
-        if (!Array.isArray(data)) throw new Error("неверный формат ответа");
-        return { source, data, error: null };
+        if (!Array.isArray(data)) throw new Error("неверный формат OMM JSON");
+        try { localStorage.setItem(cacheKey, JSON.stringify({savedAt: Date.now(), data})); } catch (_) {}
+        return { source, data, error: null, cached: false };
       } catch (error) {
-        return { source, data: [], error: error.message };
+        return { source, data: cached && Array.isArray(cached.data) ? cached.data : [], error: error.message, stale: !!cached };
       }
     }));
     const byId = new Map();
     results.forEach(({source,data}) => data.forEach(item => {
       const id = String(item.NORAD_CAT_ID ?? "");
-      if (id && item.TLE_LINE1 && item.TLE_LINE2) {
+      const hasOmm = item.EPOCH && Number.isFinite(Number(item.MEAN_MOTION)) &&
+        Number.isFinite(Number(item.INCLINATION)) && Number.isFinite(Number(item.ECCENTRICITY)) &&
+        Number.isFinite(Number(item.RA_OF_ASC_NODE)) && Number.isFinite(Number(item.ARG_OF_PERICENTER)) &&
+        Number.isFinite(Number(item.MEAN_ANOMALY));
+      if (id && hasOmm) {
         byId.set(id, {...item, _category: source.group, _categoryLabel: source.label});
       }
     }));
     records = [...byId.values()];
     const failed = results.filter(result => result.error);
+    const cachedGroups = results.filter(result => result.cached).length;
+    const staleGroups = results.filter(result => result.stale).length;
     const epochs = records.map(item => Date.parse(item.EPOCH)).filter(Number.isFinite);
     const newest = epochs.length ? new Date(Math.max(...epochs)) : null;
     const oldest = epochs.length ? new Date(Math.min(...epochs)) : null;
@@ -63,13 +77,15 @@
         esc(failed.map(x => x.source.label + ": " + x.error).join("; ")) + '</div>';
       return;
     }
-    status(records.length + " спутников · " + (failed.length ? failed.length + " категорий недоступны" : "все категории загружены"));
+    status(records.length + " спутников · " + (cachedGroups ? cachedGroups + " из " + results.length + " из кэша" : "данные обновлены"));
     const freshness = ageHours === null ? "Эпоха TLE не определена" :
       ageHours > 168 ? "Внимание: в каталоге есть данные старше 7 суток" :
       ageHours > 72 ? "Некоторые орбитальные элементы старше 72 часов" : "Возраст орбитальных данных проверен";
     catalogNotice = '<div class="note" style="margin-bottom:8px">Источник: CelesTrak GP · ' + esc(freshness) +
       (oldest ? '<br>Самая старая эпоха в выборке: ' + esc(oldest.toLocaleString()) : '') +
-      (failed.length ? '<br>Не загружены: ' + esc(failed.map(x => x.source.label).join(", ")) : '') + '</div>';
+      (cachedGroups ? '<br>Кэш действует 2 часа (' + cachedGroups + ' категорий)' : '') +
+      (staleGroups ? '<br>Нет связи; использованы сохранённые данные (' + staleGroups + ' категорий)' : '') +
+      (failed.length ? '<br>Ошибки источника: ' + esc(failed.map(x => x.source.label + " — " + x.error).join("; ")) : '') + '</div>';
     render();
   }
   function categoryMatch(item) {
@@ -108,10 +124,10 @@
     }
     try {
       const sat = await loadSatelliteLib();
-      const satrec = sat.twoline2satrec(selected.TLE_LINE1, selected.TLE_LINE2);
+      const satrec = sat.json2satrec(selected);
       const now = new Date();
       const positionAndVelocity = sat.propagate(satrec, now);
-      if (!positionAndVelocity.position) throw new Error("Не удалось распространить орбиту для выбранного времени.");
+      if (!positionAndVelocity || !positionAndVelocity.position) throw new Error("Не удалось распространить орбиту для выбранного времени.");
       const gmst = sat.gstime(now);
       const positionEcf = sat.eciToEcf(positionAndVelocity.position, gmst);
       const observer = { latitude: sat.degreesToRadians(lat), longitude: sat.degreesToRadians(lon), height: 0 };
@@ -149,7 +165,7 @@
   }
   function getTopocentric(sat, satrec, observer, date) {
     const pv = sat.propagate(satrec, date);
-    if (!pv.position) return null;
+    if (!pv || !pv.position) return null;
     const ecf = sat.eciToEcf(pv.position, sat.gstime(date));
     const look = sat.ecfToLookAngles({
       latitude: sat.degreesToRadians(observer.latitude),
@@ -173,7 +189,7 @@
       if (!selected) throw new Error("Сначала выберите спутник из каталога.");
       const observer = observerSettings();
       const sat = await loadSatelliteLib();
-      const satrec = sat.twoline2satrec(selected.TLE_LINE1, selected.TLE_LINE2);
+      const satrec = sat.json2satrec(selected);
       const threshold = Number($("passMinElevation").value);
       const horizonHours = Number($("passHorizon").value);
       const start = new Date();

@@ -492,6 +492,20 @@ function selectTarget(id,openControl=true){selected=id;const o=objectData[id];re
 window.selectTarget=selectTarget;
 // Dedicated quick-access selection never changes the active view.
 window.selectTargetFromFavorite=function(id){if(!objectData[id])return false;selectTarget(id,false);return true;};
+window.addEventListener("cyd-catalog-track",event=>{
+ const record=event.detail&&event.detail.record;if(!record)return;
+ const norad=String(record.NORAD_CAT_ID||"");if(!norad)return;
+ const id="catalog-"+norad,name=String(record.OBJECT_NAME||("NORAD "+norad));
+ const category=String(record._categoryLabel||record._category||"Спутник");
+ objectData[id]={name,norad:"NORAD "+norad+" · "+category.toUpperCase(),az:0,el:-90,real:true};
+ let option=$("targetSelect").querySelector('option[value="'+id+'"]');
+ if(!option){option=document.createElement("option");option.value=id;option.textContent=name+" · "+norad;$("targetSelect").appendChild(option);}
+ selected=id;renderTarget();$("targetSelect").value=id;
+ $("selectedSummary").textContent="Объект выбран из актуального каталога CelesTrak. Орбита рассчитывается по его OMM-элементам методом SGP4.";
+ $("controlStatus").textContent="Выбран спутник "+name+" · NORAD "+norad+". Команды на моторы не отправлялись.";
+ addLog("TRACK","Выбран спутник "+name+" · NORAD "+norad);
+});
+
 document.querySelectorAll("[data-select]").forEach(b=>b.addEventListener("click",()=>selectTarget(b.dataset.select)));
 $("targetSelect").addEventListener("change",e=>{selected=e.target.value;renderTarget();const o=objectData[selected];setAxes(o.az,o.el);});
 $("centerBtn").addEventListener("click",()=>{setAxes(180,45);$("controlStatus").textContent=t("centered");addLog("CTRL",t("centered"));});
@@ -757,12 +771,15 @@ if(host){
     const checked=input?input.checked:true;
     const status=!item.satrec?'Нет актуальных данных':!pos?'Расчёт недоступен':visible?'Виден над горизонтом':'Ниже порога видимости';
     const coords=pos?'Азимут '+pos.az.toFixed(1)+'° · высота '+pos.el.toFixed(1)+'°':'';
-    return '<div class="orbit-live-row"><input type="checkbox" data-large-orbit-toggle="'+item.id+'" '+(checked?'checked':'')+' aria-label="Показывать '+labels[item.id]+'"><div><b style="color:'+colors[item.id]+'">'+labels[item.id]+'</b><small class="'+(visible?'':'not-visible')+'">'+status+(coords?' · '+coords:'')+'</small></div></div>';
+    const label=labels[item.id]||item.name||item.id;
+    const color=colors[item.id]||'#8cddff';
+    return '<div class="orbit-live-row"><input type="checkbox" data-large-orbit-toggle="'+item.id+'" '+(checked?'checked':'')+' aria-label="Показывать '+label+'"><div><b style="color:'+color+'">'+label+'</b><small class="'+(visible?'':'not-visible')+'">'+status+(coords?' · '+coords:'')+'</small></div></div>';
    });
    orbitLiveList.innerHTML=entries.join('')||'<small>Нет объектов для отображения</small>';
    orbitLiveList.querySelectorAll('[data-large-orbit-toggle]').forEach(input=>input.addEventListener('change',()=>{
     const original=document.querySelector('[data-orbit-toggle="'+input.dataset.largeOrbitToggle+'"]');
     if(original){original.checked=input.checked;original.dispatchEvent(new Event('change',{bubbles:true}));}
+    else if(orbitObjects[input.dataset.largeOrbitToggle])orbitObjects[input.dataset.largeOrbitToggle].group.visible=input.checked;
    }));
   }
   const orbitVisibilityPanel=document.getElementById('orbitVisibilityPanel');
@@ -775,6 +792,34 @@ if(host){
   document.querySelectorAll('[data-orbit-toggle]').forEach(input=>input.addEventListener('change',()=>{
    const item=orbitObjects[input.dataset.orbitToggle];if(item)item.group.visible=input.checked;
   }));
+  window.addEventListener('cyd-catalog-track',event=>{
+   const record=event.detail&&event.detail.record;if(!record)return;
+   const norad=String(record.NORAD_CAT_ID||"");if(!norad)return;
+   const id="catalog-"+norad;
+   try{
+    let item=orbitObjects[id];
+    if(!item){
+     const color=new THREE.Color().setHSL((Number(norad)%360)/360,.78,.62).getHex();
+     buildSatelliteVisual({id,group:null,norad,name:String(record.OBJECT_NAME||("NORAD "+norad)),color});
+     item=orbitObjects[id];
+     const visibility=document.getElementById('orbitVisibilityPanel');
+     if(visibility){
+      const label=document.createElement('label');
+      label.innerHTML='<input type="checkbox" data-orbit-toggle="'+id+'" checked> '+String(record.OBJECT_NAME||("NORAD "+norad)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+      const small=visibility.querySelector('small');visibility.insertBefore(label,small||null);
+      label.querySelector('input').addEventListener('change',e=>{item.group.visible=e.target.checked;renderOrbitLiveInfo();});
+     }
+    }
+    const satrec=satellite.json2satrec(record);
+    if(!satrec||satrec.error)throw new Error("SGP4 не принял орбитальные элементы");
+    item.record=record;item.satrec=satrec;item.epoch=record.EPOCH;item.name=String(record.OBJECT_NAME||item.name);
+    item.group.visible=true;
+    updateRealPositions(true);
+    if(orbitStatus)orbitStatus.textContent='Добавлен объект '+item.name+' · NORAD '+norad+' · SGP4';
+    renderOrbitLiveInfo();
+   }catch(error){console.error('Cannot add catalog orbit:',error);if(orbitStatus)orbitStatus.textContent='Не удалось добавить орбиту NORAD '+norad+': '+error.message;}
+  });
+
   let orbitRetryTimer=null,orbitRetryCount=0;
   async function refreshRealOrbits(){
    if(orbitRetryTimer){clearTimeout(orbitRetryTimer);orbitRetryTimer=null;}

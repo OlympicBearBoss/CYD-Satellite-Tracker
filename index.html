@@ -79,6 +79,16 @@
 <div class="button-row"><button class="btn btn-primary" id="refreshOrbitData">Обновить данные</button><small id="orbitUpdatedAt" class="subtle">Данные ещё не загружены</small></div>
 <div id="liveSatelliteList" class="object-list" style="margin-top:12px"><div class="note">Загрузка каталога из открытого источника CelesTrak…</div></div>
 <div id="liveSatelliteDetails" class="note">Выберите спутник, чтобы увидеть расчётное положение. Для расчёта азимута и угла места укажите координаты станции.</div>
+<div class="panel" style="margin-top:14px">
+<div class="panel-title"><div><span class="section-icon">◷</span><h2>Прогноз видимых пролётов</h2></div><span class="type-tag">SGP4 · 24 ЧАСА</span></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+<label class="field-label">Период прогноза<select id="passHorizon" class="select"><option value="12">12 часов</option><option value="24" selected>24 часа</option><option value="48">48 часов</option></select></label>
+<label class="field-label">Минимальный угол места<select id="passMinElevation" class="select"><option value="0">0° · горизонт</option><option value="5" selected>5°</option><option value="10">10°</option><option value="20">20°</option></select></label>
+<label class="field-label">Высота станции, м<input id="observerAltitude" class="select" type="number" min="-500" max="9000" step="1" value="0"></label>
+</div>
+<div class="button-row"><button class="btn btn-primary" id="predictPasses">Рассчитать следующие пролёты</button><small id="passPredictionStatus" class="subtle">Сначала выберите спутник и задайте координаты станции</small></div>
+<div id="passResults" class="object-list" style="margin-top:12px"><div class="note">Здесь появятся время восхода, максимальный угол места, время кульминации и захода.</div></div>
+</div>
 <p class="note">Источник орбитальных элементов: CelesTrak (GP/TLE). Положение рассчитывается локально по времени UTC и координатам наблюдателя. Орбитальные элементы имеют ограниченный срок точности; проверяйте время эпохи. Расчёт не является телеметрией спутника.</p>
 </div>
 <div class="satellite-grid">

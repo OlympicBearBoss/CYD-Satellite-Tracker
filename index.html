@@ -253,7 +253,7 @@ workspace:"WORKSPACE",nav_overview:"Overview",nav_radar:"Radar",nav_control:"Ant
 },
 ru:{}
 };
-const objectData={iss:{name:"МКС (ZARYA)",norad:"NORAD 25544 · НОО",az:132.4,el:67.8},noaa:{name:"NOAA 19",norad:"NORAD 33591 · МЕТЕОСПУТНИК",az:218.6,el:34.2},ao91:{name:"AO-91 (Fox-1B)",norad:"NORAD 43017 · ЛЮБИТЕЛЬСКИЙ",az:74.2,el:21.5}};
+const objectData={iss:{name:"МКС (ZARYA)",norad:"NORAD 25544 · НОО",az:132.4,el:67.8,real:false},noaa:{name:"NOAA 19",norad:"NORAD 33591 · МЕТЕОСПУТНИК",az:218.6,el:34.2,real:false},ao91:{name:"AO-91 (Fox-1B)",norad:"NORAD 43017 · ЛЮБИТЕЛЬСКИЙ",az:74.2,el:21.5,real:false},starlink:{name:"Starlink",norad:"ГРУППА · LEO",az:305,el:18,real:false}};
 let lang="ru",selected="iss",logItems=[
 ["19:42:15","INFO","Сопровождение МКС запущено","ISS tracking started"],
 ["19:40:32","SCAN","Обнаружен спутник NOAA 19","NOAA 19 satellite detected"],
@@ -282,7 +282,8 @@ $("centerBtn").addEventListener("click",()=>{setAxes(180,45);$("controlStatus").
 $("trackBtn").addEventListener("click",()=>{const o=objectData[selected];setAxes(o.az,o.el);$("controlStatus").textContent=t("tracking")+o.name;addLog("CTRL",t("tracking")+o.name);});
 $("stopBtn").addEventListener("click",()=>{$("controlStatus").textContent=t("stopped");addLog("STOP",t("stopped"));});
 $("testConnection").addEventListener("click",()=>{$("connectionResult").textContent=t("connection_test_ok");addLog("NET",t("connection_test_ok"));});
-function renderRadarObjects(){$("radarObjects").innerHTML=Object.entries(objectData).map(([id,o])=>'<div class="object-row"><div><b>'+o.name+'</b><small>'+o.norad+'</small></div><strong>'+o.az.toFixed(1)+'° / '+o.el.toFixed(1)+'°</strong></div>').join("");}
+function renderRadarObjects(){const list=$("radarObjects");if(list)list.innerHTML=Object.entries(objectData).map(([id,o])=>'<div class="object-row"><div><b><i class="radar-object-dot '+id+'"></i>'+o.name+'</b><small>'+o.norad+' · '+(o.real?(o.el>0?"ВИДЕН":"НИЖЕ ГОРИЗОНТА"):"ДЕМО")+'</small></div><strong>'+o.az.toFixed(1)+'° / '+o.el.toFixed(1)+'°</strong></div>').join("");const rotor=$("radarRotor");if(!rotor)return;rotor.querySelectorAll(".radar-dot").forEach(n=>n.remove());Object.entries(objectData).forEach(([id,o])=>{if(o.el<=0)return;const rel=o.az*Math.PI/180,radius=.88-(Math.min(90,o.el)/90)*.65,dot=document.createElement("span");dot.className="radar-dot "+id;dot.style.left=(50+Math.sin(rel)*radius*45)+"%";dot.style.top=(50-Math.cos(rel)*radius*45)+"%";const label=document.createElement("span");label.className="radar-dot-label";label.textContent=id==="iss"?"МКС":id==="noaa"?"NOAA 19":id==="ao91"?"AO-91":"STARLINK";dot.appendChild(label);rotor.appendChild(dot);});}
+window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.entries(positions).forEach(([id,p])=>{if(!objectData[id])return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;});renderRadarObjects();});
 function addLog(code,message){const d=new Date();logItems.unshift([d.toLocaleTimeString("ru-RU"),code,message,message]);logItems=logItems.slice(0,30);renderLog();}
 function renderLog(){$("fullLog").innerHTML=logItems.map(row=>'<div class="log-row"><i class="event-dot '+(row[1]==="STOP"?"orange":row[1]==="NET"?"green":"blue")+'"></i><time>'+row[0]+'</time><code>'+row[1]+'</code><p>'+(lang==="en"?row[3]:row[2])+'</p></div>').join("");$("logCount").textContent=logItems.length+" EVENTS";}
 $("clearLog").addEventListener("click",()=>{logItems=[];renderLog();});
@@ -676,6 +677,8 @@ if(host){
    else if(e.absolute===true&&Number.isFinite(e.alpha))heading=(360-e.alpha)%360;
    if(heading===null)return;
    heading=((heading%360)+360)%360;
+   window.demoDeviceHeading=heading;
+   if(typeof window.renderRadarObjects==='function')window.renderRadarObjects();
    const angle=-heading;
    const rotor=document.getElementById('radarRotor');
    const rose=document.getElementById('compassRose');

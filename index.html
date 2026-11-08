@@ -132,6 +132,26 @@
 .gps-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.gps-grid>div{padding:10px;background:#091a2b;border:1px solid #1c3b55;border-radius:9px}
 .gps-grid b{display:block;margin-top:6px;font:14px 'Space Mono';color:#c4eaff}.gps-meta{display:flex;justify-content:space-between;gap:8px;margin-top:12px;color:#829db5;font-size:10px}.gps-meta b{color:#bde8ff;font-family:'Space Mono'}
 @media(max-width:760px){.radar-navigation-layout{grid-template-columns:1fr}.radar-display{width:min(100%,500px)}}
+</style><style id="orbit-large-screen-styles">
+.orbit-expand-btn{position:absolute;right:12px;top:12px;z-index:8;border:1px solid #3b7297;border-radius:8px;background:#071a2beF;color:#c8edff;padding:8px 11px;font-size:11px;font-weight:650;cursor:pointer;box-shadow:0 5px 18px #0005}
+.orbit-expand-btn:hover{background:#123653;border-color:#65caff}
+.orbit-fullscreen-head,.orbit-live-info{display:none}
+.realistic-earth-scene.orbit-large-screen{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;min-height:0!important;z-index:99999!important;border-radius:0!important;overflow:hidden!important;background:radial-gradient(ellipse at 50% 48%,#0a3552 0,#061625 58%,#020914 100%)}
+.orbit-large-screen #earth3d{inset:0!important}
+.orbit-large-screen .orbit-expand-btn,.orbit-large-screen .earth-caption,.orbit-large-screen .earth-location-key,.orbit-large-screen #orbitVisibilityPanel{display:none!important}
+.orbit-large-screen .orbit-fullscreen-head{position:absolute;display:flex;left:20px;right:20px;top: max(14px,env(safe-area-inset-top));z-index:12;align-items:center;justify-content:space-between;gap:14px;padding:13px 16px;border:1px solid #315c7c;border-radius:14px;background:#061522eF;box-shadow:0 10px 30px #0007;backdrop-filter:blur(16px);color:#eaf6ff}
+.orbit-fullscreen-head b,.orbit-live-info>b{display:block;font-size:12px;letter-spacing:.09em;color:#a9ddff}
+.orbit-fullscreen-head small{display:block;margin-top:4px;font-size:10px;color:#87a9c2}
+.orbit-fullscreen-head button{border:1px solid #416d8c;border-radius:9px;background:#102b42;color:#d5efff;padding:9px 13px;cursor:pointer}
+.orbit-large-screen .orbit-live-info{position:absolute;display:block;right:20px;top:90px;z-index:12;width:min(310px,calc(100vw - 40px));max-height:calc(100dvh - 120px);overflow:auto;padding:15px;border:1px solid #315c7c;border-radius:14px;background:#061522eF;box-shadow:0 12px 35px #0008;backdrop-filter:blur(16px);color:#d9edff}
+.orbit-live-row{display:grid;grid-template-columns:18px minmax(0,1fr);gap:9px;align-items:start;padding:11px 0;border-bottom:1px solid #ffffff16}
+.orbit-live-row:last-child{border-bottom:0}
+.orbit-live-row input{accent-color:#48baff;width:16px;height:16px;margin:2px 0}
+.orbit-live-row b{display:block;font-size:12px;color:#f0f7ff}
+.orbit-live-row small{display:block;margin-top:4px;color:#91b1c9;font-size:10px;line-height:1.5}
+.orbit-live-row .not-visible{color:#a5b2bf}
+.orbit-live-hint{display:block;margin-top:10px;color:#789bb5;font-size:9px;line-height:1.45}
+@media(max-width:650px){.orbit-large-screen .orbit-fullscreen-head{left:10px;right:10px;padding:10px 12px}.orbit-large-screen .orbit-live-info{top:auto;bottom:max(12px,env(safe-area-inset-bottom));left:10px;right:10px;width:auto;max-height:34dvh;padding:11px}.orbit-large-screen .orbit-live-row{padding:7px 0}.orbit-large-screen .orbit-fullscreen-head b{font-size:10px}.orbit-live-hint{display:none}}
 </style></head>
 <body>
 <div class="shell">
@@ -158,7 +178,7 @@
 <section class="view active" id="view-overview">
 <div class="page-heading"><div><div class="eyebrow" data-i18n="eyebrow">ЦЕНТР УПРАВЛЕНИЯ · CYD ESP32</div><h1 data-i18n="welcome">Добро пожаловать на станцию</h1><p data-i18n="welcome_desc">Мониторинг спутников, положение антенны и состояние оборудования.</p></div><div class="heading-actions"><span class="date-label" id="today"></span><button class="btn btn-primary" data-go="control" data-i18n="open_control">Открыть управление ↗</button></div></div>
 <div class="overview-grid">
-<article class="panel globe-panel"><div class="panel-title"><div><span class="section-icon">◉</span><h2 data-i18n="earth_view">Орбитальная обстановка</h2></div><span class="subtle">LIVE ORBITS · SGP4</span></div><div class="earth-scene realistic-earth-scene"><div id="earth3d" role="img" aria-label="Трёхмерная модель Земли, спутник на орбите и красная точка наблюдения в Екатеринбурге"></div><div class="earth-caption"><b>ЗЕМЛЯ / ОРБИТА LEO</b><small>Екатеринбург · 56.8389° с. ш. · 60.6057° в. д.</small></div><div class="earth-location-key"><i></i> Точка наблюдения · Екатеринбург</div><div id="orbitDataStatus" style="position:absolute;left:16px;right:16px;top:42px;z-index:5;font-size:10px;line-height:1.4;color:#ffd18a;text-shadow:0 1px 5px #00101e;pointer-events:none">Ожидание орбитальных данных…</div><div class="orbit-visibility" id="orbitVisibilityPanel" aria-label="Видимость спутников"><div class="orbit-visibility-head"><b>ОТОБРАЖЕНИЕ НА ОРБИТЕ</b><button type="button" class="orbit-collapse-btn" id="orbitVisibilityCollapse" aria-expanded="true">Свернуть −</button></div><label><input type="checkbox" data-orbit-toggle="iss" checked> МКС · NASA</label><label><input type="checkbox" data-orbit-toggle="noaa" checked> NOAA 19</label><label><input type="checkbox" data-orbit-toggle="ao91" checked> AO-91</label><label><input type="checkbox" data-orbit-toggle="starlink" checked> Starlink · группа</label><small>Координаты рассчитываются по OMM CelesTrak · SGP4</small></div></div><div class="globe-foot"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div></article>
+<article class="panel globe-panel"><div class="panel-title"><div><span class="section-icon">◉</span><h2 data-i18n="earth_view">Орбитальная обстановка</h2></div><span class="subtle">LIVE ORBITS · SGP4</span></div><div class="earth-scene realistic-earth-scene"><div id="earth3d" role="img" aria-label="Трёхмерная модель Земли, спутник на орбите и красная точка наблюдения в Екатеринбурге"></div><button type="button" class="orbit-expand-btn" id="orbitExpandBtn" aria-label="Открыть орбитальную обстановку на весь экран">⛶ Большой экран</button><div class="orbit-fullscreen-head" id="orbitFullscreenHead"><div><b>ОРБИТАЛЬНАЯ ОБСТАНОВКА</b><small>SGP4 · видимость над горизонтом ≥ 10°</small></div><button type="button" id="orbitFullscreenClose" aria-label="Закрыть большой экран">✕ Закрыть</button></div><aside class="orbit-live-info" id="orbitLiveInfo"><b>ВИДИМЫЕ СПУТНИКИ</b><div id="orbitLiveList"><small>Ожидание расчёта координат…</small></div><small class="orbit-live-hint">Снимите отметку, чтобы скрыть объект и его орбиту</small></aside><div class="earth-caption"><b>ЗЕМЛЯ / ОРБИТА LEO</b><small>Екатеринбург · 56.8389° с. ш. · 60.6057° в. д.</small></div><div class="earth-location-key"><i></i> Точка наблюдения · Екатеринбург</div><div id="orbitDataStatus" style="position:absolute;left:16px;right:16px;top:42px;z-index:5;font-size:10px;line-height:1.4;color:#ffd18a;text-shadow:0 1px 5px #00101e;pointer-events:none">Ожидание орбитальных данных…</div><div class="orbit-visibility" id="orbitVisibilityPanel" aria-label="Видимость спутников"><div class="orbit-visibility-head"><b>ОТОБРАЖЕНИЕ НА ОРБИТЕ</b><button type="button" class="orbit-collapse-btn" id="orbitVisibilityCollapse" aria-expanded="true">Свернуть −</button></div><label><input type="checkbox" data-orbit-toggle="iss" checked> МКС · NASA</label><label><input type="checkbox" data-orbit-toggle="noaa" checked> NOAA 19</label><label><input type="checkbox" data-orbit-toggle="ao91" checked> AO-91</label><label><input type="checkbox" data-orbit-toggle="starlink" checked> Starlink · группа</label><small>Координаты рассчитываются по OMM CelesTrak · SGP4</small></div></div><div class="globe-foot"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div></article>
 <article class="panel target-panel"><div class="panel-title"><div><span class="section-icon">⌖</span><h2 data-i18n="selected_sat">Выбранный спутник</h2></div><span class="status-pill"><i></i><span data-i18n="tracking_demo">ДЕМО</span></span></div><div class="target-name"><div class="sat-avatar">✦</div><div><h3 id="selectedName">МКС (ZARYA)</h3><small id="selectedNorad">NORAD 25544 · НОО</small></div></div><p id="selectedSummary" class="muted" style="font-size:12px;line-height:1.5;margin:8px 0 12px">Пилотируемая орбитальная станция для научных экспериментов и наблюдения Земли.</p><div class="target-coords"><div><small data-i18n="azimuth">АЗИМУТ</small><b id="overviewAz">132.4°</b></div><div><small data-i18n="elevation">УГОЛ МЕСТА</small><b id="overviewEl">67.8°</b></div></div><div class="pass-card"><span data-i18n="next_pass">СЛЕДУЮЩИЙ ВИДИМЫЙ ПРОЛЁТ МКС</span><b id="nextPassCountdown">Расчёт пролёта…</b><small id="nextPassMeta">Условие видимости: высота над горизонтом ≥ 10°</small></div><button class="text-link" data-go="satellites" data-i18n="all_satellites">Каталог спутников →</button></article>
 </div>
 <div class="kpi-grid">
@@ -510,6 +530,39 @@ if(host){
   loadSpacecraftModel('noaa',orbitObjects.noaa.modelRoot);
   loadSpacecraftModel('ao91',orbitObjects.ao91.modelRoot);
   loadSpacecraftModel('starlink',orbitObjects.starlink.modelRoot);
+  const earthScene=document.querySelector('.realistic-earth-scene');
+  const orbitExpandBtn=document.getElementById('orbitExpandBtn');
+  const orbitFullscreenClose=document.getElementById('orbitFullscreenClose');
+  const orbitLiveList=document.getElementById('orbitLiveList');
+  function setOrbitLargeScreen(open){
+   if(!earthScene)return;
+   earthScene.classList.toggle('orbit-large-screen',open);
+   document.body.style.overflow=open?'hidden':'';
+   if(orbitExpandBtn)orbitExpandBtn.setAttribute('aria-expanded',String(open));
+   setTimeout(()=>window.dispatchEvent(new Event('resize')),80);
+  }
+  if(orbitExpandBtn)orbitExpandBtn.addEventListener('click',()=>setOrbitLargeScreen(true));
+  if(orbitFullscreenClose)orbitFullscreenClose.addEventListener('click',()=>setOrbitLargeScreen(false));
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&earthScene&&earthScene.classList.contains('orbit-large-screen'))setOrbitLargeScreen(false);});
+  function renderOrbitLiveInfo(){
+   if(!orbitLiveList)return;
+   const labels={iss:'МКС',noaa:'NOAA-19',ao91:'AO-91',starlink:'Starlink · представитель группы'};
+   const colors={iss:'#55c7ff',noaa:'#5de1a7',ao91:'#ffb34d',starlink:'#b58aff'};
+   const entries=Object.values(orbitObjects).map(item=>{
+    const pos=window.cydRadarPositions&&window.cydRadarPositions[item.id];
+    const visible=!!(pos&&pos.el>=10);
+    const input=document.querySelector('[data-orbit-toggle="'+item.id+'"]');
+    const checked=input?input.checked:true;
+    const status=!item.satrec?'Нет актуальных данных':!pos?'Расчёт недоступен':visible?'Виден над горизонтом':'Ниже порога видимости';
+    const coords=pos?'Азимут '+pos.az.toFixed(1)+'° · высота '+pos.el.toFixed(1)+'°':'';
+    return '<div class="orbit-live-row"><input type="checkbox" data-large-orbit-toggle="'+item.id+'" '+(checked?'checked':'')+' aria-label="Показывать '+labels[item.id]+'"><div><b style="color:'+colors[item.id]+'">'+labels[item.id]+'</b><small class="'+(visible?'':'not-visible')+'">'+status+(coords?' · '+coords:'')+'</small></div></div>';
+   });
+   orbitLiveList.innerHTML=entries.join('')||'<small>Нет объектов для отображения</small>';
+   orbitLiveList.querySelectorAll('[data-large-orbit-toggle]').forEach(input=>input.addEventListener('change',()=>{
+    const original=document.querySelector('[data-orbit-toggle="'+input.dataset.largeOrbitToggle+'"]');
+    if(original){original.checked=input.checked;original.dispatchEvent(new Event('change',{bubbles:true}));}
+   }));
+  }
   const orbitVisibilityPanel=document.getElementById('orbitVisibilityPanel');
   const orbitVisibilityCollapse=document.getElementById('orbitVisibilityCollapse');
   if(orbitVisibilityPanel&&orbitVisibilityCollapse)orbitVisibilityCollapse.addEventListener('click',()=>{
@@ -607,7 +660,7 @@ if(host){
     const modelLift=item.body.position.clone().normalize().multiplyScalar(.028);
     item.modelRoot.position.copy(modelLift.applyQuaternion(item.body.quaternion.clone().invert()));
    }
-   if(window.cydRadarPositions)window.dispatchEvent(new Event('cyd-orbit-update'));
+   if(window.cydRadarPositions)window.dispatchEvent(new Event('cyd-orbit-update'));\n   renderOrbitLiveInfo();
   }
   try{await refreshRealOrbits();}
   catch(error){console.error('Initial orbit download failed:',error);if(orbitStatus)orbitStatus.textContent='Ошибка загрузки орбит: '+(error&&error.message?error.message:String(error));}

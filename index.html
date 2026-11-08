@@ -100,6 +100,17 @@
 .pass-notice-heading small{display:block;color:#9bb4ca;font-size:10px;margin-top:3px}
 .pass-notice-close{border:0;background:#ffffff12;color:#c6d8e8;width:28px;height:28px;border-radius:50%;font-size:17px;cursor:pointer}
 .pass-notice-body{display:flex;align-items:end;justify-content:space-between;gap:12px}
+.pass-orbit-visual{position:relative;margin:0 -2px 8px;height:104px;overflow:hidden;border:1px solid #7acfff20;border-radius:13px;background:radial-gradient(ellipse at 50% 55%,#1d6a9430,transparent 62%),linear-gradient(110deg,#071727aa,#14334c88,#071727aa)}
+.pass-orbit-svg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 0 5px #51caff55)}
+.pass-orbit-caption{position:absolute;left:10px;right:10px;bottom:7px;display:flex;justify-content:space-between;gap:8px;color:#8fb2cb;font:8px 'Space Mono',monospace;letter-spacing:.06em}
+#passApogeeValue{color:#ffd27a}
+.pass-timeline{padding:3px 3px 7px;margin-bottom:10px}
+.pass-timeline-track{height:4px;position:relative;border-radius:8px;background:linear-gradient(90deg,#398fcb55,#6ad9ed,#398fcb55);box-shadow:0 0 12px #40bce455}
+.pass-timeline-track i{display:block;height:100%;width:0;border-radius:8px;background:#b9f4ff;box-shadow:0 0 9px #83e6ff}
+.pass-timeline-track b{position:absolute;left:50%;top:50%;width:10px;height:10px;border-radius:50%;background:#ffd27a;border:2px solid #fff0c4;box-shadow:0 0 0 4px #ffd27a22,0 0 12px #ffd27a;transform:translate(-50%,-50%)}
+.pass-timeline-labels{display:flex;justify-content:space-between;margin-top:8px;color:#8daac2;font:8px 'Space Mono',monospace;letter-spacing:.04em}
+.pass-timeline-labels span:nth-child(2){color:#ffd27a}
+
 .pass-notice-count{font:600 27px 'Space Mono',monospace;letter-spacing:-.06em;color:#fff}
 .pass-notice-label{font-size:9px;color:#91abc2;text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px}
 .pass-notice-detail{text-align:right;color:#a9c0d4;font-size:10px;line-height:1.7}
@@ -726,7 +737,7 @@ if(host){
   }
   function buildSatelliteVisual(def){
    const group=new THREE.Group();earthGroup.add(group);
-   const orbitLine=new THREE.Mesh(new THREE.BufferGeometry(),new THREE.MeshBasicMaterial({color:def.color,transparent:true,opacity:1,depthWrite:false}));
+   const orbitLine=new THREE.Mesh(new THREE.BufferGeometry(),new THREE.MeshBasicMaterial({color:def.color,transparent:true,opacity:1,depthWrite:false,depthTest:false,side:THREE.DoubleSide,toneMapped:false}));
    group.add(orbitLine);
    const body=new THREE.Group();group.add(body);
    const modelRoot=def.id==='iss'?sat:new THREE.Group();
@@ -895,7 +906,7 @@ if(host){
      const points=[];
      const periodMinutes=1440/Number(item.record.MEAN_MOTION||15);
      const spanMinutes=Math.min(180,Math.max(90,periodMinutes));
-     const samples=100;
+     const samples=240;
      for(let i=0;i<=samples;i++){
       const date=new Date(now.getTime()+spanMinutes*60000*i/samples);
       const future=propagatedEcf(item.satrec,date);
@@ -905,9 +916,11 @@ if(host){
      if(points.length>1){
       const curve=new THREE.CatmullRomCurve3(points);
       const selected=item.id===(window.cydSelectedSatelliteId||'iss');
-      item.orbitLine.geometry=new THREE.TubeGeometry(curve,240,selected ? 0.013 : 0.009,10,false);
+      item.orbitLine.geometry=new THREE.TubeGeometry(curve,320,selected ? 0.018 : 0.010,12,false);
       item.orbitLine.visible=true;
-      item.orbitLine.renderOrder=4;
+      item.orbitLine.renderOrder=999;
+      item.orbitLine.material.color.setHex(selected?0x8be8ff:item.color);
+      item.orbitLine.material.opacity=selected?1:.82;
      }
     }
     item.body.rotation.y=now.getTime()/1000*.15;
@@ -1015,14 +1028,14 @@ if(host){
    const now=new Date(),stepMs=30000,horizonMs=24*60*60*1000;
    const current=selectedLookAt(now);
    let inside=!!(current&&current.elevation>=visibleElevation),start=inside?now:null;
-   let maxElevation=inside?current.elevation:0,end=null;
+   let maxElevation=inside?current.elevation:0,peakTime=inside?now:null,end=null;
    for(let t=now.getTime()+stepMs;t<=now.getTime()+horizonMs;t+=stepMs){
     const date=new Date(t),look=selectedLookAt(date),visible=!!(look&&look.elevation>=visibleElevation);
-    if(visible){if(!inside){start=date;maxElevation=look.elevation;}else if(look.elevation>maxElevation)maxElevation=look.elevation;}
+    if(visible){if(!inside){start=date;maxElevation=look.elevation;peakTime=date;}else if(look.elevation>maxElevation){maxElevation=look.elevation;peakTime=date;}}
     if(inside&&!visible){end=date;break;}
     inside=visible;
    }
-   nextVisiblePass=start?{start,end:end||new Date(start.getTime()+10*60*1000),maxElevation,alreadyVisible:start.getTime()<=now.getTime(),satelliteId:id,satelliteName:item.name||id}:null;
+   nextVisiblePass=start?{start,end:end||new Date(start.getTime()+10*60*1000),maxElevation,peakTime,alreadyVisible:start.getTime()<=now.getTime(),satelliteId:id,satelliteName:item.name||id}:null;
    updatePassNotice();
   }
   function formatCountdown(ms){
@@ -1036,6 +1049,22 @@ if(host){
    if(card)card.textContent=active?'СЕЙЧАС · '+formatCountdown(nextVisiblePass.end-now):'Через '+formatCountdown(remaining);
    if(meta)meta.textContent='Макс. высота '+THREE.MathUtils.radToDeg(nextVisiblePass.maxElevation).toFixed(1)+'° · '+nextVisiblePass.start.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
    if(!passNotice)return;
+   const passItem=orbitObjects[nextVisiblePass.satelliteId||window.cydSelectedSatelliteId||'iss'];
+   const meanMotion=Number(passItem&&passItem.record&&passItem.record.MEAN_MOTION);
+   const eccentricity=Number(passItem&&passItem.record&&passItem.record.ECCENTRICITY||0);
+   const earthMu=398600.4418,earthMeanRadius=6371.0;
+   const semiMajor=meanMotion>0?Math.cbrt(earthMu/Math.pow(meanMotion*2*Math.PI/86400,2)):NaN;
+   const apogeeKm=Number.isFinite(semiMajor)?semiMajor*(1+eccentricity)-earthMeanRadius:NaN;
+   const apogeeNode=document.getElementById('passApogeeValue');
+   if(apogeeNode)apogeeNode.textContent='АПОГЕЙ ОРБИТЫ · '+(Number.isFinite(apogeeKm)?Math.round(apogeeKm).toLocaleString('ru-RU')+' КМ':'НЕТ ДАННЫХ');
+   const duration=Math.max(1,nextVisiblePass.end-nextVisiblePass.start);
+   const peakPct=Math.min(100,Math.max(0,((nextVisiblePass.peakTime||nextVisiblePass.start)-nextVisiblePass.start)/duration*100));
+   const peakNode=document.getElementById('passTimelinePeak'),progressNode=document.getElementById('passTimelineProgress');
+   if(peakNode)peakNode.style.left=peakPct+'%';
+   if(progressNode)progressNode.style.width=(active?Math.min(100,Math.max(0,(now-nextVisiblePass.start)/duration*100)):0)+'%';
+   const startNode=document.getElementById('passTimelineStart'),endNode=document.getElementById('passTimelineEnd');
+   if(startNode)startNode.textContent=nextVisiblePass.start.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+   if(endNode)endNode.textContent=nextVisiblePass.end.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
    const key=String(nextVisiblePass.start.getTime());
    if(active){
     document.getElementById('passNoticeTitle').textContent=(nextVisiblePass.satelliteName||'Спутник')+' сейчас виден';
@@ -1081,7 +1110,26 @@ if(host){
 }
 </script><aside id="passNotice" class="pass-notice" role="status" aria-live="polite" hidden>
  <div class="pass-notice-top"><div class="pass-notice-icon">◉</div><div class="pass-notice-heading"><b id="passNoticeTitle">Скоро пролёт МКС</b><small id="passNoticeSubtitle">Видимый пролёт над точкой наблюдения</small></div><button class="pass-notice-close" id="passNoticeClose" aria-label="Закрыть">×</button></div>
- <div class="pass-notice-body"><div><div class="pass-notice-label" id="passNoticeLabel">До начала пролёта</div><div class="pass-notice-count" id="passNoticeCountdown">--:--</div></div><div class="pass-notice-detail"><div id="passNoticeMax">Макс. высота: —</div><div id="passNoticeWindow">Длительность: —</div></div></div>
+ <div class="pass-orbit-visual" aria-hidden="true">
+ <svg class="pass-orbit-svg" viewBox="0 0 360 112" preserveAspectRatio="none">
+  <defs><linearGradient id="passOrbitGlow" x1="0" x2="1"><stop offset="0" stop-color="#39aaff" stop-opacity=".08"/><stop offset=".55" stop-color="#67e6ff" stop-opacity=".75"/><stop offset="1" stop-color="#39aaff" stop-opacity=".08"/></linearGradient></defs>
+  <path d="M-8 86 Q82 -18 178 55 T368 25" fill="none" stroke="url(#passOrbitGlow)" stroke-width="2.5"/>
+  <path d="M-8 96 Q82 -8 178 65 T368 35" fill="none" stroke="#66cfff" stroke-opacity=".12" stroke-width="1" stroke-dasharray="3 5"/>
+  <circle cx="180" cy="54" r="27" fill="#2689c7" fill-opacity=".08" stroke="#6dcfff" stroke-opacity=".3"/>
+  <circle cx="180" cy="54" r="21" fill="none" stroke="#6dcfff" stroke-opacity=".18"/>
+  <path d="M164 51 Q180 37 196 51 Q180 66 164 51Z" fill="#4caddb" fill-opacity=".28" stroke="#8be8ff" stroke-opacity=".4"/>
+  <circle cx="180" cy="54" r="3" fill="#b9f4ff"/>
+  <circle id="passApogeeDot" cx="282" cy="23" r="4" fill="#ffd27a"/>
+  <path d="M282 23 L282 8" stroke="#ffd27a" stroke-opacity=".75" stroke-dasharray="2 2"/>
+  <text x="290" y="10" fill="#ffd27a" font-size="8" font-family="monospace">АПОГЕЙ</text>
+ </svg>
+ <div class="pass-orbit-caption"><span id="passApogeeValue">АПОГЕЙ ОРБИТЫ · —</span><span>SGP4 / OMM</span></div>
+</div>
+<div class="pass-timeline">
+ <div class="pass-timeline-track"><i id="passTimelineProgress"></i><b id="passTimelinePeak"></b></div>
+ <div class="pass-timeline-labels"><span id="passTimelineStart">НАЧАЛО</span><span>МАКС. ВЫСОТА</span><span id="passTimelineEnd">КОНЕЦ</span></div>
+</div>
+<div class="pass-notice-body"><div><div class="pass-notice-label" id="passNoticeLabel">До начала пролёта</div><div class="pass-notice-count" id="passNoticeCountdown">--:--</div></div><div class="pass-notice-detail"><div id="passNoticeMax">Макс. высота: —</div><div id="passNoticeWindow">Длительность: —</div></div></div>
  <div class="pass-notice-progress"><i id="passNoticeProgress"></i></div>
 </aside>
 <script>

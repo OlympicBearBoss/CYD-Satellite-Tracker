@@ -1051,6 +1051,7 @@ if(host){
   window.addEventListener('cyd-observer-change',()=>{
    updateRealPositions(false);
    calculateNextVisiblePass();
+   calculateSelectedVisibility();
   });
   passTimer=setInterval(()=>{
    updatePassNotice();

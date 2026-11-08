@@ -904,7 +904,10 @@ if(host){
      item.orbitLine.geometry.dispose();
      if(points.length>1){
       const curve=new THREE.CatmullRomCurve3(points);
-      item.orbitLine.geometry=new THREE.TubeGeometry(curve,200,.007,8,false);
+      const selected=item.id===(window.cydSelectedSatelliteId||'iss');
+      item.orbitLine.geometry=new THREE.TubeGeometry(curve,240,selected?.013:.009,10,false);
+      item.orbitLine.visible=true;
+      item.orbitLine.renderOrder=4;
      }
     }
     item.body.rotation.y=now.getTime()/1000*.15;
@@ -985,32 +988,37 @@ if(host){
   let nextVisiblePass=null,lastNoticeKey='',noticeDismissedKey='',passTimer=null;
   let noticeOpenedAt=0;
   if(passNoticeClose)passNoticeClose.addEventListener('click',()=>{noticeDismissedKey=nextVisiblePass?String(nextVisiblePass.start.getTime()):'';passNotice.hidden=true;});
-  function issLookAt(date){
-   const iss=orbitObjects.iss;
-   if(!iss||!iss.satrec)return null;
-   const pv=satellite.propagate(iss.satrec,date);
+  let nextPassScanId=null,nextPassScanSatrec=null;
+  function selectedLookAt(date){
+   const id=window.cydSelectedSatelliteId||'iss',item=orbitObjects[id];
+   if(!item||!item.satrec)return null;
+   const pv=satellite.propagate(item.satrec,date);
    if(!pv||!pv.position||!Number.isFinite(pv.position.x))return null;
    const ecf=satellite.eciToEcf(pv.position,satellite.gstime(date));
    return satellite.ecfToLookAngles(observer,ecf);
   }
   function calculateNextVisiblePass(){
-   const iss=orbitObjects.iss;
-   if(!iss||!iss.satrec)return;
+   const id=window.cydSelectedSatelliteId||'iss',item=orbitObjects[id];
+   nextPassScanId=id;nextPassScanSatrec=item&&item.satrec;
+   if(!item||!item.satrec){
+    nextVisiblePass=null;
+    const card=document.getElementById('nextPassCountdown'),meta=document.getElementById('nextPassMeta');
+    if(card)card.textContent='Нет орбитальных данных выбранного спутника';
+    if(meta)meta.textContent='Ожидается загрузка OMM / SGP4';
+    if(passNotice)passNotice.hidden=true;
+    return;
+   }
    const now=new Date(),stepMs=30000,horizonMs=24*60*60*1000;
-   let previous=issLookAt(now),inside=!!(previous&&previous.elevation>=visibleElevation),start=inside?now:null,maxElevation=inside?previous.elevation:0,end=null;
+   const current=selectedLookAt(now);
+   let inside=!!(current&&current.elevation>=visibleElevation),start=inside?now:null;
+   let maxElevation=inside?current.elevation:0,end=null;
    for(let t=now.getTime()+stepMs;t<=now.getTime()+horizonMs;t+=stepMs){
-    const date=new Date(t),look=issLookAt(date),visible=!!(look&&look.elevation>=visibleElevation);
+    const date=new Date(t),look=selectedLookAt(date),visible=!!(look&&look.elevation>=visibleElevation);
     if(visible){if(!inside){start=date;maxElevation=look.elevation;}else if(look.elevation>maxElevation)maxElevation=look.elevation;}
     if(inside&&!visible){end=date;break;}
     inside=visible;
    }
-   if(start){
-    if(!end){end=new Date(start.getTime()+10*60*1000);}
-    nextVisiblePass={start,end,maxElevation,alreadyVisible:start.getTime()<=now.getTime()};
-   }else{
-    // No qualifying pass in the next day.
-    nextVisiblePass=null;
-   }
+   nextVisiblePass=start?{start,end:end||new Date(start.getTime()+10*60*1000),maxElevation,alreadyVisible:start.getTime()<=now.getTime(),satelliteId:id,satelliteName:item.name||id}:null;
    updatePassNotice();
   }
   function formatCountdown(ms){
@@ -1026,15 +1034,15 @@ if(host){
    if(!passNotice)return;
    const key=String(nextVisiblePass.start.getTime());
    if(active){
-    document.getElementById('passNoticeTitle').textContent='МКС сейчас видна';
-    document.getElementById('passNoticeSubtitle').textContent='Идёт пролёт над точкой наблюдения';
+    document.getElementById('passNoticeTitle').textContent=(nextVisiblePass.satelliteName||'Спутник')+' сейчас виден';
+    document.getElementById('passNoticeSubtitle').textContent='Идёт пролёт выбранного спутника над точкой наблюдения';
     document.getElementById('passNoticeLabel').textContent='До завершения пролёта';
     document.getElementById('passNoticeCountdown').textContent=formatCountdown(nextVisiblePass.end-now);
     noticeOpenedAt=noticeOpenedAt||now.getTime();
     passNotice.hidden=noticeDismissedKey===key;
    }else if(remaining<=10*60*1000){
-    document.getElementById('passNoticeTitle').textContent='Скоро пролёт МКС';
-    document.getElementById('passNoticeSubtitle').textContent='МКС появится выше 10° над горизонтом';
+    document.getElementById('passNoticeTitle').textContent='Скоро пролёт: '+(nextVisiblePass.satelliteName||'спутник');
+    document.getElementById('passNoticeSubtitle').textContent=(nextVisiblePass.satelliteName||'Спутник')+' появится выше 10° над горизонтом';
     document.getElementById('passNoticeLabel').textContent='До начала пролёта';
     document.getElementById('passNoticeCountdown').textContent=formatCountdown(remaining);
     passNotice.hidden=noticeDismissedKey===key;
@@ -1048,6 +1056,11 @@ if(host){
    if(!active&&remaining<=10*60*1000&&lastNoticeKey!==key){lastNoticeKey=key;}
   }
   calculateNextVisiblePass();
+  window.addEventListener('cyd-selected-target-change',calculateNextVisiblePass);
+  window.addEventListener('cyd-orbit-update',()=>{
+   const id=window.cydSelectedSatelliteId||'iss',item=orbitObjects[id];
+   if(id!==nextPassScanId||(item&&item.satrec&&item.satrec!==nextPassScanSatrec))calculateNextVisiblePass();
+  });
   window.addEventListener('cyd-observer-change',()=>{
    updateRealPositions(false);
    calculateNextVisiblePass();

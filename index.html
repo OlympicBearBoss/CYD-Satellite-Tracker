@@ -314,7 +314,7 @@ if(host){
       const center=box.getCenter(new THREE.Vector3());
       model.position.sub(center);
       const maxDim=Math.max(size.x,size.y,size.z)||1;
-      model.scale.setScalar(def.scale/maxDim);
+      model.scale.setScalar((def.scale*1.25)/maxDim); // На 25% крупнее для читаемости на глобусе.
       target.add(model);
       target.userData.modelId=id;
       modelLoadStates[id]={ok:true,label:def.label};
@@ -427,6 +427,8 @@ if(host){
     const ecf=propagatedEcf(item.satrec,now);
     if(!ecf)continue;
     item.body.position.copy(toThree(ecf,item.id==='iss'?.18:1));
+    // Визуально приподнимаем корпус над линией орбиты; расчёт SGP4 и сама орбита не меняются.
+    item.body.position.add(item.body.position.clone().normalize().multiplyScalar(.028));
     // Орбитальная линия — прогнозируемая траектория того же объекта из его TLE/OMM.
     if(rebuildTrails){
      const points=[];

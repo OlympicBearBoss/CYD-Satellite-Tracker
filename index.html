@@ -68,6 +68,19 @@
 </section>
 <section class="view" id="view-satellites">
 <div class="page-heading"><div><div class="eyebrow" data-i18n="catalog_eyebrow">БИБЛИОТЕКА ОБЪЕКТОВ</div><h1 data-i18n="catalog_heading">Каталог спутников</h1><p data-i18n="catalog_desc">Примеры объектов и справочные радиочастоты.</p></div><span class="subtle">3 OBJECTS · DEMO</span></div>
+<div class="panel" style="margin-bottom:15px">
+<div class="panel-title"><div><span class="section-icon">⌁</span><h2>Поиск и актуальные орбитальные данные</h2></div><span class="status-pill"><i></i><span id="orbitFeedStatus">Ожидание загрузки</span></span></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
+<label class="field-label">Поиск спутника<input id="satSearch" class="select" type="search" placeholder="Название или NORAD ID"></label>
+<label class="field-label">Категория<select id="satCategory" class="select"><option value="all">Все категории</option><option value="stations">Станции</option><option value="weather">Метеоспутники</option><option value="amateur">Любительские</option></select></label>
+<label class="field-label">Широта наблюдателя<input id="observerLat" class="select" type="number" min="-90" max="90" step="0.0001" placeholder="Например, 50.9"></label>
+<label class="field-label">Долгота наблюдателя<input id="observerLon" class="select" type="number" min="-180" max="180" step="0.0001" placeholder="Например, 6.0"></label>
+</div>
+<div class="button-row"><button class="btn btn-primary" id="refreshOrbitData">Обновить данные</button><small id="orbitUpdatedAt" class="subtle">Данные ещё не загружены</small></div>
+<div id="liveSatelliteList" class="object-list" style="margin-top:12px"><div class="note">Загрузка каталога из открытого источника CelesTrak…</div></div>
+<div id="liveSatelliteDetails" class="note">Выберите спутник, чтобы увидеть расчётное положение. Для расчёта азимута и угла места укажите координаты станции.</div>
+<p class="note">Источник орбитальных элементов: CelesTrak (GP/TLE). Положение рассчитывается локально по времени UTC и координатам наблюдателя. Орбитальные элементы имеют ограниченный срок точности; проверяйте время эпохи. Расчёт не является телеметрией спутника.</p>
+</div>
 <div class="satellite-grid">
 <article class="panel satellite-card"><div class="sat-art iss-art">✦<span>ISS</span></div><div class="sat-card-body"><div class="sat-top"><h2>МКС (ZARYA)</h2><span class="type-tag" data-i18n="station_type">Станция</span></div><small>NORAD 25544</small><p data-i18n="iss_desc">Международная космическая станция на низкой околоземной орбите.</p><div class="freq-row"><span data-i18n="downlink">Приём</span><b>145.800 MHz</b></div><div class="freq-row"><span data-i18n="uplink">Передача</span><b>437.800 MHz</b></div><button class="btn btn-primary full" data-select="iss" data-i18n="select_target">Выбрать объект</button></div></article>
 <article class="panel satellite-card"><div class="sat-art noaa-art">◈<span>NOAA</span></div><div class="sat-card-body"><div class="sat-top"><h2>NOAA 19</h2><span class="type-tag" data-i18n="weather_type">Метео</span></div><small>NORAD 33591</small><p data-i18n="noaa_desc">Метеорологический спутник серии POES для наблюдения Земли.</p><div class="freq-row"><span data-i18n="downlink">Приём</span><b>137.100 MHz</b></div><div class="freq-row"><span data-i18n="uplink">Передача</span><b>137.9125 MHz</b></div><button class="btn btn-primary full" data-select="noaa" data-i18n="select_target">Выбрать объект</button></div></article>
@@ -101,6 +114,7 @@
 </section>
 <footer><span>◉ CYD SATELLITE TRACKER</span><span data-i18n="footer_note">Демо-интерфейс · Не подключён к реальному оборудованию</span><span>© 2026</span></footer>
 </div></main></div>
+<script src="./satellite-catalog.js"></script>
 <script>
 const translations={
 en:{

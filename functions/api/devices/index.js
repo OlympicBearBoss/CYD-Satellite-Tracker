@@ -3,7 +3,9 @@ const makeCode=()=>String(crypto.getRandomValues(new Uint32Array(1))[0]%10000000
 export async function onRequestGet({request,env}) {
   const user=await currentUser(request,env);if(!user)return json({error:"Требуется вход в аккаунт"},401);
   const result=await env.DB.prepare("SELECT id,device_name,platform,linked_at,last_seen_at,revoked_at,code_expires_at FROM device_links WHERE user_id=? ORDER BY created_at DESC").bind(user.id).all();
-  return json({devices:result.results||[]});
+  const now=Math.floor(Date.now()/1000);
+  const devices=(result.results||[]).map(device=>({...device,status:device.revoked_at?"revoked":!device.linked_at?"pending":!device.last_seen_at?"never_seen":now-Number(device.last_seen_at)<=180?"online":"offline"}));
+  return json({devices,server_time:now,online_after_seconds:180});
 }
 export async function onRequestPost({request,env}) {
   if(!sameOrigin(request))return json({error:"Недопустимый источник запроса"},403);

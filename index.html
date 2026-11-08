@@ -958,11 +958,13 @@ if(host){
      if(points.length>1){
       const curve=new THREE.CatmullRomCurve3(points);
       const selected=item.id===(window.cydSelectedSatelliteId||'iss');
-      item.orbitLine.geometry=new THREE.TubeGeometry(curve,320,selected ? 0.006 : 0.003,8,false);
+      item.orbitLine.geometry=new THREE.TubeGeometry(curve,320,selected ? 0.012 : 0.0025,8,false);
       item.orbitLine.visible=true;
       item.orbitLine.renderOrder=999;
-      item.orbitLine.material.color.setHex(selected?0x8be8ff:item.color);
-      item.orbitLine.material.opacity=selected?1:.82;
+      item.orbitLine.material.color.setHex(selected?0xd8f7ff:item.color);
+      item.orbitLine.material.opacity=selected?1:.72;
+      item.orbitLine.material.depthTest=false;
+      item.orbitLine.material.depthWrite=false;
      }
     }
     item.body.rotation.y=now.getTime()/1000*.15;
@@ -979,7 +981,7 @@ if(host){
   setInterval(()=>updateRealPositions(false),2000);
   window.addEventListener('cyd-selected-target-change',()=>{
    const item=orbitObjects[window.cydSelectedSatelliteId||'iss'];
-   if(item){item.group.visible=true;updateRealPositions(true);renderOrbitLiveInfo();}
+   if(item){item.group.visible=true;item.orbitLine.visible=true;updateRealPositions(true);renderOrbitLiveInfo();}
   });
   // CelesTrak обновляет GP примерно раз в 2 часа; соблюдаем интервал источника.
   setInterval(()=>refreshRealOrbits(),2*60*60*1000);

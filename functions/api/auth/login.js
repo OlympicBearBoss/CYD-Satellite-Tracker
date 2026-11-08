@@ -1,6 +1,7 @@
 import {json,readJson,digest,passwordHash,randomId,sessionCookie,sameOrigin} from "./_shared.js";
 export async function onRequestPost({request,env}) {
   if(!sameOrigin(request)) return json({error:"Недопустимый источник запроса"},403);
+  if(!env?.DB) return json({error:"Авторизация временно недоступна: база данных ещё не подключена"},503);
   const body=await readJson(request), email=String(body?.email||"").trim().toLowerCase(), password=String(body?.password||"");
   if(!email||!password||password.length>128) return json({error:"Проверьте email и пароль"},400);
   const row=await env.DB.prepare("SELECT u.id,u.email,u.display_name,u.avatar_url,u.email_verified,i.password_hash,i.password_salt FROM users u JOIN identities i ON i.user_id=u.id AND i.provider='password' WHERE u.email=?").bind(email).first();

@@ -232,7 +232,106 @@ body[data-theme="terminal"] .panel-title:after{color:#79c985}
 body[data-theme="terminal"] .content:before{opacity:.28}
 @media(max-width:700px){.panel-title:after{font-size:7px;letter-spacing:.06em}.content:after{right:8px;top:8px}.content:before{background-size:28px 28px}}
 
-</style></head>
+</style>
+<style id="mobile-first-layout">
+/* Phone layout: bottom navigation, compact header, full-width work area */
+@media(max-width:760px){
+ html{scroll-padding-top:58px;scroll-padding-bottom:84px}
+ body{min-width:320px}
+ .sidebar{
+  inset:auto 0 0 0;width:100%;height:calc(66px + env(safe-area-inset-bottom));
+  padding:5px 5px env(safe-area-inset-bottom);display:block;
+  background:color-mix(in srgb,var(--side) 94%,transparent);
+  border-right:0;border-top:1px solid var(--line);
+  box-shadow:0 -8px 28px #0004;backdrop-filter:blur(18px);z-index:50
+ }
+ .brand,.side-caption,.sidebar-bottom{display:none!important}
+ #mainNav{
+  display:flex;align-items:stretch;gap:3px;height:100%;
+  overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch
+ }
+ #mainNav::-webkit-scrollbar{display:none}
+ .nav-item{
+  flex:0 0 66px;min-width:58px;max-width:78px;height:100%;
+  padding:5px 3px 4px;border:1px solid transparent;border-radius:11px;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;
+  background:transparent;box-shadow:none!important
+ }
+ .nav-item span{width:auto;font-size:20px;line-height:22px}
+ .nav-item i{
+  display:block;font-style:normal;font-size:9px;line-height:11px;
+  text-align:center;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis
+ }
+ .nav-item.active{background:color-mix(in srgb,var(--blue) 15%,var(--panel));border-color:color-mix(in srgb,var(--blue) 35%,transparent);box-shadow:inset 0 2px var(--blue)!important}
+ .main{margin-left:0;min-height:100svh;padding-bottom:calc(70px + env(safe-area-inset-bottom))}
+ .topbar{
+  height:56px;padding:0 12px;gap:8px;position:sticky;top:0;
+  background:color-mix(in srgb,var(--side) 94%,transparent);backdrop-filter:blur(18px)
+ }
+ .mobile-brand{display:block;font-size:11px;letter-spacing:.07em;white-space:nowrap}
+ .crumb{display:none}
+ .top-actions{gap:7px;margin-left:auto}
+ .connection-chip,.clock{display:none!important}
+ .theme-picker{min-width:86px;width:86px;padding:7px 22px 7px 7px;font-size:10px}
+ .language{min-width:38px;padding:7px 9px}
+ .content{padding:13px 11px 18px}
+ .content:after{display:none}
+ .demo-warning{margin-bottom:15px;padding:9px 10px;gap:8px;border-radius:10px}
+ .demo-warning b{font-size:11px}
+ .demo-warning small{font-size:9px;line-height:1.35}
+ .demo-tag{font-size:8px;padding:3px 5px}
+ .page-heading{gap:12px;margin-bottom:15px}
+ .page-heading h1{font-size:clamp(22px,6vw,29px);line-height:1.12;margin:6px 0}
+ .page-heading p{font-size:11px;line-height:1.45}
+ .heading-actions{gap:8px;flex-wrap:wrap}
+ .heading-actions .btn{flex:1}
+ .date-label{font-size:8px}
+ .panel{padding:13px;border-radius:13px}
+ .panel-title{gap:8px;margin-bottom:12px}
+ .panel-title h2{font-size:13px}
+ .panel-title:after{font-size:7px}
+ .overview-grid,.radar-layout,.control-grid,.connection-layout,.bottom-grid{grid-template-columns:minmax(0,1fr);gap:11px}
+ .kpi-grid,.telemetry-grid,.settings-grid,.platform-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .satellite-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .kpi{padding:11px;min-width:0}
+ .kpi>b{font-size:clamp(17px,5vw,22px)}
+ .earth-scene{height:clamp(250px,68vw,330px)}
+ .realistic-earth-scene{min-height:260px}
+ .btn{min-height:40px;padding:10px 12px}
+ input,select,textarea{max-width:100%}
+ .target-coords{gap:7px}
+ .target-coords>div{padding:10px}
+ .target-coords b{font-size:18px}
+ .device-panel{gap:13px}
+ .radar-navigation-layout{grid-template-columns:minmax(0,1fr);gap:11px}
+ .radar-panel{padding:12px}
+ .radar-display{width:min(100%,min(86vw,430px));margin:3px auto 10px}
+ .radar-side-stack{grid-template-columns:minmax(0,1fr);gap:10px}
+ .orbit-large-screen .orbit-live-info{bottom:calc(12px + env(safe-area-inset-bottom))}
+ .orbit-expand-btn{min-height:38px}
+ footer{padding-bottom:8px}
+}
+@media(max-width:420px){
+ .content{padding-left:9px;padding-right:9px}
+ .topbar{padding:0 9px}
+ .mobile-brand{font-size:10px}
+ .theme-picker{min-width:78px;width:78px}
+ .page-heading h1{font-size:23px}
+ .panel{padding:11px}
+ .panel-title:after{display:none}
+ .kpi-grid,.telemetry-grid{gap:7px}
+ .kpi{padding:9px}
+ .satellite-card{grid-column:span 2}
+ .radar-display{width:min(100%,calc(100vw - 42px))}
+ .nav-item{flex-basis:62px}
+}
+@media(hover:none) and (pointer:coarse){
+ .btn,.nav-item,.language,.orbit-expand-btn{touch-action:manipulation}
+ .nav-item{min-height:54px}
+}
+</style>
+</head>
 <body>
 <div class="shell">
 <aside class="sidebar">

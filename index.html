@@ -53,7 +53,7 @@
 <section class="view active" id="view-overview">
 <div class="page-heading"><div><div class="eyebrow" data-i18n="eyebrow">ЦЕНТР УПРАВЛЕНИЯ · CYD ESP32</div><h1 data-i18n="welcome">Добро пожаловать на станцию</h1><p data-i18n="welcome_desc">Мониторинг спутников, положение антенны и состояние оборудования.</p></div><div class="heading-actions"><span class="date-label" id="today"></span><button class="btn btn-primary" data-go="control" data-i18n="open_control">Открыть управление ↗</button></div></div>
 <div class="overview-grid">
-<article class="panel globe-panel"><div class="panel-title"><div><span class="section-icon">◉</span><h2 data-i18n="earth_view">Орбитальная обстановка</h2></div><span class="subtle">LIVE SIMULATION</span></div><div class="earth-scene realistic-earth-scene"><div id="earth3d" role="img" aria-label="Трёхмерная модель Земли, спутник на орбите и красная точка наблюдения в Екатеринбурге"></div><div class="earth-caption"><b>ЗЕМЛЯ / ОРБИТА LEO</b><small>Екатеринбург · 56.8389° с. ш. · 60.6057° в. д.</small></div><div class="earth-location-key"><i></i> Точка наблюдения · Екатеринбург</div><div class="earth-model-status" id="earthModelStatus">Загрузка 3D-модели…</div></div><div class="globe-foot"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div></article>
+<article class="panel globe-panel"><div class="panel-title"><div><span class="section-icon">◉</span><h2 data-i18n="earth_view">Орбитальная обстановка</h2></div><span class="subtle">LIVE SIMULATION</span></div><div class="earth-scene realistic-earth-scene"><div id="earth3d" role="img" aria-label="Трёхмерная модель Земли, спутник на орбите и красная точка наблюдения в Екатеринбурге"></div><label class="model-picker" style="position:absolute;top:12px;right:12px;z-index:4;background:#071726dd;border:1px solid #315c7c;border-radius:8px;padding:7px 9px;color:#bde8ff;font-size:10px">3D-модель <select id="spacecraftModel" style="margin-left:6px;background:#102b42;color:#e7f6ff;border:1px solid #35617f;border-radius:5px;padding:5px"><option value="iss">МКС · NASA/JSC</option><option value="landsat8">Landsat 8 · NASA</option></select></label><div class="earth-caption"><b>ЗЕМЛЯ / ОРБИТА LEO</b><small>Екатеринбург · 56.8389° с. ш. · 60.6057° в. д.</small></div><div class="earth-location-key"><i></i> Точка наблюдения · Екатеринбург</div><div class="earth-model-status" id="earthModelStatus">Загрузка 3D-модели…</div></div><div class="globe-foot"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div></article>
 <article class="panel target-panel"><div class="panel-title"><div><span class="section-icon">⌖</span><h2 data-i18n="selected_sat">Выбранный спутник</h2></div><span class="status-pill"><i></i><span data-i18n="tracking_demo">ДЕМО</span></span></div><div class="target-name"><div class="sat-avatar">✦</div><div><h3 id="selectedName">МКС (ZARYA)</h3><small id="selectedNorad">NORAD 25544 · НОО</small></div></div><div class="target-coords"><div><small data-i18n="azimuth">АЗИМУТ</small><b id="overviewAz">132.4°</b></div><div><small data-i18n="elevation">УГОЛ МЕСТА</small><b id="overviewEl">67.8°</b></div></div><div class="pass-card"><span data-i18n="next_pass">СЛЕДУЮЩИЙ ПРОЛЁТ</span><b data-i18n="in_12">Через 12 минут</b><small data-i18n="max_elev">Максимальная высота: 78.4°</small></div><button class="text-link" data-go="satellites" data-i18n="all_satellites">Каталог спутников →</button></article>
 </div>
 <div class="kpi-grid">
@@ -184,6 +184,7 @@ tick();setInterval(tick,1000);setAxes(objectData.iss.az,objectData.iss.el);rende
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 const host=document.getElementById('earth3d'), status=document.getElementById('earthModelStatus');
 if(host){
  try{
@@ -207,83 +208,44 @@ if(host){
   const markerPos=new THREE.Vector3(Math.cos(lat)*Math.cos(lon),Math.sin(lat),-Math.cos(lat)*Math.sin(lon)).multiplyScalar(1.018);
   const marker=new THREE.Mesh(new THREE.SphereGeometry(.018,20,16),new THREE.MeshBasicMaterial({color:0xff263f})); marker.position.copy(markerPos); earthGroup.add(marker);
   const halo=new THREE.Mesh(new THREE.SphereGeometry(.035,20,16),new THREE.MeshBasicMaterial({color:0xff263f,transparent:true,opacity:.25})); halo.position.copy(markerPos); earthGroup.add(halo);
-  // Detailed generic Earth-observation spacecraft: bus, optical payload, solar wings and RF antenna.
-  const sat=new THREE.Group();
-  const matGold=new THREE.MeshStandardMaterial({color:0xb78b43,metalness:.72,roughness:.48});
-  const matFoil=new THREE.MeshStandardMaterial({color:0xc7a96d,metalness:.58,roughness:.62});
-  const matWhite=new THREE.MeshStandardMaterial({color:0xdce4e8,metalness:.48,roughness:.3});
-  const matDark=new THREE.MeshStandardMaterial({color:0x263746,metalness:.72,roughness:.34});
-  const matBlue=new THREE.MeshStandardMaterial({color:0x123c78,metalness:.38,roughness:.28,emissive:0x07152d});
-  const matCell=new THREE.MeshStandardMaterial({color:0x2866a8,metalness:.34,roughness:.3,emissive:0x06152c});
-  const matGlass=new THREE.MeshPhysicalMaterial({color:0x163c58,metalness:.25,roughness:.12,clearcoat:1});
-  const addBox=(parent,size,pos,material)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(...size),material);m.position.set(...pos);parent.add(m);return m;};
-  // Thermal-blanketed instrument bus with exposed structural rails.
-  addBox(sat,[.17,.16,.18],[0,0,0],matGold);
-  addBox(sat,[.176,.115,.184],[0,0,0],matFoil);
-  for(const x of [-.087,.087])for(const z of [-.094,.094])addBox(sat,[.009,.17,.009],[x,0,z],matWhite);
-  for(const y of [-.055,.055])addBox(sat,[.18,.009,.185],[0,y,0],matGold);
-  // Earth-observation telescope: dark optical baffle, coated lens and retaining ring.
-  const baffle=new THREE.Mesh(new THREE.CylinderGeometry(.027,.033,.052,32),matDark);baffle.position.set(-.052,.105,.035);sat.add(baffle);
-  const lensMat=new THREE.MeshPhysicalMaterial({color:0x39a8e8,metalness:.22,roughness:.08,clearcoat:1,clearcoatRoughness:.04,emissive:0x092c50});
-  const lens=new THREE.Mesh(new THREE.CircleGeometry(.022,32),lensMat);lens.rotation.x=-Math.PI/2;lens.position.set(-.052,.132,.035);sat.add(lens);
-  const lensRim=new THREE.Mesh(new THREE.TorusGeometry(.027,.004,8,32),matWhite);lensRim.rotation.x=-Math.PI/2;lensRim.position.set(-.052,.133,.035);sat.add(lensRim);
-  const focusRing=new THREE.Mesh(new THREE.TorusGeometry(.014,.0015,6,32),matGold);focusRing.rotation.x=-Math.PI/2;focusRing.position.set(-.052,.134,.035);sat.add(focusRing);
-  // Twin deployable solar arrays with individual photovoltaic cells, busbars and hinges.
-  for(const side of [-1,1]){
-    const wing=new THREE.Group();wing.position.set(side*.105,0,0);wing.rotation.z=side*.035;sat.add(wing);
-    addBox(wing,[.34,.012,.19],[side*.18,0,0],matDark);
-    addBox(wing,[.325,.004,.177],[side*.18,.009,0],matBlue);
-    for(let col=0;col<4;col++)for(let row=0;row<3;row++){
-      const x=side*.035+side*(col*.079),z=-.06+row*.06;
-      addBox(wing,[.073,.002,.052],[x,.012,z],matCell);
-    }
-    for(let row=0;row<4;row++)addBox(wing,[.33,.0015,.002],[side*.18,.014,-.075+row*.05],matWhite);
-    for(let col=0;col<5;col++)addBox(wing,[.0015,.0015,.17],[side*(.025+col*.077),.014,0],matWhite);
-    const hinge=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.045,16),matWhite);hinge.rotation.z=Math.PI/2;hinge.position.x=-side*.012;wing.add(hinge);
-    const boom=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.13,10),matDark);boom.rotation.z=Math.PI/2;boom.position.x=side*.36;wing.add(boom);
-  }
-  // High-gain parabolic radio reflector, rim, mast and feed.
-  const dishMat=new THREE.MeshStandardMaterial({color:0xe2e7eb,metalness:.86,roughness:.22,side:THREE.DoubleSide});
-  // True shallow parabolic reflector, open toward the camera (+Z).
-  const dishGeo=new THREE.BufferGeometry(), dishVerts=[], dishIdx=[];
-  const dishRings=12,dishSegments=48,dishRadius=.078,dishDepth=.026;
-  for(let ring=0;ring<=dishRings;ring++){
-    const r=ring/dishRings;
-    for(let seg=0;seg<=dishSegments;seg++){
-      const a=seg/dishSegments*Math.PI*2;
-      dishVerts.push(dishRadius*r*Math.cos(a),dishRadius*r*Math.sin(a),-dishDepth*(1-r*r));
+  // Real NASA spacecraft assets (official GLB downloads).
+  const sat=new THREE.Group(); earthGroup.add(sat);
+  const gltfLoader=new GLTFLoader();
+  const modelSources={
+    iss:'https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/international-space-station-%28iss%29-%28d%29-%28igoal%29/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29.glb',
+    landsat8:'https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/landsat-8/Landsat%208.glb'
+  };
+  let modelRequest=0;
+  async function loadSpacecraftModel(id){
+    const request=++modelRequest;
+    if(status)status.textContent='Загрузка модели NASA: '+(id==='iss'?'МКС':'Landsat 8')+'…';
+    try{
+      const gltf=await gltfLoader.loadAsync(modelSources[id]);
+      if(request!==modelRequest)return;
+      while(sat.children.length)sat.remove(sat.children[0]);
+      const model=gltf.scene;
+      const box=new THREE.Box3().setFromObject(model);
+      const size=box.getSize(new THREE.Vector3());
+      const center=box.getCenter(new THREE.Vector3());
+      model.position.sub(center);
+      const maxDim=Math.max(size.x,size.y,size.z)||1;
+      model.scale.setScalar(.52/maxDim);
+      sat.add(model);
+      // Keep the imported NASA geometry, materials and textures intact.
+      sat.userData.modelId=id;
+      if(status)status.textContent='Модель NASA загружена: '+(id==='iss'?'МКС · NASA/JSC':'Landsat 8 · NASA');
+    }catch(error){
+      if(status)status.textContent='Не удалось загрузить модель NASA: '+error.message;
+      console.error('NASA GLB load failed',error);
     }
   }
-  for(let ring=0;ring<dishRings;ring++)for(let seg=0;seg<dishSegments;seg++){
-    const p=ring*(dishSegments+1)+seg,q=p+dishSegments+1;
-    dishIdx.push(p,q,p+1,p+1,q,q+1);
-  }
-  dishGeo.setAttribute('position',new THREE.Float32BufferAttribute(dishVerts,3));dishGeo.setIndex(dishIdx);dishGeo.computeVertexNormals();
-  const dish=new THREE.Mesh(dishGeo,dishMat);dish.position.set(0,.105,.12);sat.add(dish);
-  const dishRim=new THREE.Mesh(new THREE.TorusGeometry(dishRadius,.004,8,48),matWhite);dishRim.position.set(0,.105,.12);sat.add(dishRim);
-  const feedArm=new THREE.Mesh(new THREE.CylinderGeometry(.0025,.0025,.06,8),matWhite);feedArm.position.set(0,.105,.151);sat.add(feedArm);
-  const feed=new THREE.Mesh(new THREE.SphereGeometry(.009,12,10),matGold);feed.position.set(0,.105,.18);sat.add(feed);
-  for(let i=0;i<8;i++){
-    const angle=i*Math.PI/4;
-    const rib=new THREE.Mesh(new THREE.CylinderGeometry(.0012,.0012,.075,6),matWhite);
-    rib.position.set(Math.cos(angle)*.038,.105+Math.sin(angle)*.038,.121);rib.rotation.z=-angle;sat.add(rib);
-  }
-  // GNSS / telemetry antennas, star tracker, radiator strips and attitude-control thrusters.
-  for(const x of [-.055,.055]){
-    const rod=new THREE.Mesh(new THREE.CylinderGeometry(.002,.002,.105,8),matWhite);rod.position.set(x,.13,.065);sat.add(rod);
-    const tip=new THREE.Mesh(new THREE.SphereGeometry(.006,10,8),matGold);tip.position.set(x,.184,.065);sat.add(tip);
-  }
-  const starTracker=new THREE.Mesh(new THREE.CylinderGeometry(.018,.021,.035,20),matDark);starTracker.rotation.x=Math.PI/2;starTracker.position.set(.055,.055,.115);sat.add(starTracker);
-  for(const x of [-.055,.055])for(const z of [-.045,.045]){
-    const thruster=new THREE.Mesh(new THREE.CylinderGeometry(.009,.014,.035,12),matDark);thruster.rotation.x=Math.PI/2;thruster.position.set(x,-.075,z);sat.add(thruster);
-  }
-  for(const side of [-1,1])for(let i=0;i<3;i++)addBox(sat,[.012,.055,.008],[side*.096,-.015,-.055+i*.05],matWhite);
-  // Enlarged modestly for visibility in the orbital overview.
-  sat.scale.setScalar(1.45);
+  const modelPicker=document.getElementById('spacecraftModel');
+  if(modelPicker)modelPicker.addEventListener('change',()=>loadSpacecraftModel(modelPicker.value));
+  loadSpacecraftModel('iss');
   const orbit=new THREE.Group(); earthGroup.add(orbit); const orbitPts=[]; const inclination=.68;
   for(let i=0;i<=240;i++){const a=i/240*Math.PI*2;orbitPts.push(new THREE.Vector3(1.32*Math.cos(a),1.32*Math.sin(a)*Math.sin(inclination),1.32*Math.sin(a)*Math.cos(inclination)));}
   const orbitLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(orbitPts),new THREE.LineBasicMaterial({color:0x55c7ff,transparent:true,opacity:.7})); orbit.add(orbitLine); sat.position.copy(orbitPts[0]); orbit.add(sat);
-  if(status)status.textContent='3D · спутник на орбите · Екатеринбург отмечен красным';
+  if(status)status.textContent='NASA 3D · МКС · спутник на орбите · Екатеринбург отмечен красным';
   const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();};
   new ResizeObserver(resize).observe(host); resize();
   let t=0; function animate(){requestAnimationFrame(animate);t+=.003;const idx=Math.floor((t%(Math.PI*2))/(Math.PI*2)*240);sat.position.copy(orbitPts[idx]);sat.rotation.y=t*1.8;clouds.rotation.y+=.00018;controls.update();renderer.render(scene,camera);} animate();

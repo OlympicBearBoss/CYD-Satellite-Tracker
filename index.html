@@ -660,7 +660,8 @@ if(host){
     const modelLift=item.body.position.clone().normalize().multiplyScalar(.028);
     item.modelRoot.position.copy(modelLift.applyQuaternion(item.body.quaternion.clone().invert()));
    }
-   if(window.cydRadarPositions)window.dispatchEvent(new Event('cyd-orbit-update'));\n   renderOrbitLiveInfo();
+   if(window.cydRadarPositions)window.dispatchEvent(new Event('cyd-orbit-update'));
+   renderOrbitLiveInfo();
   }
   try{await refreshRealOrbits();}
   catch(error){console.error('Initial orbit download failed:',error);if(orbitStatus)orbitStatus.textContent='Ошибка загрузки орбит: '+(error&&error.message?error.message:String(error));}

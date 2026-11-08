@@ -38,10 +38,9 @@
       if (cached && Array.isArray(cached.data) && Date.now() - cached.savedAt < CACHE_TTL) {
         return { source, data: cached.data, error: null, cached: true };
       }
-      const url = "https://celestrak.org/NORAD/elements/gp.php?GROUP=" + encodeURIComponent(source.group) + "&FORMAT=JSON";
       try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("HTTP " + response.status);
+        const response = await fetch("/api/satellites?group=" + encodeURIComponent(source.group));
+        if (!response.ok) throw new Error("HTTP " + response.status + " · " + await response.text());
         const data = await response.json();
         if (!Array.isArray(data)) throw new Error("неверный формат OMM JSON");
         try { localStorage.setItem(cacheKey, JSON.stringify({savedAt: Date.now(), data})); } catch (_) {}

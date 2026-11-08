@@ -449,9 +449,10 @@ if(host){
    satellite=await import('https://unpkg.com/satellite.js@6.0.1/dist/satellite.es.js');
   }
   const satelliteFeeds=[
-   {id:'iss',group:'stations',norad:'25544',name:'МКС',color:0x55c7ff},
-   {id:'noaa',group:'weather',norad:'33591',name:'NOAA 19',color:0x5de1a7},
-   {id:'ao91',group:'amateur',norad:'43017',name:'AO-91',color:0xffb34d},
+   // Запрашиваем три нужных спутника адресно, не скачивая целые группы.
+   {id:'iss',group:null,norad:'25544',name:'МКС',color:0x55c7ff},
+   {id:'noaa',group:null,norad:'33591',name:'NOAA 19',color:0x5de1a7},
+   {id:'ao91',group:null,norad:'43017',name:'AO-91',color:0xffb34d},
    {id:'starlink',group:'starlink',norad:null,name:'Starlink',color:0xb58aff}
   ];
   const orbitObjects={};
@@ -581,7 +582,8 @@ if(host){
   await refreshRealOrbits();
   if(status&&!Object.values(orbitObjects).some(x=>x.satrec))status.textContent='Не удалось получить орбиты · проверьте соединение с CelesTrak';
   setInterval(()=>updateRealPositions(false),2000);
-  setInterval(()=>refreshRealOrbits(),15*60*1000);
+  // CelesTrak обновляет GP примерно раз в 2 часа; соблюдаем интервал источника.
+  setInterval(()=>refreshRealOrbits(),2*60*60*1000);
 
   // Predict actual visible ISS passes for the configured observer using SGP4.
   // Observer coordinates are the same as the red marker on the globe.

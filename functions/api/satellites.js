@@ -24,7 +24,7 @@ export async function onRequest(context) {
   }
 
   const cache = caches.default;
-  const cacheUrl = new URL(norad ? "/api/satellites?v=2&norad=" + norad : "/api/satellites?v=2&group=" + group, request.url);
+  const cacheUrl = new URL(norad ? "/api/satellites?v=3&norad=" + norad : "/api/satellites?v=3&group=" + group, request.url);
   const cacheKey = new Request(cacheUrl.toString(), { method: "GET" });
   const cached = await cache.match(cacheKey);
   if (cached) {

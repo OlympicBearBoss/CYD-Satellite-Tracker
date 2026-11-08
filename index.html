@@ -178,10 +178,12 @@ $("clearLog").addEventListener("click",()=>{logItems=[];renderLog();});
 function tick(){const d=new Date();$("clock").textContent=d.toLocaleTimeString(lang==="ru"?"ru-RU":"en-GB");$("today").textContent=d.toLocaleDateString(lang==="ru"?"ru-RU":"en-GB",{day:"2-digit",month:"long",year:"numeric"});}
 tick();setInterval(tick,1000);setAxes(objectData.iss.az,objectData.iss.el);renderRadarObjects();renderLog();setLanguage("ru");
 </script>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}
+</script>
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import * as THREE from 'three';
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
-import { TextureLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/src/loaders/TextureLoader.js';
 const host=document.getElementById('earth3d'), status=document.getElementById('earthModelStatus');
 if(host){
  try{

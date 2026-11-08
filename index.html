@@ -1204,7 +1204,7 @@ if(host){
     actions.append(follow,close);card.append(title,detail,actions);arrivalToastRoot.appendChild(card);
    });
    clearTimeout(arrivalToastTimer);
-   arrivalToastTimer=setTimeout(()=>{arrivalQueue.shift();renderArrivalQueue();},15000);
+   arrivalToastTimer=setTimeout(()=>{arrivalQueue.shift();renderArrivalQueue();},20000);
   }
   function getArrivalCategory(item){
    const rawId=String(item&&item.id||'').replace(/^catalog-/,'');

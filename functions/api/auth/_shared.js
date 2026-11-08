@@ -1,0 +1,34 @@
+const enc = new TextEncoder();
+export const json = (data, status=200, extra={}) => new Response(JSON.stringify(data), {status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store",...extra}});
+export const readJson = async request => { try { return await request.json(); } catch { return null; } };
+export const randomId = () => crypto.randomUUID();
+export async function digest(value) {
+  const bytes = await crypto.subtle.digest("SHA-256", enc.encode(value));
+  return [...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+const b64 = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+export async function passwordHash(password, salt) {
+  const key = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({name:"PBKDF2",salt:enc.encode(salt),iterations:310000,hash:"SHA-256"},key,256);
+  return b64(bits);
+}
+export function cookie(request,name) {
+  const raw=request.headers.get("Cookie")||"";
+  const item=raw.split(";").map(x=>x.trim()).find(x=>x.startsWith(name+"="));
+  return item ? decodeURIComponent(item.slice(name.length+1)) : "";
+}
+export const sessionCookie = (token, maxAge=2592000) => "cyd_session="+encodeURIComponent(token)+"; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age="+maxAge;
+export const clearSessionCookie = "cyd_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0";
+export async function currentUser(request, env) {
+  const token=cookie(request,"cyd_session");
+  if(!token) return null;
+  const hash=await digest(token), now=Math.floor(Date.now()/1000);
+  const row=await env.DB.prepare("SELECT u.id,u.email,u.display_name,u.avatar_url,u.email_verified FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id_hash=? AND s.expires_at>?").bind(hash,now).first();
+  if(row) await env.DB.prepare("UPDATE sessions SET last_seen_at=? WHERE id_hash=?").bind(now,hash).run();
+  return row||null;
+}
+export const sameOrigin = request => {
+  const origin=request.headers.get("Origin");
+  if(!origin) return true;
+  try { return new URL(origin).host===new URL(request.url).host; } catch { return false; }
+};

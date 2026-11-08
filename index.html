@@ -433,9 +433,8 @@ if(host){
     if(!item.satrec)continue;
     const ecf=propagatedEcf(item.satrec,now);
     if(!ecf)continue;
+    // Маркер-шарик остаётся точно на расчётной орбите.
     item.body.position.copy(toThree(ecf,item.id==='iss'?.18:1));
-    // Визуально приподнимаем корпус над линией орбиты; расчёт SGP4 и сама орбита не меняются.
-    item.body.position.add(item.body.position.clone().normalize().multiplyScalar(.028));
     // Орбитальная линия — прогнозируемая траектория того же объекта из его TLE/OMM.
     if(rebuildTrails){
      const points=[];
@@ -454,6 +453,10 @@ if(host){
      }
     }
     item.body.rotation.y=now.getTime()/1000*.15;
+    // Поднимаем только 3D-модель над маркером по радиусу от центра Земли.
+    // Переводим направление в локальные координаты body, чтобы вращение модели не смещало шарик.
+    const modelLift=item.body.position.clone().normalize().multiplyScalar(.028);
+    item.modelRoot.position.copy(modelLift.applyQuaternion(item.body.quaternion.clone().invert()));
    }
   }
   await refreshRealOrbits();

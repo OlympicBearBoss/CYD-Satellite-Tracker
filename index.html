@@ -1336,8 +1336,13 @@ if(host){
    setStatus(err.code===1?'ДОСТУП ЗАПРЕЩЁН':err.code===2?'НЕТ СИГНАЛА':'ТАЙМ-АУТ');if(note)note.textContent=msg;
   },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
  }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',requestGpsOnStartup,{once:true});
- else setTimeout(requestGpsOnStartup,250);
+ // На iPad/Yandex системный запрос геолокации часто требует явного действия пользователя.
+ function showGpsStartupPrompt(){
+  const prompt=document.getElementById('gpsStartupPrompt');
+  if(prompt)prompt.hidden=false;
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',showGpsStartupPrompt,{once:true});
+ else setTimeout(showGpsStartupPrompt,350);
  button.addEventListener('click',()=>{
   setStatus('ЗАПРОС GPS');
   if(note)note.textContent='Запрашиваю доступ к геопозиции устройства…';
@@ -1422,4 +1427,21 @@ body>.realistic-earth-scene.orbit-large-screen .orbit-live-info{position:fixed!i
 .orbit-visibility-actions button:active{background:#1b4969}
 .orbit-live-info{max-width:calc(100vw - 24px)}
 @media(max-width:760px){.orbit-large-screen .orbit-live-info{max-height:38dvh!important}.orbit-large-screen .orbit-visibility-actions button{min-height:36px}}
-</style></body></html>
+</style>
+<style id="gps-startup-prompt-style">
+#gpsStartupPrompt{position:fixed;inset:0;z-index:100500;display:grid;place-items:center;padding:22px;background:#020b16d9;backdrop-filter:blur(7px)}
+#gpsStartupPrompt[hidden]{display:none!important}
+.gps-startup-card{width:min(100%,390px);padding:24px;border:1px solid #397da5;border-radius:18px;background:linear-gradient(145deg,#102d43,#071522);box-shadow:0 20px 70px #000b;color:#e8f6ff;text-align:center}
+.gps-startup-card .gps-startup-icon{font-size:38px;margin-bottom:10px}
+.gps-startup-card h2{margin:0 0 10px;font-size:20px}
+.gps-startup-card p{margin:0 0 20px;color:#a9c7dc;font-size:14px;line-height:1.5}
+.gps-startup-card button{width:100%;min-height:48px;border:0;border-radius:10px;background:#168bd0;color:white;font-weight:800;font-size:14px}
+.gps-startup-card .gps-later{margin-top:9px;background:transparent;border:1px solid #35556c;color:#b8d2e4}
+</style>
+<div id="gpsStartupPrompt" hidden role="dialog" aria-modal="true" aria-labelledby="gpsStartupTitle">
+ <div class="gps-startup-card"><div class="gps-startup-icon">⌖</div><h2 id="gpsStartupTitle">Разрешить доступ к GPS?</h2><p>Координаты устройства нужны для определения видимости спутников, положения наблюдателя на глобусе и расчёта пролётов.</p><button type="button" id="gpsStartupAllow">Разрешить GPS</button><button type="button" class="gps-later" id="gpsStartupLater">Продолжить без GPS</button></div>
+</div>
+<script id="gps-startup-prompt-handler">
+(()=>{const root=document.getElementById('gpsStartupPrompt');if(!root)return;const allow=document.getElementById('gpsStartupAllow'),later=document.getElementById('gpsStartupLater');allow?.addEventListener('click',()=>{root.hidden=true;const gpsButton=document.getElementById('enableDeviceSensors');if(gpsButton)gpsButton.click();});later?.addEventListener('click',()=>{root.hidden=true;});})();
+</script>
+</body></html>

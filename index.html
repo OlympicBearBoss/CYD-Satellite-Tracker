@@ -1105,62 +1105,42 @@ if(host){
   },1000);
   setInterval(calculateNextVisiblePass,5*60*1000);
 
-  // Уведомления для каждого отдельного спутника при входе в зону видимости.
-  const arrivalList=document.getElementById('satelliteArrivalList');
-  const arrivalToggle=document.getElementById('arrivalToggle');
+  // Краткое всплывающее уведомление только в момент восходящего пересечения 10°.
   let arrivalEnabled=true;
-  const arrivalStates=new Map(),arrivalElevations=new Map(),arrivalCards=new Map();
-  function renderArrivalCards(){
-   if(!arrivalList)return;
-   const cards=Array.from(arrivalCards.values()).sort((a,b)=>b.time-a.time);
-   arrivalList.innerHTML='';
-   if(!cards.length){arrivalList.innerHTML='<div class="arrival-card arrival-empty">Пока нет спутников выше 10° над горизонтом</div>';return;}
-   cards.forEach(card=>{
-    const el=document.createElement('div');el.className='arrival-card';
-    const name=document.createElement('b');name.textContent=card.name;
-    const detail=document.createElement('small');detail.textContent='В зоне видимости · '+card.elevation.toFixed(1)+'° над горизонтом';
-    const follow=document.createElement('button');follow.type='button';follow.textContent='СЛЕДИТЬ';
-    follow.addEventListener('click',()=>{
-     if(typeof window.selectTargetFromFavorite==='function')window.selectTargetFromFavorite(card.id);
-     else if(typeof window.selectTarget==='function')window.selectTarget(card.id,false);
-    });
-    el.append(name,detail,follow);arrivalList.appendChild(el);
-   });
+  const arrivalStates=new Map(),arrivalElevations=new Map();
+  let arrivalToastTimer=null;
+  function showSatelliteArrival(item,elevation){
+   if(!arrivalEnabled)return;
+   let toast=document.getElementById('satelliteArrivalToast');
+   if(!toast){
+    toast=document.createElement('aside');toast.id='satelliteArrivalToast';toast.setAttribute('role','status');toast.setAttribute('aria-live','polite');
+    toast.style.cssText='position:fixed;z-index:1300;right:14px;top:82px;width:min(330px,calc(100vw - 28px));padding:13px 14px;border:1px solid rgba(91,196,255,.55);border-radius:12px;background:rgba(5,20,36,.97);box-shadow:0 12px 34px #0009;color:#e8f7ff;font:12px/1.45 system-ui';
+    document.body.appendChild(toast);
+   }
+   toast.innerHTML='';
+   const title=document.createElement('b');title.textContent=(item.name||'Спутник')+' появился над горизонтом';title.style.cssText='display:block;font-size:13px;margin-bottom:4px';
+   const detail=document.createElement('small');detail.textContent='Восходящий пролёт · высота '+elevation.toFixed(1)+'°';detail.style.cssText='display:block;color:#a9c9dc;margin-bottom:9px';
+   const follow=document.createElement('button');follow.type='button';follow.textContent='СЛЕДИТЬ';follow.style.cssText='border:1px solid #54b9ed;border-radius:7px;background:#123c59;color:#e8f7ff;padding:7px 12px;font-weight:700';
+   follow.addEventListener('click',()=>{if(typeof window.selectTargetFromFavorite==='function')window.selectTargetFromFavorite(item.id);else if(typeof window.selectTarget==='function')window.selectTarget(item.id,false);toast.remove();});
+   toast.append(title,detail,follow);
+   clearTimeout(arrivalToastTimer);arrivalToastTimer=setTimeout(()=>toast.remove(),12000);
   }
   function scanSatelliteArrivals(){
    const now=new Date();
    for(const item of Object.values(orbitObjects)){
     if(!item.satrec)continue;
     const ecf=propagatedEcf(item.satrec,now);if(!ecf)continue;
-    const look=satellite.ecfToLookAngles(observer,ecf);
-    if(!look)continue;
+    const look=satellite.ecfToLookAngles(observer,ecf);if(!look)continue;
     const elevation=THREE.MathUtils.radToDeg(look.elevation),visible=elevation>=10;
     const previousElevation=arrivalElevations.get(item.id);
-    const wasVisible=arrivalStates.get(item.id)===true;
-    // Событие только при восходящем пересечении порога 10°.
-    // Первый замер лишь задаёт исходное положение и не создаёт ложное уведомление.
-    const risingIntoView=previousElevation!==undefined&&previousElevation<10&&elevation>=10&&elevation>previousElevation;
-    if(risingIntoView&&arrivalEnabled){
-     arrivalCards.set(item.id,{id:item.id,name:item.name||item.id,elevation,time:now.getTime()});
-     renderArrivalCards();
-    }else if(visible&&arrivalCards.has(item.id)){
-     const card=arrivalCards.get(item.id);card.elevation=elevation;card.time=now.getTime();
-    }else if(!visible&&wasVisible){
-     arrivalCards.delete(item.id);renderArrivalCards();
-    }
+    if(previousElevation!==undefined&&previousElevation<10&&visible&&elevation>previousElevation)showSatelliteArrival(item,elevation);
     arrivalElevations.set(item.id,elevation);
     arrivalStates.set(item.id,visible);
    }
   }
-  if(arrivalToggle)arrivalToggle.addEventListener('click',()=>{
-   arrivalEnabled=!arrivalEnabled;
-   arrivalToggle.textContent='УВЕДОМЛЕНИЯ: '+(arrivalEnabled?'ВКЛ':'ВЫКЛ');
-   if(!arrivalEnabled){arrivalCards.clear();renderArrivalCards();}
-   else{arrivalStates.clear();arrivalElevations.clear();scanSatelliteArrivals();}
-  });
   scanSatelliteArrivals();
   setInterval(scanSatelliteArrivals,5000);
-  window.addEventListener('cyd-observer-change',()=>{arrivalStates.clear();arrivalElevations.clear();arrivalCards.clear();scanSatelliteArrivals();renderArrivalCards();});
+  window.addEventListener('cyd-observer-change',()=>{arrivalStates.clear();arrivalElevations.clear();scanSatelliteArrivals();});
   window.addEventListener('cyd-orbit-update',scanSatelliteArrivals);
 
 
@@ -1190,19 +1170,7 @@ if(host){
 <div class="pass-notice-body"><div><div class="pass-notice-label" id="passNoticeLabel">До начала пролёта</div><div class="pass-notice-count" id="passNoticeCountdown">--:--</div></div><div class="pass-notice-detail"><div id="passNoticeMax">Макс. высота: —</div><div id="passNoticeWindow">Длительность: —</div></div></div>
  <div class="pass-notice-progress"><i id="passNoticeProgress"></i></div>
 </aside>
-<style>
-#satelliteArrivalDock{position:fixed;right:16px;top:84px;z-index:1200;width:min(360px,calc(100vw - 24px));max-height:55vh;overflow:auto;display:grid;gap:8px;pointer-events:none}
-#satelliteArrivalDock .arrival-head,#satelliteArrivalDock .arrival-card{pointer-events:auto;background:rgba(5,20,36,.96);border:1px solid rgba(91,196,255,.35);border-radius:12px;box-shadow:0 10px 32px #0008;color:#e8f7ff;padding:10px 12px}
-#satelliteArrivalDock .arrival-head{display:flex;align-items:center;justify-content:space-between;font:700 10px/1.4 monospace;letter-spacing:.08em}
-#satelliteArrivalDock button{border:1px solid rgba(107,205,255,.4);border-radius:7px;background:#12344d;color:#dff6ff;padding:7px 10px;font:700 10px monospace}
-#satelliteArrivalDock .arrival-card{display:grid;grid-template-columns:1fr auto;gap:5px 10px;animation:arrivalIn .25s ease-out}
-#satelliteArrivalDock .arrival-card small{color:#9ebdd0;font-size:10px}
-#satelliteArrivalDock .arrival-card b{font-size:12px}
-#satelliteArrivalDock .arrival-card button{grid-column:2;grid-row:1/3;align-self:center}
-#satelliteArrivalDock .arrival-empty{color:#9ebdd0;font-size:10px}
-@keyframes arrivalIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
-@media(max-width:600px){#satelliteArrivalDock{top:72px;right:8px;width:min(330px,calc(100vw - 16px));max-height:42vh}}
-</style>
+
 
 <script>
 (()=>{

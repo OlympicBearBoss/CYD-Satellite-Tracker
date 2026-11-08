@@ -24,7 +24,7 @@ export async function onRequest(context) {
   }
 
   const cache = caches.default;
-  const cacheUrl = new URL(norad ? "/api/satellites?v=3&norad=" + norad : "/api/satellites?v=3&group=" + group, request.url);
+  const cacheUrl = new URL(norad ? "/api/satellites?v=4&norad=" + norad : "/api/satellites?v=4&group=" + group, request.url);
   const cacheKey = new Request(cacheUrl.toString(), { method: "GET" });
   const cached = await cache.match(cacheKey);
   if (cached) {
@@ -93,18 +93,43 @@ export async function onRequest(context) {
       primaryError = error;
     }
 
-    // Secondary daily TLE mirror: use only for individual NORAD requests and only
-    // when its element epoch is no more than 14 days old.
+    // Independent cached OMM mirror. Unlike the single-object TLE mirror,
+    // it also supports complete groups such as Starlink.
+    let mirrorError = null;
+    if (!data) {
+      try {
+        const mirrorPath = norad ? encodeURIComponent(norad) : encodeURIComponent(group);
+        const mirror = await fetch("https://retlector.eu/" + mirrorPath + "/json", {
+          headers: { "Accept": "application/json" },
+          signal: AbortSignal.timeout(20000)
+        });
+        if (!mirror.ok) throw new Error("ReTLEctor HTTP " + mirror.status);
+        const records = await mirror.json();
+        if (!Array.isArray(records) || !records.length) throw new Error("ReTLEctor returned no OMM records");
+        const fresh = records.filter(record => {
+          const epoch = Date.parse(String(record.EPOCH || "") + (String(record.EPOCH || "").endsWith("Z") ? "" : "Z"));
+          const ageDays = (Date.now() - epoch) / 86400000;
+          return Number.isFinite(epoch) && ageDays >= -1 && ageDays <= 14;
+        });
+        if (!fresh.length) throw new Error("ReTLEctor elements are stale (older than 14 days)");
+        data = fresh;
+        source = "ReTLEctor cached OMM mirror";
+      } catch (error) {
+        mirrorError = error;
+      }
+    }
+
+    // Last-resort single-object TLE mirror; retain the strict 14-day freshness guard.
     if (!data && norad) {
       const backup = await fetch("https://tle.ivanstanojevic.me/api/tle/" + encodeURIComponent(norad), {
         headers: { "Accept": "application/ld+json, application/json" },
         signal: AbortSignal.timeout(12000)
       });
-      if (!backup.ok) throw new Error("CelesTrak: " + primaryError.message + "; TLE backup HTTP " + backup.status);
+      if (!backup.ok) throw new Error("CelesTrak: " + (primaryError ? primaryError.message : "unavailable") + "; ReTLEctor: " + (mirrorError ? mirrorError.message : "unavailable") + "; TLE backup HTTP " + backup.status);
       data = [tleToOmm(await backup.json())];
       source = "Ivan Stanojevic TLE mirror (converted to OMM)";
     }
-    if (!data) throw new Error("CelesTrak: " + (primaryError ? primaryError.message : "unavailable") + "; no backup for group " + group);
+    if (!data) throw new Error("CelesTrak: " + (primaryError ? primaryError.message : "unavailable") + "; ReTLEctor: " + (mirrorError ? mirrorError.message : "unavailable") + "; no backup for group " + group);
 
     const response = new Response(JSON.stringify(data), {
       headers: {

@@ -1,46 +1,33 @@
 # Авторизация CYD Satellite Tracker
 
-## Целевая схема
+## Текущий этап
 
-- Cloudflare Pages Functions — HTTP API авторизации.
-- Cloudflare D1 — пользователи, внешние идентификаторы, сессии и привязанные приложения.
-- Email + пароль, Google OpenID Connect и Sign in with Apple.
-- Мобильное приложение получает отдельную пару токенов после одноразовой привязки устройства; пароль пользователя в приложение не передаётся.
+Реализованы серверные Pages Functions для регистрации по email/паролю, входа, выхода и проверки текущей сессии. Пароли хешируются PBKDF2-SHA-256 (310 000 итераций, индивидуальная соль); в D1 хранится хеш случайного идентификатора сессии, а браузер получает только Secure, HttpOnly, SameSite=Lax cookie.
 
-## Подготовка Cloudflare
-
-1. Создать D1 database с именем `cyd-satellite-tracker-auth`.
-2. Вставить полученный database ID вместо `REPLACE_WITH_D1_DATABASE_ID` в `wrangler.toml`.
-3. Применить миграцию: `wrangler d1 migrations apply cyd-satellite-tracker-auth --remote`.
-4. Убедиться, что Pages Functions проекта используют D1 binding с именем `DB`.
+**Это пока серверная основа, не включённая в production.** До запуска необходимо создать D1, заменить placeholder database ID в `wrangler.toml`, применить миграцию и проверить API на staging. Также до публичной регистрации следует добавить подтверждение email, восстановление пароля, защиту от массовых попыток (Cloudflare rate limiting/Turnstile) и журналирование безопасности.
 
 ## Google
 
-1. В Google Cloud Console создать OAuth Client ID типа Web application.
-2. Добавить production origin сайта в Authorized JavaScript origins.
-3. Добавить callback URL, который будет указан в настройке OAuth API проекта, в Authorized redirect URIs.
-4. Сохранить Client ID и Client Secret как Cloudflare Pages secrets, не в репозитории.
+Google-вход оставлен следующим этапом настройки: нужны OAuth Client ID и Client Secret, зарегистрированный callback URL и реализация полного OIDC flow с проверкой подписи ID token, issuer, audience, expiry и nonce. Кнопку Google нельзя включать до настройки этих параметров и серверной проверки токенов. Секреты хранятся только в Cloudflare Pages secrets.
 
 ## Apple
 
-1. Нужна активная учётная запись Apple Developer Program.
-2. Создать App ID и включить Sign in with Apple.
-3. Создать Services ID для веб-входа и связать его с primary App ID.
-4. Настроить домен сайта и return URL в Apple Developer.
-5. Создать Sign in with Apple key (.p8); сохранить Key ID, Team ID, Services ID и приватный ключ только в Cloudflare secrets.
+Sign in with Apple отложен. Для веб-интеграции требуется активная Apple Developer Program. Схема базы уже допускает provider `apple`; повторно менять структуру при подключении не потребуется.
 
-## Обязательные секреты
+## Cloudflare D1
 
-Имена переменных окружения должны быть согласованы с обработчиком OAuth перед включением кнопок:
-- GOOGLE_CLIENT_ID
-- GOOGLE_CLIENT_SECRET
-- APPLE_CLIENT_ID (Services ID)
-- APPLE_TEAM_ID
-- APPLE_KEY_ID
-- APPLE_PRIVATE_KEY
+1. Создать D1 database с именем `cyd-satellite-tracker-auth`.
+2. Вставить database ID вместо `REPLACE_WITH_D1_DATABASE_ID` в `wrangler.toml`.
+3. Применить миграцию: `wrangler d1 migrations apply cyd-satellite-tracker-auth --remote`.
+4. Убедиться, что Pages Functions проекта используют D1 binding с именем `DB`.
 
-Не публикуйте секреты, приватный ключ Apple, пароли или реальные токены в GitHub, переписке или клиентском JavaScript.
+## API
 
-## Состояние
+- `POST /api/auth/register` — создать аккаунт (email, пароль от 12 символов, необязательное имя).
+- `POST /api/auth/login` — войти.
+- `POST /api/auth/logout` — завершить сессию.
+- `GET /api/auth/me` — получить текущего пользователя.
 
-Эта папка задаёт схему хранения и конфигурацию D1. Для включения входа необходимы OAuth-реквизиты и реализация Pages Functions API; одна только миграция не включает регистрацию или вход.
+## Безопасность и секреты
+
+Не публикуйте пароли, OAuth client secrets, приватные ключи или реальные токены в GitHub, переписке или клиентском JavaScript. Не считайте регистрацию активной, пока D1 не создана, миграция не применена и production deployment не проверен.

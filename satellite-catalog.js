@@ -135,7 +135,7 @@
   }
   function attachSatellitePreview(button,item){
     button.addEventListener("pointerenter",e=>{if(e.pointerType!=="touch")showSatellitePreview(item,e.clientX,e.clientY);});
-    button.addEventListener("pointermove",e=>{if(e.pointerType!=="touch"&&!$("satelliteHoverPreview")?.hidden)showSatellitePreview(item,e.clientX,e.clientY);});
+    button.addEventListener("mouseenter",e=>showSatellitePreview(item,e.clientX,e.clientY));
     button.addEventListener("pointerleave",hideSatellitePreview);
     button.addEventListener("focus",()=>{const r=button.getBoundingClientRect();showSatellitePreview(item,r.right,r.top);});
     button.addEventListener("blur",hideSatellitePreview);

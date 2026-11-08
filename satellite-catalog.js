@@ -1,11 +1,16 @@
 /* Live public satellite catalog. Orbit positions are computed locally; no hardware commands are sent. */
 (() => {
   const sources = [
-    { group: "stations", label: "Станции" },
+    { group: "stations", label: "Орбитальные станции" },
     { group: "weather", label: "Метеоспутники" },
-    { group: "amateur", label: "Любительские" }
+    { group: "amateur", label: "Любительские" },
+    { group: "gnss", label: "Навигационные GNSS" },
+    { group: "science", label: "Научные" },
+    { group: "cubesat", label: "CubeSat" },
+    { group: "visual", label: "Наблюдаемые" }
   ];
   let records = [];
+  let catalogNotice = "";
   let selected = null;
   let satelliteLibReady = null;
   const $ = id => document.getElementById(id);
@@ -62,10 +67,9 @@
     const freshness = ageHours === null ? "Эпоха TLE не определена" :
       ageHours > 168 ? "Внимание: в каталоге есть данные старше 7 суток" :
       ageHours > 72 ? "Некоторые орбитальные элементы старше 72 часов" : "Возраст орбитальных данных проверен";
-    $("liveSatelliteList").insertAdjacentHTML("beforeend",
-      '<div class="note" style="margin-bottom:8px">Источник: CelesTrak GP · ' + esc(freshness) +
+    catalogNotice = '<div class="note" style="margin-bottom:8px">Источник: CelesTrak GP · ' + esc(freshness) +
       (oldest ? '<br>Самая старая эпоха в выборке: ' + esc(oldest.toLocaleString()) : '') +
-      (failed.length ? '<br>Не загружены: ' + esc(failed.map(x => x.source.label).join(", ")) : '') + '</div>');
+      (failed.length ? '<br>Не загружены: ' + esc(failed.map(x => x.source.label).join(", ")) : '') + '</div>';
     render();
   }
   function categoryMatch(item) {
@@ -76,7 +80,7 @@
     const query = $("satSearch").value.trim().toLowerCase();
     const visible = records.filter(item => categoryMatch(item) &&
       (String(item.OBJECT_NAME).toLowerCase().includes(query) || String(item.NORAD_CAT_ID).includes(query)));
-    $("liveSatelliteList").innerHTML = visible.slice(0, 100).map(item =>
+    $("liveSatelliteList").innerHTML = catalogNotice + visible.slice(0, 100).map(item =>
       '<button type="button" class="object-row" data-live-id="' + esc(item.NORAD_CAT_ID) + '" style="width:100%;text-align:left;color:inherit;cursor:pointer"><span><b>' +
       esc(item.OBJECT_NAME) + '</b><small>NORAD ' + esc(item.NORAD_CAT_ID) + ' · ' + esc(item._categoryLabel || item._category) + '</small></span><strong>Выбрать ↗</strong></button>'
     ).join("") || '<div class="note">По запросу ничего не найдено.</div>';

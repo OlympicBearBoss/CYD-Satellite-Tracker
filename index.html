@@ -158,7 +158,7 @@
 <section class="view active" id="view-overview">
 <div class="page-heading"><div><div class="eyebrow" data-i18n="eyebrow">ЦЕНТР УПРАВЛЕНИЯ · CYD ESP32</div><h1 data-i18n="welcome">Добро пожаловать на станцию</h1><p data-i18n="welcome_desc">Мониторинг спутников, положение антенны и состояние оборудования.</p></div><div class="heading-actions"><span class="date-label" id="today"></span><button class="btn btn-primary" data-go="control" data-i18n="open_control">Открыть управление ↗</button></div></div>
 <div class="overview-grid">
-<article class="panel globe-panel"><div class="panel-title"><div><span class="section-icon">◉</span><h2 data-i18n="earth_view">Орбитальная обстановка</h2></div><span class="subtle">LIVE ORBITS · SGP4</span></div><div class="earth-scene realistic-earth-scene"><div id="earth3d" role="img" aria-label="Трёхмерная модель Земли, спутник на орбите и красная точка наблюдения в Екатеринбурге"></div><div class="model-picker" style="position:absolute;top:12px;right:12px;z-index:4;background:#071726dd;border:1px solid #315c7c;border-radius:8px;padding:8px 10px;color:#bde8ff;font-size:10px">3D-МОДЕЛИ · АВТОВЫБОР ПО СПУТНИКУ</div><div class="earth-caption"><b>ЗЕМЛЯ / ОРБИТА LEO</b><small>Екатеринбург · 56.8389° с. ш. · 60.6057° в. д.</small></div><div class="earth-location-key"><i></i> Точка наблюдения · Екатеринбург</div><div class="earth-model-status" id="earthModelStatus">Загрузка 3D-модели…</div><div id="earthModelAssetsStatus" style="position:absolute;left:16px;right:16px;bottom:54px;z-index:3;font-size:9px;line-height:1.35;color:#9bc5df;text-shadow:0 1px 5px #00101e;pointer-events:none">Загрузка открытых 3D-моделей…</div><div class="orbit-visibility" id="orbitVisibilityPanel" aria-label="Видимость спутников"><div class="orbit-visibility-head"><b>ОТОБРАЖЕНИЕ НА ОРБИТЕ</b><button type="button" class="orbit-collapse-btn" id="orbitVisibilityCollapse" aria-expanded="true">Свернуть −</button></div><label><input type="checkbox" data-orbit-toggle="iss" checked> МКС · NASA</label><label><input type="checkbox" data-orbit-toggle="noaa" checked> NOAA 19</label><label><input type="checkbox" data-orbit-toggle="ao91" checked> AO-91</label><label><input type="checkbox" data-orbit-toggle="starlink" checked> Starlink · группа</label><small>Координаты рассчитываются по OMM CelesTrak · SGP4</small></div></div><div class="globe-foot"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div></article>
+<article class="panel globe-panel"><div class="panel-title"><div><span class="section-icon">◉</span><h2 data-i18n="earth_view">Орбитальная обстановка</h2></div><span class="subtle">LIVE ORBITS · SGP4</span></div><div class="earth-scene realistic-earth-scene"><div id="earth3d" role="img" aria-label="Трёхмерная модель Земли, спутник на орбите и красная точка наблюдения в Екатеринбурге"></div><div class="model-picker" style="position:absolute;top:12px;right:12px;z-index:4;background:#071726dd;border:1px solid #315c7c;border-radius:8px;padding:8px 10px;color:#bde8ff;font-size:10px">3D-МОДЕЛИ · АВТОВЫБОР ПО СПУТНИКУ</div><div class="earth-caption"><b>ЗЕМЛЯ / ОРБИТА LEO</b><small>Екатеринбург · 56.8389° с. ш. · 60.6057° в. д.</small></div><div class="earth-location-key"><i></i> Точка наблюдения · Екатеринбург</div><div class="earth-model-status" id="earthModelStatus">Загрузка 3D-модели…</div><div id="orbitDataStatus" style="position:absolute;left:16px;right:16px;top:42px;z-index:5;font-size:10px;line-height:1.4;color:#ffd18a;text-shadow:0 1px 5px #00101e;pointer-events:none">Ожидание орбитальных данных…</div><div id="earthModelAssetsStatus" style="position:absolute;left:16px;right:16px;bottom:54px;z-index:3;font-size:9px;line-height:1.35;color:#9bc5df;text-shadow:0 1px 5px #00101e;pointer-events:none">Загрузка открытых 3D-моделей…</div><div class="orbit-visibility" id="orbitVisibilityPanel" aria-label="Видимость спутников"><div class="orbit-visibility-head"><b>ОТОБРАЖЕНИЕ НА ОРБИТЕ</b><button type="button" class="orbit-collapse-btn" id="orbitVisibilityCollapse" aria-expanded="true">Свернуть −</button></div><label><input type="checkbox" data-orbit-toggle="iss" checked> МКС · NASA</label><label><input type="checkbox" data-orbit-toggle="noaa" checked> NOAA 19</label><label><input type="checkbox" data-orbit-toggle="ao91" checked> AO-91</label><label><input type="checkbox" data-orbit-toggle="starlink" checked> Starlink · группа</label><small>Координаты рассчитываются по OMM CelesTrak · SGP4</small></div></div><div class="globe-foot"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div></article>
 <article class="panel target-panel"><div class="panel-title"><div><span class="section-icon">⌖</span><h2 data-i18n="selected_sat">Выбранный спутник</h2></div><span class="status-pill"><i></i><span data-i18n="tracking_demo">ДЕМО</span></span></div><div class="target-name"><div class="sat-avatar">✦</div><div><h3 id="selectedName">МКС (ZARYA)</h3><small id="selectedNorad">NORAD 25544 · НОО</small></div></div><p id="selectedSummary" class="muted" style="font-size:12px;line-height:1.5;margin:8px 0 12px">Пилотируемая орбитальная станция для научных экспериментов и наблюдения Земли.</p><div class="target-coords"><div><small data-i18n="azimuth">АЗИМУТ</small><b id="overviewAz">132.4°</b></div><div><small data-i18n="elevation">УГОЛ МЕСТА</small><b id="overviewEl">67.8°</b></div></div><div class="pass-card"><span data-i18n="next_pass">СЛЕДУЮЩИЙ ВИДИМЫЙ ПРОЛЁТ МКС</span><b id="nextPassCountdown">Расчёт пролёта…</b><small id="nextPassMeta">Условие видимости: высота над горизонтом ≥ 10°</small></div><button class="text-link" data-go="satellites" data-i18n="all_satellites">Каталог спутников →</button></article>
 </div>
 <div class="kpi-grid">
@@ -315,7 +315,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/DRACOLoader.js';
-const host=document.getElementById('earth3d'), status=document.getElementById('earthModelStatus');
+const host=document.getElementById('earth3d'), status=document.getElementById('earthModelStatus'), orbitStatus=document.getElementById('orbitDataStatus');
 if(host){
  try{
   const scene=new THREE.Scene();
@@ -504,7 +504,7 @@ if(host){
    const item=orbitObjects[input.dataset.orbitToggle];if(item)item.group.visible=input.checked;
   }));
   async function refreshRealOrbits(){
-   if(status)status.textContent='Получение реальных орбитальных элементов CelesTrak…';
+   if(orbitStatus)orbitStatus.textContent='Получение реальных орбитальных элементов CelesTrak…';
    const results=await Promise.all(satelliteFeeds.map(async def=>{
     try{
      let record=null,lastError=null;
@@ -539,7 +539,7 @@ if(host){
     }catch(error){item.satrec=null;failed.push(item.name+': '+error.message);}
    }
    const active=Object.values(orbitObjects).filter(x=>x.satrec).length;
-   if(status)status.textContent=active+' реальных орбит загружено · CelesTrak OMM / SGP4'+(failed.length?' · '+failed.join('; '):'');
+   if(orbitStatus)orbitStatus.textContent=active+' реальных орбит загружено · CelesTrak OMM / SGP4'+(failed.length?' · '+failed.join('; '):'');
    updateRealPositions(true);
   }
   function updateRealPositions(rebuildTrails=false){
@@ -580,7 +580,7 @@ if(host){
    if(window.cydRadarPositions)window.dispatchEvent(new Event('cyd-orbit-update'));
   }
   await refreshRealOrbits();
-  if(status&&!Object.values(orbitObjects).some(x=>x.satrec))status.textContent='Не удалось получить орбиты · проверьте соединение с CelesTrak';
+  if(orbitStatus&&!Object.values(orbitObjects).some(x=>x.satrec))orbitStatus.textContent='Не удалось получить орбиты: '+Object.values(orbitObjects).map(x=>x.name).join(', ')+' · проверьте ошибки загрузки';
   setInterval(()=>updateRealPositions(false),2000);
   // CelesTrak обновляет GP примерно раз в 2 часа; соблюдаем интервал источника.
   setInterval(()=>refreshRealOrbits(),2*60*60*1000);

@@ -275,6 +275,7 @@
     if(!item)return;
     trackingId=id;
     selected=item;
+    window.dispatchEvent(new CustomEvent("cyd-catalog-track",{detail:{record:item}}));
     if(trackingTimer)clearInterval(trackingTimer);
     showDetails().then(()=>{
       const update=()=>{if(trackingId!==id||!selected||String(selected.NORAD_CAT_ID)!==id)return;calculatePosition();};

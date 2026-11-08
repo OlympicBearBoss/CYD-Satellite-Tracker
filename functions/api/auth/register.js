@@ -3,7 +3,7 @@ export async function onRequestPost({request,env}) {
   if(!sameOrigin(request)) return json({error:"Недопустимый источник запроса"},403);
   if(!env?.DB) return json({error:"Авторизация временно недоступна: база данных ещё не подключена"},503);
   const body=await readJson(request), email=String(body?.email||"").trim().toLowerCase(), password=String(body?.password||""), name=String(body?.name||"").trim().slice(0,80);
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254) return json({error:"Укажите корректный email"},400);
+  if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)||email.length>254) return json({error:"Укажите корректный email"},400);
   if(password.length<12||password.length>128) return json({error:"Пароль должен содержать от 12 до 128 символов"},400);
   const now=Math.floor(Date.now()/1000), userId=randomId(), salt=randomId(), token=randomId()+randomId(), expires=now+2592000;
   try {
@@ -15,8 +15,10 @@ export async function onRequestPost({request,env}) {
     ]);
     return json({user:{id:userId,email,display_name:name,email_verified:false}},201,{"Set-Cookie":sessionCookie(token)});
   } catch(error) {
-    if(String(error?.message||"").includes("UNIQUE")) return json({error:"Аккаунт с таким email уже существует"},409);
-    return json({error:"Не удалось создать аккаунт"},500);
+    const message=String(error?.message||error||"Unknown registration error");
+    console.error("[auth/register] D1 registration failed", {name:String(error?.name||"Error"), message});
+    if(/UNIQUE constraint failed/i.test(message)) return json({error:"Аккаунт с таким email уже существует"},409);
+    return json({error:"Не удалось создать аккаунт. Код ошибки сохранён в журнале сервера."},500);
   }
 }
 export function onRequest({request}) { return json({error:"Method not allowed"},405,{Allow:"POST"}); }

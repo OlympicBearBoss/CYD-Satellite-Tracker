@@ -1203,10 +1203,7 @@ if(host){
 @keyframes arrivalIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 @media(max-width:600px){#satelliteArrivalDock{top:72px;right:8px;width:min(330px,calc(100vw - 16px));max-height:42vh}}
 </style>
-<section id="satelliteArrivalDock" aria-label="Уведомления о видимости спутников">
- <div class="arrival-head"><span>СПУТНИКИ В ЗОНЕ ВИДИМОСТИ</span><button id="arrivalToggle" type="button">УВЕДОМЛЕНИЯ: ВКЛ</button></div>
- <div id="satelliteArrivalList"><div class="arrival-card arrival-empty">Ожидание расчёта видимости…</div></div>
-</section>
+
 <script>
 (()=>{
  const button=document.getElementById('enableDeviceSensors');

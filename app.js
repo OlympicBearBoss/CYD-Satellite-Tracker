@@ -26,7 +26,7 @@ function setAxes(az,el){az=Number(az);el=Number(el);$("azRange").value=az;$("elR
 $("azRange").addEventListener("input",()=>setAxes($("azRange").value,$("elRange").value));
 $("elRange").addEventListener("input",()=>setAxes($("azRange").value,$("elRange").value));
 function renderTarget(){const o=objectData[selected];$("selectedName").textContent=o.name;$("selectedNorad").textContent=lang==="en"?o.norad.replace("НОО","LEO").replace("МЕТЕОСПУТНИК","WEATHER SATELLITE").replace("ЛЮБИТЕЛЬСКИЙ","AMATEUR"):o.norad;}
-function selectTarget(id){selected=id;const o=objectData[id];renderTarget();setAxes(o.az,o.el);$("targetSelect").value=id;$("satSelect")?.value;addLog("SELECT",lang==="ru"?"Выбран объект "+o.name:"Selected target "+o.name);go("control");}
+function selectTarget(id){selected=id;const o=objectData[id];renderTarget();setAxes(o.az,o.el);$("targetSelect").value=id;addLog("SELECT",lang==="ru"?"Выбран объект "+o.name:"Selected target "+o.name);go("control");}
 document.querySelectorAll("[data-select]").forEach(b=>b.addEventListener("click",()=>selectTarget(b.dataset.select)));
 $("targetSelect").addEventListener("change",e=>{selected=e.target.value;renderTarget();const o=objectData[selected];setAxes(o.az,o.el);});
 $("centerBtn").addEventListener("click",()=>{setAxes(180,45);$("controlStatus").textContent=t("centered");addLog("CTRL",t("centered"));});

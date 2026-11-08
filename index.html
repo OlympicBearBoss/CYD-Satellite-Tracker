@@ -726,7 +726,7 @@ if(host){
   }
   function buildSatelliteVisual(def){
    const group=new THREE.Group();earthGroup.add(group);
-   const orbitLine=new THREE.Mesh(new THREE.BufferGeometry(),new THREE.MeshBasicMaterial({color:def.color,transparent:true,opacity:.92,depthWrite:false}));
+   const orbitLine=new THREE.Mesh(new THREE.BufferGeometry(),new THREE.MeshBasicMaterial({color:def.color,transparent:true,opacity:1,depthWrite:false}));
    group.add(orbitLine);
    const body=new THREE.Group();group.add(body);
    const modelRoot=def.id==='iss'?sat:new THREE.Group();
@@ -792,14 +792,14 @@ if(host){
   document.querySelectorAll('[data-orbit-toggle]').forEach(input=>input.addEventListener('change',()=>{
    const item=orbitObjects[input.dataset.orbitToggle];if(item)item.group.visible=input.checked;
   }));
-  window.addEventListener('cyd-catalog-track',event=>{
-   const record=event.detail&&event.detail.record;if(!record)return;
+  function addCatalogOrbit(record){
+   if(!record)return;
    const norad=String(record.NORAD_CAT_ID||"");if(!norad)return;
    const id="catalog-"+norad;
    try{
     let item=orbitObjects[id];
     if(!item){
-     const color=new THREE.Color().setHSL((Number(norad)%360)/360,.78,.62).getHex();
+     const color=new THREE.Color().setHSL((Number(norad)%360)/360,.9,.66).getHex();
      buildSatelliteVisual({id,group:null,norad,name:String(record.OBJECT_NAME||("NORAD "+norad)),color});
      item=orbitObjects[id];
      const visibility=document.getElementById('orbitVisibilityPanel');
@@ -818,7 +818,12 @@ if(host){
     if(orbitStatus)orbitStatus.textContent='Добавлен объект '+item.name+' · NORAD '+norad+' · SGP4';
     renderOrbitLiveInfo();
    }catch(error){console.error('Cannot add catalog orbit:',error);if(orbitStatus)orbitStatus.textContent='Не удалось добавить орбиту NORAD '+norad+': '+error.message;}
-  });
+  }
+  window.addEventListener('cyd-catalog-track',event=>addCatalogOrbit(event.detail&&event.detail.record));
+  // Каталог может быть готов раньше Three.js/SGP4. Обрабатываем накопленные события.
+  const pendingCatalogTracks=window.cydPendingCatalogTracks||[];
+  window.cydPendingCatalogTracks=[];
+  pendingCatalogTracks.forEach(addCatalogOrbit);
 
   let orbitRetryTimer=null,orbitRetryCount=0;
   async function refreshRealOrbits(){
@@ -898,7 +903,7 @@ if(host){
      item.orbitLine.geometry.dispose();
      if(points.length>1){
       const curve=new THREE.CatmullRomCurve3(points);
-      item.orbitLine.geometry=new THREE.TubeGeometry(curve,160,.0038,6,false);
+      item.orbitLine.geometry=new THREE.TubeGeometry(curve,200,.007,8,false);
      }
     }
     item.body.rotation.y=now.getTime()/1000*.15;

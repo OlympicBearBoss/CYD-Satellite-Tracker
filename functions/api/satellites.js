@@ -51,7 +51,7 @@ export async function onRequest(context) {
     const yy = Number(l1.slice(18, 20));
     const day = Number(l1.slice(20, 32));
     const year = yy >= 57 ? 1900 + yy : 2000 + yy;
-    const epoch = new Date(Date.UTC(year, 0, 1) + (day - 1) * 86400000).toISOString().replace(".000Z", "");
+    const epoch = new Date(Date.UTC(year, 0, 1) + (day - 1) * 86400000).toISOString().replace(/Z$/, "");
     const ageDays = (Date.now() - Date.parse(epoch + "Z")) / 86400000;
     if (!Number.isFinite(ageDays) || ageDays < -1 || ageDays > 14) {
       throw new Error("Backup TLE is stale (" + Math.round(ageDays) + " days); refusing inaccurate orbit");

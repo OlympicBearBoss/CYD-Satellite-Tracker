@@ -698,7 +698,7 @@ if(host){
   setInterval(calculateNextVisiblePass,5*60*1000);
 
 
- }catch(e){if(status)status.textContent='3D не загрузилось: '+e.message;console.error(e);}
+ }catch(e){if(status)status.textContent='3D не загрузилось: '+e.message;if(orbitStatus)orbitStatus.textContent='Ошибка орбитального модуля: '+(e&&e.message?e.message:String(e));console.error('Earth/orbit module failed:',e);}
 }
 </script><aside id="passNotice" class="pass-notice" role="status" aria-live="polite" hidden>
  <div class="pass-notice-top"><div class="pass-notice-icon">◉</div><div class="pass-notice-heading"><b id="passNoticeTitle">Скоро пролёт МКС</b><small id="passNoticeSubtitle">Видимый пролёт над точкой наблюдения</small></div><button class="pass-notice-close" id="passNoticeClose" aria-label="Закрыть">×</button></div>

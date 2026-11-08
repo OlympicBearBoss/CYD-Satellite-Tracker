@@ -905,7 +905,7 @@ if(host){
      if(points.length>1){
       const curve=new THREE.CatmullRomCurve3(points);
       const selected=item.id===(window.cydSelectedSatelliteId||'iss');
-      item.orbitLine.geometry=new THREE.TubeGeometry(curve,240,selected?.013:.009,10,false);
+      item.orbitLine.geometry=new THREE.TubeGeometry(curve,240,selected ? 0.013 : 0.009,10,false);
       item.orbitLine.visible=true;
       item.orbitLine.renderOrder=4;
      }

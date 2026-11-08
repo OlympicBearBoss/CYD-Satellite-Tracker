@@ -443,11 +443,28 @@ if(host){
   }
   // Реальные положения рассчитываются по свежим OMM/CelesTrak через SGP4.
   let satellite;
-  try{satellite=await import('https://cdn.jsdelivr.net/npm/satellite.js@6.0.1/+esm');}
-  catch(primaryImportError){
-   console.warn('Primary satellite.js CDN failed; trying unpkg',primaryImportError);
-   satellite=await import('https://unpkg.com/satellite.js@6.0.1/dist/satellite.es.js');
+  const satelliteCdnErrors=[];
+  const satelliteCdnUrls=[
+   'https://cdn.jsdelivr.net/npm/satellite.js@6.0.1/+esm',
+   'https://esm.sh/satellite.js@6.0.1?bundle',
+   'https://unpkg.com/satellite.js@6.0.1/dist/satellite.es.js'
+  ];
+  for(const moduleUrl of satelliteCdnUrls){
+   try{
+    const imported=await import(moduleUrl);
+    const candidate=imported.default&&typeof imported.default.propagate==='function'?imported.default:imported;
+    const required=['json2satrec','propagate','gstime','eciToEcf','ecfToLookAngles'];
+    const missing=required.filter(key=>typeof candidate[key]!=='function');
+    if(missing.length)throw new Error('в модуле отсутствуют функции: '+missing.join(', '));
+    satellite=candidate;
+    console.info('satellite.js loaded:',moduleUrl);
+    break;
+   }catch(error){
+    satelliteCdnErrors.push(moduleUrl+': '+(error&&error.message?error.message:String(error)));
+    console.warn('satellite.js CDN failed:',moduleUrl,error);
+   }
   }
+  if(!satellite)throw new Error('Не удалось загрузить библиотеку SGP4. '+satelliteCdnErrors.join(' | '));
   const satelliteFeeds=[
    // Запрашиваем три нужных спутника адресно, не скачивая целые группы.
    {id:'iss',group:null,norad:'25544',name:'МКС',color:0x55c7ff},
@@ -503,26 +520,31 @@ if(host){
   document.querySelectorAll('[data-orbit-toggle]').forEach(input=>input.addEventListener('change',()=>{
    const item=orbitObjects[input.dataset.orbitToggle];if(item)item.group.visible=input.checked;
   }));
+  let orbitRetryTimer=null,orbitRetryCount=0;
   async function refreshRealOrbits(){
+   if(orbitRetryTimer){clearTimeout(orbitRetryTimer);orbitRetryTimer=null;}
    if(orbitStatus)orbitStatus.textContent='Получение реальных орбитальных элементов CelesTrak…';
    const results=await Promise.all(satelliteFeeds.map(async def=>{
     try{
      let record=null,lastError=null;
      if(def.group){
       try{
-       const response=await fetch('/api/satellites?group='+def.group,{cache:'no-store'});
-       if(!response.ok)throw new Error('HTTP '+response.status);
+       const response=await fetch('/api/satellites?group='+encodeURIComponent(def.group),{cache:'no-store'});
+       if(!response.ok)throw new Error('HTTP '+response.status+' · '+(await response.text()).slice(0,180));
        const data=await response.json();
+       if(!Array.isArray(data))throw new Error('API вернул не массив объектов');
        record=def.norad?data.find(x=>String(x.NORAD_CAT_ID)===def.norad):data.find(x=>String(x.OBJECT_NAME||'').toUpperCase().startsWith('STARLINK'));
       }catch(error){lastError=error;}
      }
      if(!record&&def.norad){
-      const response=await fetch('/api/satellites?norad='+def.norad,{cache:'no-store'});
-      if(!response.ok)throw new Error('группа: '+(lastError?lastError.message:'объект не найден')+'; CATNR HTTP '+response.status);
+      const response=await fetch('/api/satellites?norad='+encodeURIComponent(def.norad),{cache:'no-store'});
+      if(!response.ok)throw new Error('API NORAD HTTP '+response.status+' · '+(await response.text()).slice(0,180)+(lastError?' · group: '+lastError.message:''));
       const data=await response.json();
+      if(!Array.isArray(data))throw new Error('API NORAD вернул не массив объектов');
       record=data.find(x=>String(x.NORAD_CAT_ID)===def.norad);
      }
-     if(!record)throw new Error('Объект отсутствует в выдаче CelesTrak'+(lastError?' · '+lastError.message:''));
+     if(!record)throw new Error('Объект не найден в OMM'+(lastError?' · '+lastError.message:''));
+     if(!record.EPOCH||!record.MEAN_MOTION||record.INCLINATION===undefined)throw new Error('Неполная запись OMM от CelesTrak');
      return {id:def.id,record};
     }catch(error){return {id:def.id,error};}
    }));
@@ -531,16 +553,24 @@ if(host){
     const item=orbitObjects[result.id];
     if(result.error){failed.push(item.name+': '+result.error.message);continue;}
     try{
+     const nextSatrec=satellite.json2satrec(result.record);
+     if(!nextSatrec)throw new Error('json2satrec вернул пустой объект');
+     if(nextSatrec.error)throw new Error('SGP4 error code '+nextSatrec.error);
      item.record=result.record;
-     item.satrec=satellite.json2satrec(result.record);
-     if(!item.satrec||item.satrec.error)throw new Error('ошибка инициализации SGP4');
+     item.satrec=nextSatrec;
      item.epoch=result.record.EPOCH;
      item.name=result.record.OBJECT_NAME||item.name;
-    }catch(error){item.satrec=null;failed.push(item.name+': '+error.message);}
+    }catch(error){failed.push(item.name+': '+(error&&error.message?error.message:String(error)));}
    }
    const active=Object.values(orbitObjects).filter(x=>x.satrec).length;
-   if(orbitStatus)orbitStatus.textContent=active+' реальных орбит загружено · CelesTrak OMM / SGP4'+(failed.length?' · '+failed.join('; '):'');
-   updateRealPositions(true);
+   if(orbitStatus)orbitStatus.textContent=active+' реальных орбит загружено · SGP4'+(failed.length?' · Ошибки: '+failed.join('; '):'');
+   try{updateRealPositions(true);}catch(error){console.error('Orbit propagation failed:',error);if(orbitStatus)orbitStatus.textContent='Данные получены, ошибка расчёта SGP4: '+error.message;}
+   if(active===0&&orbitRetryCount<4){
+    orbitRetryCount++;
+    const delay=Math.min(60000,10000*Math.pow(2,orbitRetryCount-1));
+    if(orbitStatus)orbitStatus.textContent+=' · повтор через '+Math.round(delay/1000)+' с';
+    orbitRetryTimer=setTimeout(()=>refreshRealOrbits().catch(error=>{console.error('Orbit retry failed:',error);if(orbitStatus)orbitStatus.textContent='Ошибка повторной загрузки: '+error.message;}),delay);
+   }else if(active>0){orbitRetryCount=0;}
   }
   function updateRealPositions(rebuildTrails=false){
    const now=new Date();
@@ -579,8 +609,8 @@ if(host){
    }
    if(window.cydRadarPositions)window.dispatchEvent(new Event('cyd-orbit-update'));
   }
-  await refreshRealOrbits();
-  if(orbitStatus&&!Object.values(orbitObjects).some(x=>x.satrec))orbitStatus.textContent='Не удалось получить орбиты: '+Object.values(orbitObjects).map(x=>x.name).join(', ')+' · проверьте ошибки загрузки';
+  try{await refreshRealOrbits();}
+  catch(error){console.error('Initial orbit download failed:',error);if(orbitStatus)orbitStatus.textContent='Ошибка загрузки орбит: '+(error&&error.message?error.message:String(error));}
   setInterval(()=>updateRealPositions(false),2000);
   // CelesTrak обновляет GP примерно раз в 2 часа; соблюдаем интервал источника.
   setInterval(()=>refreshRealOrbits(),2*60*60*1000);

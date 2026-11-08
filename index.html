@@ -1184,7 +1184,7 @@ if(host){
     const card=document.createElement('div');
     card.style.cssText='padding:12px 14px;border:1px solid rgba(91,196,255,.58);border-radius:12px;background:rgba(5,20,36,.98);box-shadow:0 12px 34px #0009;color:#e8f7ff;font:12px/1.45 system-ui';
     const title=document.createElement('b');title.textContent=(entry.name||'Спутник')+' появился в зоне видимости';title.style.cssText='display:block;font-size:13px;margin-bottom:4px';
-    const detail=document.createElement('small');detail.textContent='Восходящий пролёт · высота '+entry.elevation.toFixed(1)+'°';detail.style.cssText='display:block;color:#a9c9dc;margin-bottom:9px';
+    const detail=document.createElement('small');detail.textContent='Категория: '+(entry.category||'Категория не определена')+' · восходящий пролёт · высота '+entry.elevation.toFixed(1)+'°';detail.style.cssText='display:block;color:#a9c9dc;margin-bottom:9px';
     const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;align-items:center';
     const follow=document.createElement('button');follow.type='button';follow.textContent='СЛЕДИТЬ';follow.style.cssText='border:1px solid #54b9ed;border-radius:7px;background:#123c59;color:#e8f7ff;padding:7px 12px;font-weight:700';
     follow.addEventListener('click',()=>{
@@ -1206,9 +1206,16 @@ if(host){
    clearTimeout(arrivalToastTimer);
    arrivalToastTimer=setTimeout(()=>{arrivalQueue.shift();renderArrivalQueue();},15000);
   }
+  function getArrivalCategory(item){
+   const rawId=String(item&&item.id||'').replace(/^catalog-/,'');
+   const record=(window.cydSatelliteCatalogRecords||[]).find(r=>String(r&&r.NORAD_CAT_ID)===rawId);
+   if(record&&record._categoryLabel)return record._categoryLabel;
+   const known={iss:'Орбитальные станции',noaa:'Метеоспутники',ao91:'Любительские'};
+   return known[String(item&&item.id||'').toLowerCase()]||'Категория не определена';
+  }
   function showSatelliteArrival(item,elevation){
    if(!arrivalEnabled)return;
-   arrivalQueue.push({id:item.id,name:item.name||item.id,elevation,time:Date.now()});
+   arrivalQueue.push({id:item.id,name:item.name||item.id,category:item.category||getArrivalCategory(item),elevation,time:Date.now()});
    renderArrivalQueue();
   }
   function scanSatelliteArrivals(){

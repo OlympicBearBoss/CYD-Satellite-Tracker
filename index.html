@@ -185,6 +185,7 @@ tick();setInterval(tick,1000);setAxes(objectData.iss.az,objectData.iss.el);rende
 import * as THREE from 'three';
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/DRACOLoader.js';
 const host=document.getElementById('earth3d'), status=document.getElementById('earthModelStatus');
 if(host){
  try{
@@ -210,7 +211,10 @@ if(host){
   const halo=new THREE.Mesh(new THREE.SphereGeometry(.035,20,16),new THREE.MeshBasicMaterial({color:0xff263f,transparent:true,opacity:.25})); halo.position.copy(markerPos); earthGroup.add(halo);
   // Real NASA spacecraft assets (official GLB downloads).
   const sat=new THREE.Group(); earthGroup.add(sat);
+  const dracoLoader=new DRACOLoader();
+  dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
   const gltfLoader=new GLTFLoader();
+  gltfLoader.setDRACOLoader(dracoLoader);
   const modelSources={
     iss:'https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/international-space-station-%28iss%29-%28d%29-%28igoal%29/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29.glb',
     landsat8:'https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/landsat-8/Landsat%208.glb'

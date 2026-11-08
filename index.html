@@ -1157,7 +1157,7 @@ if(host){
    if(!arrivalToastRoot){
     arrivalToastRoot=document.createElement('aside');arrivalToastRoot.id='satelliteArrivalToast';
     arrivalToastRoot.setAttribute('role','status');arrivalToastRoot.setAttribute('aria-live','polite');
-    arrivalToastRoot.style.cssText='position:fixed;z-index:2147483100;right:14px;top:82px;width:min(350px,calc(100vw - 28px));max-height:55dvh;overflow:auto;display:grid;gap:8px;pointer-events:auto';
+    arrivalToastRoot.style.cssText='position:fixed;z-index:2147483100;left:50%;right:auto;top:auto;bottom:calc(14px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);width:min(420px,calc(100vw - 24px));max-height:min(38dvh,320px);overflow:auto;display:grid;gap:8px;pointer-events:auto;padding:0 2px';
     document.body.appendChild(arrivalToastRoot);
    }
    arrivalToastRoot.innerHTML='';

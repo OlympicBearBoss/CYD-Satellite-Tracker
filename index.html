@@ -288,12 +288,22 @@ if(host){
    if(status)status.textContent='Получение реальных орбитальных элементов CelesTrak…';
    const results=await Promise.all(satelliteFeeds.map(async def=>{
     try{
-     const endpoint=def.norad?'/api/satellites?norad='+def.norad:'/api/satellites?group='+def.group;
-     const response=await fetch(endpoint,{cache:'no-store'});
-     if(!response.ok)throw new Error('HTTP '+response.status);
-     const data=await response.json();
-     let record=def.norad?data.find(x=>String(x.NORAD_CAT_ID)===def.norad):data.find(x=>String(x.OBJECT_NAME||'').toUpperCase().startsWith('STARLINK'));
-     if(!record)throw new Error('Объект отсутствует в выдаче CelesTrak');
+     let record=null,lastError=null;
+     if(def.group){
+      try{
+       const response=await fetch('/api/satellites?group='+def.group,{cache:'no-store'});
+       if(!response.ok)throw new Error('HTTP '+response.status);
+       const data=await response.json();
+       record=def.norad?data.find(x=>String(x.NORAD_CAT_ID)===def.norad):data.find(x=>String(x.OBJECT_NAME||'').toUpperCase().startsWith('STARLINK'));
+      }catch(error){lastError=error;}
+     }
+     if(!record&&def.norad){
+      const response=await fetch('/api/satellites?norad='+def.norad,{cache:'no-store'});
+      if(!response.ok)throw new Error('группа: '+(lastError?lastError.message:'объект не найден')+'; CATNR HTTP '+response.status);
+      const data=await response.json();
+      record=data.find(x=>String(x.NORAD_CAT_ID)===def.norad);
+     }
+     if(!record)throw new Error('Объект отсутствует в выдаче CelesTrak'+(lastError?' · '+lastError.message:''));
      return {id:def.id,record};
     }catch(error){return {id:def.id,error};}
    }));

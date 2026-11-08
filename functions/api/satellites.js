@@ -1,5 +1,5 @@
 const ALLOWED_GROUPS = new Set([
-  "stations", "weather", "amateur", "gnss", "science", "cubesat", "visual"
+  "stations", "weather", "amateur", "gnss", "science", "cubesat", "visual", "starlink"
 ]);
 
 export async function onRequest(context) {

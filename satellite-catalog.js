@@ -91,21 +91,76 @@
     const category = $("satCategory").value;
     return category === "all" || item._category === category;
   }
-  function render() {
+  let catalogSortToken = 0;
+  async function rankByVisibility(items) {
+    const token = ++catalogSortToken;
+    const sat = await loadSatelliteLib();
+    const latInput = Number($("observerLat").value), lonInput = Number($("observerLon").value);
+    // Если координаты станции ещё не введены, используем координаты станции проекта.
+    const observer = {
+      latitude: Number.isFinite(latInput) && $("observerLat").value.trim() !== "" ? latInput : 56.8389,
+      longitude: Number.isFinite(lonInput) && $("observerLon").value.trim() !== "" ? lonInput : 60.6057,
+      altitude: Number($("observerAltitude").value || 0)
+    };
+    const threshold = 10, now = new Date(), horizonMs = 24 * 3600000, stepMs = 120000;
+    const ranked = items.map(item => ({item, visible:false, nextPass:null, elevation:-90}));
+    // Сначала определяем видимые спутники, затем ищем ближайшее пересечение порога 10°.
+    for (const row of ranked) {
+      try {
+        const satrec = sat.json2satrec(row.item);
+        const current = getTopocentric(sat, satrec, observer, now);
+        if (!current) continue;
+        row.elevation = current.elevation;
+        row.visible = current.elevation >= threshold;
+        if (row.visible) continue;
+        let prevTime = now, prev = current;
+        for (let ms = stepMs; ms <= horizonMs; ms += stepMs) {
+          const time = new Date(now.getTime() + ms);
+          const point = getTopocentric(sat, satrec, observer, time);
+          if (point && prev.elevation < threshold && point.elevation >= threshold) {
+            row.nextPass = interpolateCrossing(prevTime, prev.elevation, time, point.elevation, threshold);
+            break;
+          }
+          if (point) { prev = point; prevTime = time; }
+        }
+      } catch (_) {}
+    }
+    if (token !== catalogSortToken) return items;
+    ranked.sort((a,b) => {
+      if (a.visible !== b.visible) return a.visible ? -1 : 1;
+      if (a.visible && b.visible) return b.elevation - a.elevation;
+      if (a.nextPass && b.nextPass) return a.nextPass - b.nextPass;
+      if (a.nextPass) return -1;
+      if (b.nextPass) return 1;
+      return b.elevation - a.elevation;
+    });
+    return ranked.map(row => row);
+  }
+  async function render() {
     const query = $("satSearch").value.trim().toLowerCase();
-    const visible = records.filter(item => categoryMatch(item) &&
+    const filtered = records.filter(item => categoryMatch(item) &&
       (String(item.OBJECT_NAME).toLowerCase().includes(query) || String(item.NORAD_CAT_ID).includes(query)));
-    $("liveSatelliteList").innerHTML = catalogNotice + visible.slice(0, 100).map(item => {
+    const list = $("liveSatelliteList");
+    list.innerHTML = catalogNotice + '<div class="note">Рассчитываем видимость и ближайшие пролёты…</div>';
+    let ranked;
+    try { ranked = await rankByVisibility(filtered.slice(0, 100)); }
+    catch (_) { ranked = filtered.slice(0, 100).map(item => ({item,visible:false,nextPass:null,elevation:-90})); }
+    if (!ranked.length) { list.innerHTML = catalogNotice + '<div class="note">По запросу ничего не найдено.</div>'; return; }
+    list.innerHTML = catalogNotice + '<div class="note" style="margin-bottom:8px">Сортировка: сначала видимые сейчас (угол места ≥ 10°), далее — по времени ближайшего пролёта в следующие 24 часа. Координаты по умолчанию: Екатеринбург; можно изменить в настройках наблюдателя.</div>' + ranked.map(row => {
+      const item = row.item;
       const age = item.EPOCH ? (Date.now() - Date.parse(item.EPOCH)) / 3600000 : null;
       const ageLabel = age === null ? "эпоха не указана" : age < 0 ? "эпоха из будущего — проверьте источник" :
-        age > 168 ? "устарело: " + (age / 24).toFixed(1) + " сут." :
-        "эпоха " + age.toFixed(1) + " ч назад";
+        age > 168 ? "устарело: " + (age / 24).toFixed(1) + " сут." : "эпоха " + age.toFixed(1) + " ч назад";
       const ageColor = age !== null && age > 168 ? "#ffb36b" : "#8da5bc";
+      const passLabel = row.visible ? "● ВИДЕН СЕЙЧАС · " + row.elevation.toFixed(1) + "°" :
+        row.nextPass ? "Пролёт: " + row.nextPass.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) :
+        "Нет пролёта за 24 ч";
+      const passColor = row.visible ? "#55e1a7" : row.nextPass ? "#8cddff" : "#8da5bc";
       return '<button type="button" class="object-row" data-live-id="' + esc(item.NORAD_CAT_ID) + '" style="width:100%;text-align:left;color:inherit;cursor:pointer"><span><b>' +
         esc(item.OBJECT_NAME) + '</b><small>NORAD ' + esc(item.NORAD_CAT_ID) + ' · ' + esc(item._categoryLabel || item._category) +
-        ' · <span style="color:' + ageColor + '">' + esc(ageLabel) + '</span></small></span><strong>Выбрать ↗</strong></button>';
-    }).join("") || '<div class="note">По запросу ничего не найдено.</div>';
-    $("liveSatelliteList").querySelectorAll("[data-live-id]").forEach(button => button.addEventListener("click", () => {
+        ' · <span style="color:' + passColor + '">' + esc(passLabel) + '</span><br><span style="color:' + ageColor + '">' + esc(ageLabel) + '</span></small></span><strong>Выбрать ↗</strong></button>';
+    }).join("");
+    list.querySelectorAll("[data-live-id]").forEach(button => button.addEventListener("click", () => {
       selected = records.find(item => String(item.NORAD_CAT_ID) === button.dataset.liveId);
       showDetails().catch(error => { $("liveSatelliteDetails").textContent = error.message; });
     }));

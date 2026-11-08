@@ -1302,6 +1302,29 @@ if(host){
   setStatus('GPS-МОДУЛЬ');if(note)note.textContent='Координаты получены от GPS-модуля. Точка на глобусе, радар и прогноз пролётов обновлены.';
   window.dispatchEvent(new Event('cyd-observer-change'));
  });
+ // При запуске сайта сразу запрашиваем геопозицию устройства.
+ // Разрешение компаса на iPad запрашивается отдельно по нажатию кнопки, поскольку iOS требует жест пользователя.
+ function requestGpsOnStartup(){
+  if(!window.isSecureContext){setStatus('НУЖЕН HTTPS');if(note)note.textContent='Для запроса GPS откройте сайт по HTTPS.';return;}
+  if(!navigator.geolocation){setStatus('GPS НЕДОСТУПЕН');if(note)note.textContent='Браузер не поддерживает геолокацию. Проверьте настройки iPadOS.';return;}
+  setStatus('ЗАПРОС GPS');if(note)note.textContent='При запуске запрашиваем разрешение на геопозицию устройства…';
+  navigator.geolocation.getCurrentPosition(pos=>{
+   const c=pos.coords,lat=c.latitude,lon=c.longitude;
+   window.cydObserverLocation={latitude:lat,longitude:lon,height:Number.isFinite(c.altitude)?c.altitude/1000:0,source:'device-demo',accuracy:c.accuracy,timestamp:pos.timestamp};
+   window.cydObserverSource='device-demo';window.dispatchEvent(new Event('cyd-observer-change'));
+   document.getElementById('gpsLat').textContent=Math.abs(lat).toFixed(5)+'° '+(lat>=0?'N':'S');
+   document.getElementById('gpsLon').textContent=Math.abs(lon).toFixed(5)+'° '+(lon>=0?'E':'W');
+   document.getElementById('gpsAlt').textContent=Number.isFinite(c.altitude)?Math.round(c.altitude)+' м':'—';
+   document.getElementById('gpsAccuracy').textContent='±'+Math.round(c.accuracy)+' м';
+   document.getElementById('gpsTime').textContent=new Date(pos.timestamp).toLocaleTimeString('ru-RU');
+   setStatus('GPS УСТРОЙСТВА');if(note)note.textContent='Геопозиция устройства получена. Глобус, радар и прогноз пролётов обновлены.';
+  },err=>{
+   const msg=err.code===1?'Доступ к геопозиции запрещён. Разрешите его для Яндекс Браузера в настройках iPadOS.':err.code===2?'Устройство не смогло определить местоположение. Проверьте службы геолокации.':'Время ожидания GPS истекло. Нажмите кнопку для повтора.';
+   setStatus(err.code===1?'ДОСТУП ЗАПРЕЩЁН':err.code===2?'НЕТ СИГНАЛА':'ТАЙМ-АУТ');if(note)note.textContent=msg;
+  },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',requestGpsOnStartup,{once:true});
+ else setTimeout(requestGpsOnStartup,250);
  button.addEventListener('click',()=>{
   setStatus('ЗАПРОС GPS');
   if(note)note.textContent='Запрашиваю доступ к геопозиции устройства…';

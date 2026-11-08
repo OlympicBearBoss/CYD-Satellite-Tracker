@@ -358,7 +358,7 @@ body[data-theme="terminal"] .content:before{opacity:.28}
 <div class="page-heading"><div><div class="eyebrow" data-i18n="eyebrow">ЦЕНТР УПРАВЛЕНИЯ · CYD ESP32</div><h1 data-i18n="welcome">Добро пожаловать на станцию</h1><p data-i18n="welcome_desc">Мониторинг спутников, положение антенны и состояние оборудования.</p></div><div class="heading-actions"><span class="date-label" id="today"></span><button class="btn btn-primary" data-go="control" data-i18n="open_control">Открыть управление ↗</button></div></div>
 <div class="overview-grid">
 <article class="panel globe-panel"><div class="panel-title"><div><span class="section-icon">◉</span><h2 data-i18n="earth_view">Орбитальная обстановка</h2></div><span class="subtle">LIVE ORBITS · SGP4</span></div><div class="earth-scene realistic-earth-scene"><div id="earth3d" role="img" aria-label="Трёхмерная модель Земли, спутник на орбите и красная точка наблюдения в Екатеринбурге"></div><button type="button" class="orbit-expand-btn" id="orbitExpandBtn" aria-label="Открыть орбитальную обстановку на весь экран">⛶ Большой экран</button><div class="orbit-fullscreen-head" id="orbitFullscreenHead"><div><b>ОРБИТАЛЬНАЯ ОБСТАНОВКА</b><small>SGP4 · видимость над горизонтом ≥ 10°</small></div><button type="button" id="orbitFullscreenClose" aria-label="Закрыть большой экран">✕ Закрыть</button></div><aside class="orbit-live-info" id="orbitLiveInfo"><b>ВИДИМЫЕ СПУТНИКИ</b><div id="orbitLiveList"><small>Ожидание расчёта координат…</small></div><small class="orbit-live-hint">Снимите отметку, чтобы скрыть объект и его орбиту</small></aside><div class="earth-caption"><b>ЗЕМЛЯ / ОРБИТА LEO</b><small>Екатеринбург · 56.8389° с. ш. · 60.6057° в. д.</small></div><div class="earth-location-key"><i></i> Точка наблюдения · Екатеринбург</div><div id="orbitDataStatus" style="position:absolute;left:16px;right:16px;top:42px;z-index:5;font-size:10px;line-height:1.4;color:#ffd18a;text-shadow:0 1px 5px #00101e;pointer-events:none">Ожидание орбитальных данных…</div><div class="orbit-visibility" id="orbitVisibilityPanel" aria-label="Видимость спутников"><div class="orbit-visibility-head"><b>ОТОБРАЖЕНИЕ НА ОРБИТЕ</b><button type="button" class="orbit-collapse-btn" id="orbitVisibilityCollapse" aria-expanded="true">Свернуть −</button></div><label><input type="checkbox" data-orbit-toggle="iss" checked> МКС · NASA</label><label><input type="checkbox" data-orbit-toggle="noaa" checked> NOAA 19</label><label><input type="checkbox" data-orbit-toggle="ao91" checked> AO-91</label><label><input type="checkbox" data-orbit-toggle="starlink" checked> Starlink · группа</label><small>Координаты рассчитываются по OMM CelesTrak · SGP4</small></div></div><div class="globe-foot"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div></article>
-<article class="panel target-panel"><div class="panel-title"><div><span class="section-icon">⌖</span><h2 data-i18n="selected_sat">Выбранный спутник</h2></div><span class="status-pill"><i></i><span data-i18n="tracking_demo">ДЕМО</span></span></div><div class="target-name"><div class="sat-avatar">✦</div><div><h3 id="selectedName">МКС (ZARYA)</h3><small id="selectedNorad">NORAD 25544 · НОО</small></div></div><p id="selectedSummary" class="muted" style="font-size:12px;line-height:1.5;margin:8px 0 12px">Пилотируемая орбитальная станция для научных экспериментов и наблюдения Земли.</p><div class="target-coords"><div><small data-i18n="azimuth">АЗИМУТ</small><b id="overviewAz">132.4°</b></div><div><small data-i18n="elevation">УГОЛ МЕСТА</small><b id="overviewEl">67.8°</b></div></div><div class="pass-card"><span data-i18n="next_pass">СЛЕДУЮЩИЙ ВИДИМЫЙ ПРОЛЁТ МКС</span><b id="nextPassCountdown">Расчёт пролёта…</b><small id="nextPassMeta">Условие видимости: высота над горизонтом ≥ 10°</small></div><button class="text-link" data-go="satellites" data-i18n="all_satellites">Каталог спутников →</button></article>
+<article class="panel target-panel"><div class="panel-title"><div><span class="section-icon">⌖</span><h2 data-i18n="selected_sat">Выбранный спутник</h2></div><span class="status-pill"><i></i><span data-i18n="tracking_demo">ДЕМО</span></span></div><div class="target-name"><div class="sat-avatar">✦</div><div><h3 id="selectedName">МКС (ZARYA)</h3><small id="selectedNorad">NORAD 25544 · НОО</small></div></div><p id="selectedSummary" class="muted" style="font-size:12px;line-height:1.5;margin:8px 0 12px">Пилотируемая орбитальная станция для научных экспериментов и наблюдения Земли.</p><div class="target-coords"><div><small data-i18n="azimuth">АЗИМУТ</small><b id="overviewAz">132.4°</b></div><div><small data-i18n="elevation">УГОЛ МЕСТА</small><b id="overviewEl">67.8°</b></div></div><div class="pass-card"><span>ВИДИМОСТЬ ВЫБРАННОГО СПУТНИКА</span><b id="selectedVisibilityCountdown">Ожидание орбитальных данных…</b><small id="selectedVisibilityMeta">Обратный отсчёт до появления над горизонтом (порог 10°)</small></div><button class="text-link" data-go="satellites" data-i18n="all_satellites">Каталог спутников →</button></article>
 </div>
 <div class="kpi-grid">
 <div class="kpi"><span data-i18n="axis_az">ОСЬ АЗИМУТА</span><b id="kpiAz">132.4°</b><small>AZ · 0—360°</small><div class="spark"><i style="height:35%"></i><i style="height:52%"></i><i style="height:42%"></i><i style="height:70%"></i><i style="height:62%"></i><i style="height:86%"></i><i style="height:75%"></i></div></div>
@@ -487,7 +487,7 @@ function renderTarget(){
  const summary=summaries[selected];
  $("selectedSummary").textContent=summary?(lang==="en"?summary.en:summary.ru):(lang==="en"?"Satellite selected for tracking. Orbit data is calculated from the latest available public orbital elements.":"Выбранный объект для сопровождения. Орбита рассчитывается по последним доступным открытым орбитальным элементам.");
 }
-function selectTarget(id,openControl=true){selected=id;const o=objectData[id];renderTarget();setAxes(o.az,o.el);$("targetSelect").value=id;addLog("SELECT",lang==="ru"?"Выбран объект "+o.name:"Selected target "+o.name);if(openControl)go("control");}
+function selectTarget(id,openControl=true){selected=id;window.cydSelectedSatelliteId=id;window.dispatchEvent(new Event("cyd-selected-target-change"));const o=objectData[id];renderTarget();setAxes(o.az,o.el);$("targetSelect").value=id;addLog("SELECT",lang==="ru"?"Выбран объект "+o.name:"Selected target "+o.name);if(openControl)go("control");}
 // Expose the target selector to the satellite catalog quick-access panel.
 window.selectTarget=selectTarget;
 // Dedicated quick-access selection never changes the active view.
@@ -500,14 +500,14 @@ window.addEventListener("cyd-catalog-track",event=>{
  objectData[id]={name,norad:"NORAD "+norad+" · "+category.toUpperCase(),az:0,el:-90,real:true};
  let option=$("targetSelect").querySelector('option[value="'+id+'"]');
  if(!option){option=document.createElement("option");option.value=id;option.textContent=name+" · "+norad;$("targetSelect").appendChild(option);}
- selected=id;renderTarget();$("targetSelect").value=id;
+ selected=id;window.cydSelectedSatelliteId=id;window.dispatchEvent(new Event("cyd-selected-target-change"));renderTarget();$("targetSelect").value=id;
  $("selectedSummary").textContent="Объект выбран из актуального каталога CelesTrak. Орбита рассчитывается по его OMM-элементам методом SGP4.";
  $("controlStatus").textContent="Выбран спутник "+name+" · NORAD "+norad+". Команды на моторы не отправлялись.";
  addLog("TRACK","Выбран спутник "+name+" · NORAD "+norad);
 });
 
 document.querySelectorAll("[data-select]").forEach(b=>b.addEventListener("click",()=>selectTarget(b.dataset.select)));
-$("targetSelect").addEventListener("change",e=>{selected=e.target.value;renderTarget();const o=objectData[selected];setAxes(o.az,o.el);});
+$("targetSelect").addEventListener("change",e=>{selected=e.target.value;window.cydSelectedSatelliteId=selected;window.dispatchEvent(new Event("cyd-selected-target-change"));renderTarget();const o=objectData[selected];setAxes(o.az,o.el);});
 $("centerBtn").addEventListener("click",()=>{setAxes(180,45);$("controlStatus").textContent=t("centered");addLog("CTRL",t("centered"));});
 $("trackBtn").addEventListener("click",()=>{const o=objectData[selected];setAxes(o.az,o.el);$("controlStatus").textContent=t("tracking")+o.name;addLog("CTRL",t("tracking")+o.name);});
 $("stopBtn").addEventListener("click",()=>{$("controlStatus").textContent=t("stopped");addLog("STOP",t("stopped"));});
@@ -926,6 +926,60 @@ if(host){
   // Observer coordinates are the same as the red marker on the globe.
   const observer={get latitude(){return THREE.MathUtils.degToRad((window.cydObserverLocation||demoObserver).latitude);},get longitude(){return THREE.MathUtils.degToRad((window.cydObserverLocation||demoObserver).longitude);},get height(){return Number((window.cydObserverLocation||demoObserver).height)||0;}};
   const visibleElevation=THREE.MathUtils.degToRad(10);
+  const selectedVisibilityCountdown=document.getElementById('selectedVisibilityCountdown');
+  const selectedVisibilityMeta=document.getElementById('selectedVisibilityMeta');
+  let selectedPassWindow=null,selectedPassScanId=null;
+  function selectedSatelliteLook(item,date){
+   if(!item||!item.satrec)return null;
+   const pv=satellite.propagate(item.satrec,date);
+   if(!pv||!pv.position||!Number.isFinite(pv.position.x))return null;
+   const ecf=satellite.eciToEcf(pv.position,satellite.gstime(date));
+   return satellite.ecfToLookAngles(observer,ecf);
+  }
+  function calculateSelectedVisibility(){
+   const id=window.cydSelectedSatelliteId||'iss',item=orbitObjects[id];
+   selectedPassScanId=id;selectedPassWindow=null;
+   if(!item||!item.satrec){
+    if(selectedVisibilityCountdown)selectedVisibilityCountdown.textContent='Нет орбитальных данных';
+    if(selectedVisibilityMeta)selectedVisibilityMeta.textContent='Выберите спутник с загруженными OMM-элементами';
+    return;
+   }
+   const now=new Date(),stepMs=15000,horizonMs=24*60*60*1000;
+   const current=selectedSatelliteLook(item,now);
+   let inside=!!(current&&current.elevation>=visibleElevation),start=inside?now:null,end=null;
+   for(let t=now.getTime()+stepMs;t<=now.getTime()+horizonMs;t+=stepMs){
+    const date=new Date(t),look=selectedSatelliteLook(item,date),visible=!!(look&&look.elevation>=visibleElevation);
+    if(!inside&&visible)start=date;
+    if(inside&&!visible){end=date;break;}
+    inside=visible;
+    if(start&&!inside){end=date;break;}
+   }
+   if(start)selectedPassWindow={start,end:end||new Date(start.getTime()+10*60*1000),alreadyVisible:start.getTime()<=now.getTime()};
+   updateSelectedVisibilityCountdown();
+  }
+  function updateSelectedVisibilityCountdown(){
+   if(!selectedVisibilityCountdown)return;
+   const id=window.cydSelectedSatelliteId||'iss',item=orbitObjects[id];
+   if(id!==selectedPassScanId){calculateSelectedVisibility();return;}
+   if(!item||!item.satrec||!selectedPassWindow){
+    if(!item||!item.satrec){selectedVisibilityCountdown.textContent='Нет орбитальных данных';selectedVisibilityMeta.textContent='Ожидается загрузка OMM / SGP4';}
+    else{selectedVisibilityCountdown.textContent='Нет видимого пролёта за 24 часа';selectedVisibilityMeta.textContent='Порог видимости: высота ≥ 10°';}
+    return;
+   }
+   const now=new Date(),active=selectedPassWindow.start<=now&&now<selectedPassWindow.end;
+   const remaining=active?selectedPassWindow.end-now:selectedPassWindow.start-now;
+   selectedVisibilityCountdown.textContent=(active?'ВИДЕН · до скрытия ':'До появления ')+formatCountdown(remaining);
+   selectedVisibilityMeta.textContent=(active?'Спутник выше 10° над горизонтом':'Начало пролёта: '+selectedPassWindow.start.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}))+' · завершение: '+selectedPassWindow.end.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+   if(remaining<=0&&!active)calculateSelectedVisibility();
+  }
+  window.addEventListener('cyd-selected-target-change',calculateSelectedVisibility);
+  window.addEventListener('cyd-orbit-update',()=>{
+   const id=window.cydSelectedSatelliteId||'iss';
+   if(id!==selectedPassScanId||(orbitObjects[id]&&orbitObjects[id].satrec&&!selectedPassWindow))calculateSelectedVisibility();
+  });
+  calculateSelectedVisibility();
+  setInterval(updateSelectedVisibilityCountdown,1000);
+
   const passNotice=document.getElementById('passNotice');
   const passNoticeClose=document.getElementById('passNoticeClose');
   let nextVisiblePass=null,lastNoticeKey='',noticeDismissedKey='',passTimer=null;

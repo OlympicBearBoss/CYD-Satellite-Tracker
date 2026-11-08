@@ -13,6 +13,8 @@ let lang="ru",selected="iss",logItems=[
 ["19:32:17","WIFI","Тестовый Wi-Fi сигнал стабилен","Demo Wi-Fi signal stable"]
 ];
 const $=id=>document.getElementById(id);
+document.querySelectorAll("[data-i18n]").forEach(el=>{translations.ru[el.dataset.i18n]=el.innerHTML;});
+Object.assign(translations.ru,{centered:"Оси установлены в центр (демо).",stopped:"Движение остановлено (демо).",tracking:"Демонстрационное наведение на цель: ",connection_test_ok:"Проверка демо завершена: отображаются тестовые параметры подключения.",});
 function t(key){return translations[lang][key]||translations.ru[key]||key}
 function setLanguage(next){lang=next;document.documentElement.lang=lang;document.querySelectorAll("[data-i18n]").forEach(el=>{const val=t(el.dataset.i18n);if(val.includes("<br>"))el.innerHTML=val;else el.textContent=val});$("language").textContent=lang==="ru"?"EN":"RU";document.querySelectorAll("[data-lang]").forEach(b=>b.classList.toggle("selected",b.dataset.lang===lang));const active=document.querySelector(".view.active");if(active){const key=active.id.replace("view-","");const nav=document.querySelector('[data-view="'+key+'"]');$("crumbTitle").textContent=nav?nav.querySelector("i").textContent:"";}renderLog();renderRadarObjects();renderTarget();}
 function go(view){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));document.querySelectorAll(".nav-item").forEach(b=>b.classList.toggle("active",b.dataset.view===view));const nav=document.querySelector('[data-view="'+view+'"]');$("crumbTitle").textContent=nav?nav.querySelector("i").textContent:"";window.scrollTo({top:0,behavior:"smooth"});}

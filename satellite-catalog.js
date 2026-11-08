@@ -275,7 +275,7 @@
     if(!item)return;
     trackingId=id;
     selected=item;
-    window.cydPendingCatalogTracks=window.cydPendingCatalogTracks||[];window.cydPendingCatalogTracks.push(item);window.dispatchEvent(new CustomEvent("cyd-catalog-track",{detail:{record:item}}));
+    if(window.cydOrbitSceneReady){window.dispatchEvent(new CustomEvent("cyd-catalog-track",{detail:{record:item}}));}else{window.cydPendingCatalogTracks=window.cydPendingCatalogTracks||[];window.cydPendingCatalogTracks.push(item);}
     if(trackingTimer)clearInterval(trackingTimer);
     showDetails().then(()=>{
       const update=()=>{if(trackingId!==id||!selected||String(selected.NORAD_CAT_ID)!==id)return;calculatePosition();};

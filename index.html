@@ -232,6 +232,24 @@ if(host){
   const markerPos=new THREE.Vector3(Math.cos(lat)*Math.cos(lon),Math.sin(lat),-Math.cos(lat)*Math.sin(lon)).multiplyScalar(1.018);
   const marker=new THREE.Mesh(new THREE.SphereGeometry(.018,20,16),new THREE.MeshBasicMaterial({color:0xff263f})); marker.position.copy(markerPos); earthGroup.add(marker);
   const halo=new THREE.Mesh(new THREE.SphereGeometry(.035,20,16),new THREE.MeshBasicMaterial({color:0xff263f,transparent:true,opacity:.25})); halo.position.copy(markerPos); earthGroup.add(halo);
+  // Запускаем рендер сразу после создания Земли, не ожидая сеть спутников.
+  // Это гарантирует видимый глобус даже при медленном/недоступном CelesTrak.
+  function resizeEarthRenderer(){
+   const width=Math.max(1,host.clientWidth),height=Math.max(1,host.clientHeight);
+   renderer.setSize(width,height,false);
+   camera.aspect=width/height;
+   camera.updateProjectionMatrix();
+  }
+  const earthResizeObserver=new ResizeObserver(resizeEarthRenderer);
+  earthResizeObserver.observe(host);
+  window.addEventListener('resize',resizeEarthRenderer,{passive:true});
+  resizeEarthRenderer();
+  function renderEarthFrame(){
+   requestAnimationFrame(renderEarthFrame);
+   controls.update();
+   renderer.render(scene,camera);
+  }
+  renderEarthFrame();
   // Real NASA spacecraft assets (official GLB downloads).
   const sat=new THREE.Group(); earthGroup.add(sat);
   const dracoLoader=new DRACOLoader();
@@ -380,23 +398,7 @@ if(host){
   if(status&&!Object.values(orbitObjects).some(x=>x.satrec))status.textContent='Не удалось получить орбиты · проверьте соединение с CelesTrak';
   setInterval(()=>updateRealPositions(false),2000);
   setInterval(()=>refreshRealOrbits(),15*60*1000);
-  // Важно: задать фактический размер canvas и постоянно отрисовывать сцену.
-  function resizeEarthRenderer(){
-   const width=Math.max(1,host.clientWidth),height=Math.max(1,host.clientHeight);
-   renderer.setSize(width,height,false);
-   camera.aspect=width/height;
-   camera.updateProjectionMatrix();
-  }
-  const earthResizeObserver=new ResizeObserver(resizeEarthRenderer);
-  earthResizeObserver.observe(host);
-  window.addEventListener('resize',resizeEarthRenderer,{passive:true});
-  resizeEarthRenderer();
-  function renderEarthFrame(){
-   requestAnimationFrame(renderEarthFrame);
-   controls.update();
-   renderer.render(scene,camera);
-  }
-  renderEarthFrame();
+
 
  }catch(e){if(status)status.textContent='3D не загрузилось: '+e.message;console.error(e);}
 }

@@ -21,6 +21,14 @@ export async function onRequestPost({request,env}){
   await env.DB.prepare("UPDATE users SET role=?,updated_at=? WHERE id=?").bind(role,Math.floor(Date.now()/1000),id).run();
   await audit(env,gate.user.id,id,"role",{role});return json({ok:true});
  }
+ if(action==="device_revoke"){
+  const deviceId=String(body.deviceId||"");
+  if(!deviceId||deviceId.length>80)return json({error:"Некорректное устройство"},400);
+  const result=await env.DB.prepare("UPDATE device_links SET revoked_at=?,code_hash=NULL,code_expires_at=NULL,token_hash=NULL WHERE id=? AND revoked_at IS NULL").bind(Math.floor(Date.now()/1000),deviceId).run();
+  if(!(result.meta?.changes||0))return json({error:"Устройство не найдено или уже отключено"},404);
+  await audit(env,gate.user.id,null,"device_revoke",{device_id:deviceId});
+  return json({ok:true});
+ }
  if(action==="sessions"){const r=await env.DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(id).run();await audit(env,gate.user.id,id,"revoke_sessions");return json({ok:true,deleted:r.meta?.changes||0});}
  if(action==="delete"){
   if(id===gate.user.id)return json({error:"Нельзя удалить собственный аккаунт"},400);

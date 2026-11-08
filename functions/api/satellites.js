@@ -51,7 +51,7 @@ export async function onRequest(context) {
       headers: {
         ...cors,
         "Content-Type": "application/json; charset=utf-8",
-        "Cache-Control": "public, max-age=7200",
+        "Cache-Control": "public, max-age=900",
         "X-CYD-Data-Source": "CelesTrak GP OMM",
         "X-CYD-Cache": "MISS"
       }

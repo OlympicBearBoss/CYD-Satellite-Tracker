@@ -23,35 +23,54 @@
     return satelliteLibReady;
   }
   async function refresh() {
-    status("Загрузка…");
+    status("Загрузка актуальных данных…");
     $("liveSatelliteList").innerHTML = '<div class="note">Получение орбитальных элементов CelesTrak…</div>';
-    try {
-      const responses = await Promise.all(sources.map(async source => {
-        const url = "https://celestrak.org/NORAD/elements/gp.php?GROUP=" + encodeURIComponent(source.group) + "&FORMAT=json";
+    const results = await Promise.all(sources.map(async source => {
+      const url = "https://celestrak.org/NORAD/elements/gp.php?GROUP=" + encodeURIComponent(source.group) + "&FORMAT=json";
+      try {
         const response = await fetch(url, { cache: "no-store" });
-        if (!response.ok) throw new Error(source.group + ": HTTP " + response.status);
+        if (!response.ok) throw new Error("HTTP " + response.status);
         const data = await response.json();
-        return data.map(item => ({...item, _category: source.group}));
-      }));
-      const byId = new Map();
-      responses.flat().forEach(item => {
-        const id = String(item.NORAD_CAT_ID ?? item. NORAD_CAT_ID);
-        if (id && item.TLE_LINE1 && item.TLE_LINE2) byId.set(id, item);
-      });
-      records = [...byId.values()];
-      $("orbitUpdatedAt").textContent = "Получено: " + new Date().toLocaleString();
-      status(records.length + " объектов");
-      render();
-      if (!records.length) throw new Error("Источник не вернул записи с TLE");
-    } catch (error) {
-      status("Нет связи с источником");
-      $("liveSatelliteList").innerHTML = '<div class="note">Не удалось загрузить каталог: ' + esc(error.message) + '. Проверьте интернет-соединение или повторите запрос.</div>';
+        if (!Array.isArray(data)) throw new Error("неверный формат ответа");
+        return { source, data, error: null };
+      } catch (error) {
+        return { source, data: [], error: error.message };
+      }
+    }));
+    const byId = new Map();
+    results.forEach(({source,data}) => data.forEach(item => {
+      const id = String(item.NORAD_CAT_ID ?? "");
+      if (id && item.TLE_LINE1 && item.TLE_LINE2) {
+        byId.set(id, {...item, _category: source.group, _categoryLabel: source.label});
+      }
+    }));
+    records = [...byId.values()];
+    const failed = results.filter(result => result.error);
+    const epochs = records.map(item => Date.parse(item.EPOCH)).filter(Number.isFinite);
+    const newest = epochs.length ? new Date(Math.max(...epochs)) : null;
+    const oldest = epochs.length ? new Date(Math.min(...epochs)) : null;
+    const ageHours = oldest ? (Date.now() - oldest.getTime()) / 3600000 : null;
+    $("orbitUpdatedAt").textContent = "Загрузка: " + new Date().toLocaleString() +
+      (newest ? " · свежайшая эпоха: " + newest.toLocaleString() : "");
+    if (!records.length) {
+      status("Источник недоступен");
+      $("liveSatelliteList").innerHTML = '<div class="note">Не удалось получить каталог CelesTrak. Проверьте соединение и повторите обновление. ' +
+        esc(failed.map(x => x.source.label + ": " + x.error).join("; ")) + '</div>';
+      return;
     }
+    status(records.length + " спутников · " + (failed.length ? failed.length + " категорий недоступны" : "все категории загружены"));
+    const freshness = ageHours === null ? "Эпоха TLE не определена" :
+      ageHours > 168 ? "Внимание: в каталоге есть данные старше 7 суток" :
+      ageHours > 72 ? "Некоторые орбитальные элементы старше 72 часов" : "Возраст орбитальных данных проверен";
+    $("liveSatelliteList").insertAdjacentHTML("beforeend",
+      '<div class="note" style="margin-bottom:8px">Источник: CelesTrak GP · ' + esc(freshness) +
+      (oldest ? '<br>Самая старая эпоха в выборке: ' + esc(oldest.toLocaleString()) : '') +
+      (failed.length ? '<br>Не загружены: ' + esc(failed.map(x => x.source.label).join(", ")) : '') + '</div>');
+    render();
   }
   function categoryMatch(item) {
     const category = $("satCategory").value;
-    return category === "all" || category === "stations" && item._category === "stations" ||
-      category === "weather" && item._category === "weather" || category === "amateur" && item._category === "amateur";
+    return category === "all" || item._category === category;
   }
   function render() {
     const query = $("satSearch").value.trim().toLowerCase();
@@ -59,7 +78,7 @@
       (String(item.OBJECT_NAME).toLowerCase().includes(query) || String(item.NORAD_CAT_ID).includes(query)));
     $("liveSatelliteList").innerHTML = visible.slice(0, 100).map(item =>
       '<button type="button" class="object-row" data-live-id="' + esc(item.NORAD_CAT_ID) + '" style="width:100%;text-align:left;color:inherit;cursor:pointer"><span><b>' +
-      esc(item.OBJECT_NAME) + '</b><small>NORAD ' + esc(item.NORAD_CAT_ID) + ' · ' + esc(item._category) + '</small></span><strong>Выбрать ↗</strong></button>'
+      esc(item.OBJECT_NAME) + '</b><small>NORAD ' + esc(item.NORAD_CAT_ID) + ' · ' + esc(item._categoryLabel || item._category) + '</small></span><strong>Выбрать ↗</strong></button>'
     ).join("") || '<div class="note">По запросу ничего не найдено.</div>';
     $("liveSatelliteList").querySelectorAll("[data-live-id]").forEach(button => button.addEventListener("click", () => {
       selected = records.find(item => String(item.NORAD_CAT_ID) === button.dataset.liveId);
@@ -70,8 +89,8 @@
     if (!selected) return;
     const epoch = selected.EPOCH ? new Date(selected.EPOCH).toLocaleString() : "не указана";
     $("liveSatelliteDetails").innerHTML = '<b>' + esc(selected.OBJECT_NAME) + '</b> · NORAD ' + esc(selected.NORAD_CAT_ID) +
-      '<br>Эпоха орбитальных элементов: ' + esc(epoch) +
-      '<br>Наклонение: ' + esc(selected.INCLINATION) + '° · Эксцентриситет: ' + esc(selected.ECCENTRICITY) +
+      '<br>Эпоха орбитальных элементов (UTC): ' + esc(epoch) +
+      '<br>Возраст эпохи: ' + esc(selected.EPOCH ? Math.max(0, (Date.now() - Date.parse(selected.EPOCH)) / 3600000).toFixed(1) + ' ч' : 'неизвестен') + '<br>Наклонение: ' + esc(selected.INCLINATION) + '° · Эксцентриситет: ' + esc(selected.ECCENTRICITY) +
       '<br>Среднее движение: ' + esc(selected.MEAN_MOTION) + ' об/сутки' +
       '<div class="button-row"><button class="btn btn-primary" id="calculateSelectedPosition">Рассчитать положение сейчас</button></div>' +
       '<div id="selectedPositionResult" style="margin-top:9px">Введите координаты станции и нажмите расчёт.</div>';

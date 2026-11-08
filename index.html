@@ -1199,8 +1199,37 @@ if(host){
     arrivalElevations.set(item.id,elevation);
    }
   }
+  const catalogArrivalSatrecs=new Map();
+  function loadCatalogArrivalRecords(records){
+   if(!Array.isArray(records))return;
+   for(const record of records){
+    const id=String(record&&record.NORAD_CAT_ID||'');
+    if(!id||catalogArrivalSatrecs.has(id))continue;
+    try{
+     const satrec=satellite.json2satrec(record);
+     if(satrec&&!satrec.error)catalogArrivalSatrecs.set(id,{id,name:String(record.OBJECT_NAME||('NORAD '+id)),satrec});
+    }catch(_){}
+   }
+   console.info('CYD arrival catalog:',catalogArrivalSatrecs.size,'satellites');
+  }
+  window.addEventListener('cyd-catalog-loaded',event=>loadCatalogArrivalRecords(event.detail&&event.detail.records));
+  if(Array.isArray(window.cydSatelliteCatalogRecords))loadCatalogArrivalRecords(window.cydSatelliteCatalogRecords);
+  const catalogArrivalLast=new Map();
+  function scanCatalogArrivals(){
+   const now=new Date(),loc=window.cydObserverLocation||demoObserver;
+   const observerNow={latitude:THREE.MathUtils.degToRad(loc.latitude),longitude:THREE.MathUtils.degToRad(loc.longitude),height:Number(loc.height)||0};
+   for(const entry of catalogArrivalSatrecs.values()){
+    const ecf=propagatedEcf(entry.satrec,now);if(!ecf)continue;
+    const look=satellite.ecfToLookAngles(observerNow,ecf);if(!look)continue;
+    const elevation=THREE.MathUtils.radToDeg(look.elevation),previous=catalogArrivalLast.get(entry.id);
+    if(previous!==undefined&&previous<10&&elevation>=10&&elevation>previous)showSatelliteArrival({id:'catalog-'+entry.id,name:entry.name},elevation);
+    catalogArrivalLast.set(entry.id,elevation);
+   }
+  }
   scanSatelliteArrivals();
+  setInterval(()=>{scanSatelliteArrivals();scanCatalogArrivals();},15000);
   setInterval(scanSatelliteArrivals,3000);
+  window.addEventListener('cyd-observer-change',()=>{arrivalElevations.clear();catalogArrivalLast.clear();scanSatelliteArrivals();scanCatalogArrivals();});
   window.addEventListener('cyd-observer-change',()=>{arrivalElevations.clear();scanSatelliteArrivals();});
   window.addEventListener('cyd-orbit-update',scanSatelliteArrivals);
 

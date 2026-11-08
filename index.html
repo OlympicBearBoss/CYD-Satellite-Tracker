@@ -198,11 +198,32 @@ if(host){
   scene.add(new THREE.AmbientLight(0x9bbbd8,1.45)); const sun=new THREE.DirectionalLight(0xffffff,2.2); sun.position.set(4,2,5); scene.add(sun);
   const earthGroup=new THREE.Group(); scene.add(earthGroup);
   const loader=new THREE.TextureLoader(); loader.setCrossOrigin('anonymous');
-  const earthMap=await loader.loadAsync('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
-  earthMap.colorSpace=THREE.SRGBColorSpace;
+  // Загружаем текстуры с резервной процедурной картой, чтобы глобус оставался видимым при сбое CDN.
+  function createFallbackEarthTexture(){
+   const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=512;
+   const ctx=canvas.getContext('2d');
+   const ocean=ctx.createLinearGradient(0,0,0,512);ocean.addColorStop(0,'#287ca8');ocean.addColorStop(.5,'#12527e');ocean.addColorStop(1,'#082b50');
+   ctx.fillStyle=ocean;ctx.fillRect(0,0,1024,512);
+   ctx.fillStyle='#5b9b70';ctx.strokeStyle='#9ac58b';ctx.lineWidth=5;
+   const land=[
+    [[90,95],[150,55],[220,75],[245,130],[215,175],[190,235],[145,260],[120,205],[80,165]],
+    [[220,265],[270,285],[290,350],[265,430],[235,390],[215,320]],
+    [[420,90],[475,65],[520,95],[550,150],[520,190],[480,175],[450,130]],
+    [[475,190],[535,205],[565,270],[545,355],[510,420],[475,350],[450,260]],
+    [[560,90],[640,55],[730,75],[795,120],[850,110],[920,155],[900,210],[820,220],[770,185],[700,210],[650,170],[590,175]],
+    [[760,260],[830,250],[875,290],[850,350],[800,365],[765,320]]
+   ];
+   for(const poly of land){ctx.beginPath();poly.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fill();ctx.stroke();}
+   const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;return tex;
+  }
+  let earthMap;
+  try{earthMap=await loader.loadAsync('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');earthMap.colorSpace=THREE.SRGBColorSpace;}
+  catch(textureError){console.warn('Earth texture unavailable; using built-in fallback map',textureError);earthMap=createFallbackEarthTexture();}
   const earth=new THREE.Mesh(new THREE.SphereGeometry(1,96,64),new THREE.MeshPhongMaterial({map:earthMap,specular:0x223344,shininess:12})); earthGroup.add(earth);
-  const cloudMap=await loader.loadAsync('https://threejs.org/examples/textures/planets/earth_clouds_1024.png');
-  const clouds=new THREE.Mesh(new THREE.SphereGeometry(1.008,72,48),new THREE.MeshLambertMaterial({map:cloudMap,transparent:true,opacity:.23,depthWrite:false})); earthGroup.add(clouds);
+  try{
+   const cloudMap=await loader.loadAsync('https://threejs.org/examples/textures/planets/earth_clouds_1024.png');
+   const clouds=new THREE.Mesh(new THREE.SphereGeometry(1.008,72,48),new THREE.MeshLambertMaterial({map:cloudMap,transparent:true,opacity:.23,depthWrite:false})); earthGroup.add(clouds);
+  }catch(cloudError){console.warn('Cloud texture unavailable; continuing without clouds',cloudError);}
   const atmosphere=new THREE.Mesh(new THREE.SphereGeometry(1.035,64,48),new THREE.MeshBasicMaterial({color:0x4aaeff,transparent:true,opacity:.10,side:THREE.BackSide})); earthGroup.add(atmosphere);
   // Geographic marker: Ekaterinburg, 56.8389 N, 60.6057 E.
   const lat=THREE.MathUtils.degToRad(56.8389), lon=THREE.MathUtils.degToRad(60.6057);
@@ -359,6 +380,23 @@ if(host){
   if(status&&!Object.values(orbitObjects).some(x=>x.satrec))status.textContent='Не удалось получить орбиты · проверьте соединение с CelesTrak';
   setInterval(()=>updateRealPositions(false),2000);
   setInterval(()=>refreshRealOrbits(),15*60*1000);
+  // Важно: задать фактический размер canvas и постоянно отрисовывать сцену.
+  function resizeEarthRenderer(){
+   const width=Math.max(1,host.clientWidth),height=Math.max(1,host.clientHeight);
+   renderer.setSize(width,height,false);
+   camera.aspect=width/height;
+   camera.updateProjectionMatrix();
+  }
+  const earthResizeObserver=new ResizeObserver(resizeEarthRenderer);
+  earthResizeObserver.observe(host);
+  window.addEventListener('resize',resizeEarthRenderer,{passive:true});
+  resizeEarthRenderer();
+  function renderEarthFrame(){
+   requestAnimationFrame(renderEarthFrame);
+   controls.update();
+   renderer.render(scene,camera);
+  }
+  renderEarthFrame();
 
  }catch(e){if(status)status.textContent='3D не загрузилось: '+e.message;console.error(e);}
 }

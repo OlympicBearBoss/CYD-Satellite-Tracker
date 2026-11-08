@@ -11,7 +11,6 @@
   ];
   let records = [];
   let catalogNotice = "";
-  const CACHE_TTL = 2 * 60 * 60 * 1000;
   let selected = null;
   let satelliteLibReady = null;
   const $ = id => document.getElementById(id);
@@ -35,16 +34,15 @@
       const cacheKey = "cyd-omm-v1-" + source.group;
       let cached = null;
       try { cached = JSON.parse(localStorage.getItem(cacheKey) || "null"); } catch (_) {}
-      if (cached && Array.isArray(cached.data) && Date.now() - cached.savedAt < CACHE_TTL) {
-        return { source, data: cached.data, error: null, cached: true };
-      }
+      // Always request the feed when the page opens or the user refreshes.
+      // Keep local data only as an offline fallback; it must not block a fresh request.
       try {
-        const response = await fetch("/api/satellites?group=" + encodeURIComponent(source.group));
+        const response = await fetch("/api/satellites?group=" + encodeURIComponent(source.group), { cache: "no-store" });
         if (!response.ok) throw new Error("HTTP " + response.status + " · " + await response.text());
         const data = await response.json();
         if (!Array.isArray(data)) throw new Error("неверный формат OMM JSON");
         try { localStorage.setItem(cacheKey, JSON.stringify({savedAt: Date.now(), data})); } catch (_) {}
-        return { source, data, error: null, cached: false };
+        return { source, data, error: null, cached: false, fetched: true };
       } catch (error) {
         return { source, data: cached && Array.isArray(cached.data) ? cached.data : [], error: error.message, stale: !!cached };
       }
@@ -62,7 +60,8 @@
     }));
     records = [...byId.values()];
     const failed = results.filter(result => result.error);
-    const cachedGroups = results.filter(result => result.cached).length;
+    const fetchedGroups = results.filter(result => result.fetched).length;
+    const cachedGroups = results.filter(result => result.stale).length;
     const staleGroups = results.filter(result => result.stale).length;
     const epochs = records.map(item => Date.parse(item.EPOCH)).filter(Number.isFinite);
     const newest = epochs.length ? new Date(Math.max(...epochs)) : null;
@@ -76,13 +75,14 @@
         esc(failed.map(x => x.source.label + ": " + x.error).join("; ")) + '</div>';
       return;
     }
-    status(records.length + " спутников · " + (cachedGroups ? cachedGroups + " из " + results.length + " из кэша" : "данные обновлены"));
+    status(records.length + " спутников · " + fetchedGroups + " категорий запрошено при открытии" + (cachedGroups ? " · резервный кэш" : ""));
     const freshness = ageHours === null ? "Эпоха TLE не определена" :
       ageHours > 168 ? "Внимание: есть элементы старше 7 суток — точность прогноза снижена" :
       ageHours > 72 ? "Некоторые орбитальные элементы старше 72 часов" : "Возраст орбитальных данных проверен";
     catalogNotice = '<div class="note" style="margin-bottom:8px">Источник: CelesTrak GP · ' + esc(freshness) +
       (oldest ? '<br>Самая старая эпоха в выборке: ' + esc(oldest.toLocaleString()) : '') +
-      (cachedGroups ? '<br>Кэш действует 2 часа (' + cachedGroups + ' категорий)' : '') +
+      (fetchedGroups ? '<br>При открытии страницы отправлен запрос к источнику для ' + fetchedGroups + ' категорий' : '') +
+      (cachedGroups ? '<br>Для недоступных категорий использованы сохранённые данные' : '') +
       (staleGroups ? '<br>Нет связи; использованы сохранённые данные (' + staleGroups + ' категорий)' : '') +
       (failed.length ? '<br>Ошибки источника: ' + esc(failed.map(x => x.source.label + " — " + x.error).join("; ")) : '') + '</div>';
     render();

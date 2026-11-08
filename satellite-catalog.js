@@ -96,6 +96,7 @@
       }
     }));
     records = [...byId.values()];
+    window.dispatchEvent(new CustomEvent('cyd-catalog-loaded',{detail:{records}}));
     const failed = results.filter(result => result.error);
     const fetchedGroups = results.filter(result => result.fetched).length;
     const cachedGroups = results.filter(result => result.stale).length;

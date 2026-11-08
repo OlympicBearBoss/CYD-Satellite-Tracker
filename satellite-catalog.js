@@ -115,8 +115,105 @@
       $("selectedPositionResult").textContent = "Ошибка расчёта: " + error.message;
     }
   }
+  function observerSettings() {
+    const lat = Number($("observerLat").value), lon = Number($("observerLon").value);
+    const altitude = Number($("observerAltitude").value || 0);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180 ||
+        !Number.isFinite(altitude) || altitude < -500 || altitude > 9000) {
+      throw new Error("Введите корректные координаты станции и высоту от −500 до 9000 м.");
+    }
+    return { latitude: lat, longitude: lon, altitude };
+  }
+  function getTopocentric(sat, satrec, observer, date) {
+    const pv = sat.propagate(satrec, date);
+    if (!pv.position) return null;
+    const ecf = sat.eciToEcf(pv.position, sat.gstime(date));
+    const look = sat.ecfToLookAngles({
+      latitude: sat.degreesToRadians(observer.latitude),
+      longitude: sat.degreesToRadians(observer.longitude),
+      height: observer.altitude / 1000
+    }, ecf);
+    return {
+      elevation: sat.radiansToDegrees(look.elevation),
+      azimuth: (sat.radiansToDegrees(look.azimuth) + 360) % 360
+    };
+  }
+  function interpolateCrossing(t1, e1, t2, e2, threshold) {
+    if (e2 === e1) return new Date(t2);
+    const fraction = Math.max(0, Math.min(1, (threshold - e1) / (e2 - e1)));
+    return new Date(t1.getTime() + fraction * (t2.getTime() - t1.getTime()));
+  }
+  async function predictPasses() {
+    const output = $("passResults");
+    const statusNode = $("passPredictionStatus");
+    try {
+      if (!selected) throw new Error("Сначала выберите спутник из каталога.");
+      const observer = observerSettings();
+      const sat = await loadSatelliteLib();
+      const satrec = sat.twoline2satrec(selected.TLE_LINE1, selected.TLE_LINE2);
+      const threshold = Number($("passMinElevation").value);
+      const horizonHours = Number($("passHorizon").value);
+      const start = new Date();
+      const end = new Date(start.getTime() + horizonHours * 3600000);
+      const stepMs = 30000;
+      let previousTime = start;
+      let previous = getTopocentric(sat, satrec, observer, previousTime);
+      if (!previous) throw new Error("SGP4 не смог рассчитать орбиту для текущей эпохи.");
+      let active = previous.elevation >= threshold ? {
+        aos: null, aosAz: previous.azimuth, maxEl: previous.elevation,
+        maxTime: start, los: null, losAz: null, ongoing: true
+      } : null;
+      const passes = [];
+      for (let ms = start.getTime() + stepMs; ms <= end.getTime(); ms += stepMs) {
+        const time = new Date(Math.min(ms, end.getTime()));
+        const current = getTopocentric(sat, satrec, observer, time);
+        if (!current) { previousTime = time; previous = current; continue; }
+        if (!active && previous && previous.elevation < threshold && current.elevation >= threshold) {
+          active = {
+            aos: interpolateCrossing(previousTime, previous.elevation, time, current.elevation, threshold),
+            aosAz: current.azimuth, maxEl: current.elevation, maxTime: time,
+            los: null, losAz: null, ongoing: false
+          };
+        }
+        if (active && current.elevation > active.maxEl) {
+          active.maxEl = current.elevation;
+          active.maxTime = time;
+        }
+        if (active && previous && previous.elevation >= threshold && current.elevation < threshold) {
+          active.los = interpolateCrossing(previousTime, previous.elevation, time, current.elevation, threshold);
+          active.losAz = current.azimuth;
+          passes.push(active);
+          active = null;
+        }
+        previousTime = time;
+        previous = current;
+        if (ms >= end.getTime()) break;
+      }
+      if (active) { active.los = null; active.ongoing = true; passes.push(active); }
+      if (!passes.length) {
+        output.innerHTML = '<div class="note">За выбранный период пролётов выше ' + threshold +
+          '° не найдено. Попробуйте увеличить горизонт прогноза или снизить порог.</div>';
+      } else {
+        const fmt = date => date ? date.toLocaleString([], {month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}) : "уже начался";
+        output.innerHTML = passes.map((pass, index) => {
+          const duration = pass.los && pass.aos ? Math.round((pass.los - pass.aos) / 60000) :
+            pass.los ? Math.round((pass.los - start) / 60000) : null;
+          return '<div class="object-row" style="display:block"><div style="display:flex;justify-content:space-between;gap:8px"><b>Пролёт ' + (index + 1) +
+            (pass.ongoing && !pass.aos ? ' · спутник уже виден' : '') + '</b><strong>' + (duration !== null ? duration + ' мин' : 'в процессе / за пределами окна') +
+            '</strong></div><small>Восход: ' + fmt(pass.aos) + ' · аз. ' + pass.aosAz.toFixed(1) + '°</small>' +
+            '<small>Максимум: ' + fmt(pass.maxTime) + ' · ' + pass.maxEl.toFixed(1) + '°</small>' +
+            '<small>Заход: ' + fmt(pass.los) + (pass.losAz !== null ? ' · аз. ' + pass.losAz.toFixed(1) + '°' : '') + '</small></div>';
+        }).join("");
+      }
+      statusNode.textContent = passes.length + " пролётов · шаг расчёта 30 с";
+    } catch (error) {
+      output.innerHTML = '<div class="note">' + esc(error.message) + '</div>';
+      statusNode.textContent = "Расчёт не выполнен";
+    }
+  }
   document.addEventListener("DOMContentLoaded", () => {
     $("refreshOrbitData")?.addEventListener("click", refresh);
+    $("predictPasses")?.addEventListener("click", predictPasses);
     $("satSearch")?.addEventListener("input", render);
     $("satCategory")?.addEventListener("change", render);
     refresh();

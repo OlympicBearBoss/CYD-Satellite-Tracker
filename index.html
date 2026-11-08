@@ -1174,7 +1174,18 @@ if(host){
     const detail=document.createElement('small');detail.textContent='Восходящий пролёт · высота '+entry.elevation.toFixed(1)+'°';detail.style.cssText='display:block;color:#a9c9dc;margin-bottom:9px';
     const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;align-items:center';
     const follow=document.createElement('button');follow.type='button';follow.textContent='СЛЕДИТЬ';follow.style.cssText='border:1px solid #54b9ed;border-radius:7px;background:#123c59;color:#e8f7ff;padding:7px 12px;font-weight:700';
-    follow.addEventListener('click',()=>{if(typeof window.selectTargetFromFavorite==='function')window.selectTargetFromFavorite(entry.id);else if(typeof window.selectTarget==='function')window.selectTarget(entry.id,false);arrivalQueue.splice(index,1);renderArrivalQueue();});
+    follow.addEventListener('click',()=>{
+     const catalogId=String(entry.id).startsWith('catalog-')?String(entry.id).slice(8):null;
+     if(catalogId){
+      const records=window.cydSatelliteCatalogRecords||[];
+      const record=records.find(r=>String(r&&r.NORAD_CAT_ID)===catalogId);
+      if(record)window.dispatchEvent(new CustomEvent('cyd-catalog-track',{detail:{record}}));
+      else if(typeof window.selectTargetFromFavorite==='function')window.selectTargetFromFavorite(entry.id);
+     }else if(typeof window.selectTargetFromFavorite==='function')window.selectTargetFromFavorite(entry.id);
+     else if(typeof window.selectTarget==='function')window.selectTarget(entry.id,false);
+     window.dispatchEvent(new Event('cyd-selected-target-change'));
+     arrivalQueue.splice(index,1);renderArrivalQueue();
+    });
     const close=document.createElement('button');close.type='button';close.textContent='×';close.setAttribute('aria-label','Закрыть уведомление');close.style.cssText='border:1px solid #35566d;border-radius:7px;background:#10283a;color:#cce8f8;padding:6px 11px;font-size:16px';
     close.addEventListener('click',()=>{arrivalQueue.splice(index,1);renderArrivalQueue();});
     actions.append(follow,close);card.append(title,detail,actions);arrivalToastRoot.appendChild(card);

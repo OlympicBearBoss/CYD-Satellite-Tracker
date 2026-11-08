@@ -378,6 +378,16 @@ body[data-theme="terminal"] .content:before{opacity:.28}
  .top-actions{min-width:0;flex-shrink:0}
  .account-trigger{display:inline-flex!important;flex-shrink:0}
 }
+
+/* iPad browser can report a wide CSS viewport: reserve room for account control. */
+@media (min-width:761px) and (max-width:1600px){
+ .topbar{padding-left:16px;padding-right:16px;gap:8px}
+ .top-actions{gap:8px;flex-shrink:0}
+ .connection-chip,.clock{display:none!important}
+ .account-trigger{display:inline-flex!important;flex-shrink:0;min-width:86px;justify-content:center}
+ .theme-picker{min-width:100px;width:100px}
+ .language{padding-left:10px;padding-right:10px}
+}
 </style>
 </head>
 <body>

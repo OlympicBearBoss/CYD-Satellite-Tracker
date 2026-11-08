@@ -1,3 +1,8 @@
 name = "cyd-satellite-tracker"
 compatibility_date = "2026-11-08"
 pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cyd-satellite-tracker-auth"
+database_id = "4a25916b-62d4-4ea1-a74f-9a4b1c45691e"

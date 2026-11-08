@@ -223,9 +223,11 @@ if(host){
   for(const x of [-.087,.087])for(const z of [-.094,.094])addBox(sat,[.009,.17,.009],[x,0,z],matWhite);
   for(const y of [-.055,.055])addBox(sat,[.18,.009,.185],[0,y,0],matGold);
   // Earth-observation telescope: dark optical baffle, coated lens and retaining ring.
-  const baffle=new THREE.Mesh(new THREE.CylinderGeometry(.043,.052,.07,32),matDark);baffle.rotation.x=Math.PI/2;baffle.position.set(0,.005,.125);sat.add(baffle);
-  const lens=new THREE.Mesh(new THREE.CircleGeometry(.036,32),matGlass);lens.position.set(0,.005,.162);sat.add(lens);
-  const lensRim=new THREE.Mesh(new THREE.TorusGeometry(.045,.004,8,32),matWhite);lensRim.position.set(0,.005,.164);sat.add(lensRim);
+  const baffle=new THREE.Mesh(new THREE.CylinderGeometry(.027,.033,.052,32),matDark);baffle.position.set(-.052,.105,.035);sat.add(baffle);
+  const lensMat=new THREE.MeshPhysicalMaterial({color:0x39a8e8,metalness:.22,roughness:.08,clearcoat:1,clearcoatRoughness:.04,emissive:0x092c50});
+  const lens=new THREE.Mesh(new THREE.CircleGeometry(.022,32),lensMat);lens.rotation.x=-Math.PI/2;lens.position.set(-.052,.132,.035);sat.add(lens);
+  const lensRim=new THREE.Mesh(new THREE.TorusGeometry(.027,.004,8,32),matWhite);lensRim.rotation.x=-Math.PI/2;lensRim.position.set(-.052,.133,.035);sat.add(lensRim);
+  const focusRing=new THREE.Mesh(new THREE.TorusGeometry(.014,.0015,6,32),matGold);focusRing.rotation.x=-Math.PI/2;focusRing.position.set(-.052,.134,.035);sat.add(focusRing);
   // Twin deployable solar arrays with individual photovoltaic cells, busbars and hinges.
   for(const side of [-1,1]){
     const wing=new THREE.Group();wing.position.set(side*.105,0,0);wing.rotation.z=side*.035;sat.add(wing);

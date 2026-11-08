@@ -91,7 +91,7 @@
 .orbit-visibility-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.orbit-collapse-btn{border:1px solid #315c7c;border-radius:6px;background:#102b42;color:#bce7ff;padding:5px 7px;font-size:9px;cursor:pointer;white-space:nowrap}.orbit-collapse-btn:hover{border-color:#59bfff;background:#173b59}.orbit-visibility.collapsed{min-width:0}.orbit-visibility.collapsed label,.orbit-visibility.collapsed>small{display:none}.orbit-visibility.collapsed .orbit-visibility-head b{font-size:8px}</style><style id="apple-pass-notice-styles">
 .pass-card #nextPassCountdown{font:700 17px 'Space Mono',monospace;color:#bceaff;letter-spacing:.02em}
 .pass-card #nextPassMeta{font-size:10px;color:#8daac2}
-.pass-notice{position:fixed;right:24px;bottom:24px;z-index:1000;width:min(390px,calc(100vw - 32px));padding:17px 18px 15px;border:1px solid #ffffff28;border-radius:20px;background:linear-gradient(145deg,#142b40eF,#081727f2);box-shadow:0 22px 70px #0009, inset 0 1px #ffffff18;backdrop-filter:blur(26px) saturate(1.5);-webkit-backdrop-filter:blur(26px) saturate(1.5);color:#f2f8ff;animation:passNoticeIn .38s cubic-bezier(.2,.8,.2,1)}
+.pass-notice{position:fixed;right:14px;left:auto;bottom:14px;z-index:2147483000;width:min(350px,calc(100vw - 28px));padding:12px 14px;border:1px solid rgba(91,196,255,.58);border-radius:12px;background:rgba(5,20,36,.98);box-shadow:0 12px 34px #0009;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:#e8f7ff;animation:passNoticeIn .38s cubic-bezier(.2,.8,.2,1)}
 .pass-notice[hidden]{display:none}
 .pass-notice-top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .pass-notice-icon{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,#4dbdff,#2478bb);color:white;font-size:19px;box-shadow:0 5px 20px #279ee655}
@@ -117,7 +117,7 @@
 .pass-notice-progress{height:3px;background:#ffffff18;border-radius:9px;margin-top:13px;overflow:hidden}
 .pass-notice-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#45baff,#74e4d1);border-radius:9px;transition:width .5s linear}
 @keyframes passNoticeIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
-@media(max-width:600px){.pass-notice{right:12px;bottom:12px}}
+@media(max-width:600px){.pass-notice{right:14px;bottom:14px}}
 /* GPS-linked demo radar and device compass */
 .radar-navigation-layout{grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);align-items:start}.radar-side-stack{display:grid;gap:15px;min-width:0}
 .radar-display{width:min(100%,540px);margin:8px auto 18px;aspect-ratio:1;position:relative}
@@ -1157,10 +1157,13 @@ if(host){
    if(!arrivalToastRoot){
     arrivalToastRoot=document.createElement('aside');arrivalToastRoot.id='satelliteArrivalToast';
     arrivalToastRoot.setAttribute('role','status');arrivalToastRoot.setAttribute('aria-live','polite');
-    arrivalToastRoot.style.cssText='position:fixed;z-index:2147483100;left:50%;right:auto;top:auto;bottom:calc(14px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);width:min(420px,calc(100vw - 24px));max-height:min(38dvh,320px);overflow:auto;display:grid;gap:8px;pointer-events:auto;padding:0 2px';
+    arrivalToastRoot.style.cssText='position:fixed;z-index:2147483100;left:auto;right:14px;top:auto;bottom:calc(14px + env(safe-area-inset-bottom, 0px));transform:none;width:min(350px,calc(100vw - 28px));max-height:min(38dvh,320px);overflow:auto;display:grid;gap:8px;pointer-events:auto;padding:0 2px';
     document.body.appendChild(arrivalToastRoot);
    }
    arrivalToastRoot.innerHTML='';
+   const passNoticeNode=document.getElementById('passNotice');
+   const passVisible=passNoticeNode&&!passNoticeNode.hidden;
+   arrivalToastRoot.style.bottom='calc(14px + env(safe-area-inset-bottom, 0px) + '+(passVisible?(passNoticeNode.offsetHeight+10):0)+'px)';
    arrivalQueue.forEach((entry,index)=>{
     const card=document.createElement('div');
     card.style.cssText='padding:12px 14px;border:1px solid rgba(91,196,255,.58);border-radius:12px;background:rgba(5,20,36,.98);box-shadow:0 12px 34px #0009;color:#e8f7ff;font:12px/1.45 system-ui';

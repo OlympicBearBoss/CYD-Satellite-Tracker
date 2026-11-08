@@ -1109,7 +1109,7 @@ if(host){
   const arrivalList=document.getElementById('satelliteArrivalList');
   const arrivalToggle=document.getElementById('arrivalToggle');
   let arrivalEnabled=true;
-  const arrivalStates=new Map(),arrivalCards=new Map();
+  const arrivalStates=new Map(),arrivalElevations=new Map(),arrivalCards=new Map();
   function renderArrivalCards(){
    if(!arrivalList)return;
    const cards=Array.from(arrivalCards.values()).sort((a,b)=>b.time-a.time);
@@ -1135,17 +1135,20 @@ if(host){
     const look=satellite.ecfToLookAngles(observer,ecf);
     if(!look)continue;
     const elevation=THREE.MathUtils.radToDeg(look.elevation),visible=elevation>=10;
+    const previousElevation=arrivalElevations.get(item.id);
     const wasVisible=arrivalStates.get(item.id)===true;
-    if(visible){
-     if(!wasVisible&&arrivalEnabled){
-      arrivalCards.set(item.id,{id:item.id,name:item.name||item.id,elevation,time:now.getTime()});
-      renderArrivalCards();
-     }else if(arrivalCards.has(item.id)){
-      const card=arrivalCards.get(item.id);card.elevation=elevation;card.time=now.getTime();
-     }
-    }else if(wasVisible){
+    // Событие только при восходящем пересечении порога 10°.
+    // Первый замер лишь задаёт исходное положение и не создаёт ложное уведомление.
+    const risingIntoView=previousElevation!==undefined&&previousElevation<10&&elevation>=10&&elevation>previousElevation;
+    if(risingIntoView&&arrivalEnabled){
+     arrivalCards.set(item.id,{id:item.id,name:item.name||item.id,elevation,time:now.getTime()});
+     renderArrivalCards();
+    }else if(visible&&arrivalCards.has(item.id)){
+     const card=arrivalCards.get(item.id);card.elevation=elevation;card.time=now.getTime();
+    }else if(!visible&&wasVisible){
      arrivalCards.delete(item.id);renderArrivalCards();
     }
+    arrivalElevations.set(item.id,elevation);
     arrivalStates.set(item.id,visible);
    }
   }
@@ -1153,11 +1156,11 @@ if(host){
    arrivalEnabled=!arrivalEnabled;
    arrivalToggle.textContent='УВЕДОМЛЕНИЯ: '+(arrivalEnabled?'ВКЛ':'ВЫКЛ');
    if(!arrivalEnabled){arrivalCards.clear();renderArrivalCards();}
-   else{arrivalStates.clear();scanSatelliteArrivals();}
+   else{arrivalStates.clear();arrivalElevations.clear();scanSatelliteArrivals();}
   });
   scanSatelliteArrivals();
   setInterval(scanSatelliteArrivals,5000);
-  window.addEventListener('cyd-observer-change',()=>{arrivalStates.clear();arrivalCards.clear();scanSatelliteArrivals();renderArrivalCards();});
+  window.addEventListener('cyd-observer-change',()=>{arrivalStates.clear();arrivalElevations.clear();arrivalCards.clear();scanSatelliteArrivals();renderArrivalCards();});
   window.addEventListener('cyd-orbit-update',scanSatelliteArrivals);
 
 

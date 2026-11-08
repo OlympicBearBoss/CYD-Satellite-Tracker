@@ -274,7 +274,7 @@ if(host){
       const center=box.getCenter(new THREE.Vector3());
       model.position.sub(center);
       const maxDim=Math.max(size.x,size.y,size.z)||1;
-      model.scale.setScalar(.52/maxDim);
+      model.scale.setScalar(.68/maxDim);
       sat.add(model);
       // Keep the imported NASA geometry, materials and textures intact.
       sat.userData.modelId=id;
@@ -302,7 +302,7 @@ if(host){
   ];
   const orbitObjects={};
   const earthRadiusKm=6371.0;
-  // Для наглядности высота орбиты МКС визуально сжата вдвое; расчёт SGP4 и координаты не меняются.
+  // Визуально приближаем МКС к поверхности и зоне наблюдения; физические SGP4-координаты не меняются.
   const toThree=(ecf,altitudeCompression=1)=>{
    const p=new THREE.Vector3(ecf.x/earthRadiusKm,ecf.z/earthRadiusKm,-ecf.y/earthRadiusKm);
    if(altitudeCompression!==1){
@@ -321,7 +321,7 @@ if(host){
    const orbitLine=new THREE.Mesh(new THREE.BufferGeometry(),new THREE.MeshBasicMaterial({color:def.color,transparent:true,opacity:.92,depthWrite:false}));
    group.add(orbitLine);
    const body=new THREE.Group();group.add(body);
-   if(def.id==='iss'){body.add(sat);sat.scale.multiplyScalar(.72);}
+   if(def.id==='iss'){body.add(sat);sat.scale.multiplyScalar(1.0);}
    else{
     const mat=new THREE.MeshStandardMaterial({color:def.color,metalness:.55,roughness:.38});
     body.add(new THREE.Mesh(new THREE.BoxGeometry(.014,.009,.018),mat));
@@ -387,7 +387,7 @@ if(host){
     if(!item.satrec)continue;
     const ecf=propagatedEcf(item.satrec,now);
     if(!ecf)continue;
-    item.body.position.copy(toThree(ecf,item.id==='iss'?.5:1));
+    item.body.position.copy(toThree(ecf,item.id==='iss'?.18:1));
     // Орбитальная линия — прогнозируемая траектория того же объекта из его TLE/OMM.
     if(rebuildTrails){
      const points=[];
@@ -397,7 +397,7 @@ if(host){
      for(let i=0;i<=samples;i++){
       const date=new Date(now.getTime()+spanMinutes*60000*i/samples);
       const future=propagatedEcf(item.satrec,date);
-      if(future)points.push(toThree(future,item.id==='iss'?.5:1));
+      if(future)points.push(toThree(future,item.id==='iss'?.18:1));
      }
      item.orbitLine.geometry.dispose();
      if(points.length>1){

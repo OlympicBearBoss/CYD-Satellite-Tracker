@@ -331,10 +331,25 @@ tick();setInterval(tick,1000);setAxes(objectData.iss.az,objectData.iss.el);rende
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}
 </script>
 <script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/DRACOLoader.js';
+// Импортируем Three.js и дополнения единым комплектом с резервным CDN.
+const threeCdnBases=[
+ 'https://cdn.jsdelivr.net/npm/three@0.160.0',
+ 'https://unpkg.com/three@0.160.0'
+];
+let THREE,OrbitControls,GLTFLoader,DRACOLoader,threeImportErrors=[];
+for(const base of threeCdnBases){
+ try{
+  const modules=await Promise.all([
+   import(base+'/build/three.module.js'),
+   import(base+'/examples/jsm/controls/OrbitControls.js'),
+   import(base+'/examples/jsm/loaders/GLTFLoader.js'),
+   import(base+'/examples/jsm/loaders/DRACOLoader.js')
+  ]);
+  THREE=modules[0];OrbitControls=modules[1].OrbitControls;GLTFLoader=modules[2].GLTFLoader;DRACOLoader=modules[3].DRACOLoader;
+  break;
+ }catch(error){threeImportErrors.push(base+': '+(error&&error.message?error.message:String(error)));console.warn('Three.js CDN failed:',base,error);}
+}
+if(!THREE||!OrbitControls||!GLTFLoader)throw new Error('Не удалось загрузить Three.js: '+threeImportErrors.join(' | '));
 const host=document.getElementById('earth3d'), status=document.getElementById('earthModelStatus'), orbitStatus=document.getElementById('orbitDataStatus');
 if(host){
  try{
@@ -363,14 +378,18 @@ if(host){
    for(const poly of land){ctx.beginPath();poly.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fill();ctx.stroke();}
    const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;return tex;
   }
-  let earthMap;
-  try{earthMap=await loader.loadAsync('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');earthMap.colorSpace=THREE.SRGBColorSpace;}
-  catch(textureError){console.warn('Earth texture unavailable; using built-in fallback map',textureError);earthMap=createFallbackEarthTexture();}
-  const earth=new THREE.Mesh(new THREE.SphereGeometry(1,96,64),new THREE.MeshPhongMaterial({map:earthMap,specular:0x223344,shininess:12})); earthGroup.add(earth);
-  try{
-   const cloudMap=await loader.loadAsync('https://threejs.org/examples/textures/planets/earth_clouds_1024.png');
-   const clouds=new THREE.Mesh(new THREE.SphereGeometry(1.008,72,48),new THREE.MeshLambertMaterial({map:cloudMap,transparent:true,opacity:.23,depthWrite:false})); earthGroup.add(clouds);
-  }catch(cloudError){console.warn('Cloud texture unavailable; continuing without clouds',cloudError);}
+  // Земля создаётся синхронно из встроенной текстуры: сеть больше не блокирует появление глобуса.
+  let earthMap=createFallbackEarthTexture();
+  const earthMaterial=new THREE.MeshPhongMaterial({map:earthMap,specular:0x223344,shininess:12});
+  const earth=new THREE.Mesh(new THREE.SphereGeometry(1,96,64),earthMaterial);earthGroup.add(earth);
+  const withTimeout=(promise,ms,label)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(label+' timeout')),ms))]);
+  // Детальная карта и облака подключаются асинхронно; при недоступности CDN Земля остаётся видимой.
+  withTimeout(loader.loadAsync('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg'),9000,'Earth texture')
+   .then(texture=>{texture.colorSpace=THREE.SRGBColorSpace;earthMaterial.map=texture;earthMaterial.needsUpdate=true;})
+   .catch(error=>console.warn('Using procedural Earth texture:',error));
+  withTimeout(loader.loadAsync('https://threejs.org/examples/textures/planets/earth_clouds_1024.png'),7000,'Cloud texture')
+   .then(cloudMap=>{const clouds=new THREE.Mesh(new THREE.SphereGeometry(1.008,72,48),new THREE.MeshLambertMaterial({map:cloudMap,transparent:true,opacity:.23,depthWrite:false}));earthGroup.add(clouds);})
+   .catch(error=>console.info('Cloud layer skipped:',error));
   const atmosphere=new THREE.Mesh(new THREE.SphereGeometry(1.035,64,48),new THREE.MeshBasicMaterial({color:0x4aaeff,transparent:true,opacity:.10,side:THREE.BackSide})); earthGroup.add(atmosphere);
   // Точка наблюдения: GPS устройства в демо-режиме или координаты GPS-модуля.
   const demoObserver={latitude:56.8389,longitude:60.6057,height:0};
@@ -393,9 +412,13 @@ if(host){
    camera.aspect=width/height;
    camera.updateProjectionMatrix();
   }
-  const earthResizeObserver=new ResizeObserver(resizeEarthRenderer);
-  earthResizeObserver.observe(host);
-  window.addEventListener('resize',resizeEarthRenderer,{passive:true});
+  if(typeof ResizeObserver!=='undefined'){
+   const earthResizeObserver=new ResizeObserver(resizeEarthRenderer);
+   earthResizeObserver.observe(host);
+  }else{
+   window.addEventListener('resize',resizeEarthRenderer,{passive:true});
+  }
+  window.addEventListener('orientationchange',()=>setTimeout(resizeEarthRenderer,250),{passive:true});
   resizeEarthRenderer();
   function renderEarthFrame(){
    requestAnimationFrame(renderEarthFrame);

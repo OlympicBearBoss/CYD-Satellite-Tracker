@@ -35,21 +35,48 @@ $("stopBtn").addEventListener("click",()=>{$("controlStatus").textContent=t("sto
 $("testConnection").addEventListener("click",()=>{$("connectionResult").textContent=t("connection_test_ok");addLog("NET",t("connection_test_ok"));});
 function renderRadarObjects(){
  const rotor=$("radarRotor"),cardinals=$("radarCardinals");if(!rotor||!cardinals)return;
- rotor.querySelectorAll(".radar-dot").forEach(n=>n.remove());const heading=window.demoDeviceHeading||42;
+ rotor.querySelectorAll(".radar-dot").forEach(n=>n.remove());const heading=Number.isFinite(window.demoDeviceHeading)?window.demoDeviceHeading:0;
  [["N","С"],["E","В"],["S","Ю"],["W","З"]].forEach(([key,label],i)=>{const angle=(i*90-heading)*Math.PI/180,r=.465,el=cardinals.querySelector('[data-dir="'+key+'"]');el.textContent=label;el.style.left=(50+Math.sin(angle)*r*100)+"%";el.style.top=(50-Math.cos(angle)*r*100)+"%";});
  Object.entries(objectData).forEach(([id,o])=>{const rel=(o.az-heading)*Math.PI/180,radius=.88-(o.el/90)*.65,dot=document.createElement("span");dot.className="radar-dot "+id;dot.style.left=(50+Math.sin(rel)*radius*45)+"%";dot.style.top=(50-Math.cos(rel)*radius*45)+"%";const label=document.createElement("span");label.className="radar-dot-label";label.textContent=id==="iss"?"МКС":id==="noaa"?"NOAA 19":"AO-91";dot.appendChild(label);rotor.appendChild(dot);});
 }
 const compassNames=["СЕВЕР","СЕВЕРО-ВОСТОК","ВОСТОК","ЮГО-ВОСТОК","ЮГ","ЮГО-ЗАПАД","ЗАПАД","СЕВЕРО-ЗАПАД"];
-function updateDemoNavigation(){
- const now=Date.now()/1000,heading=(42+Math.sin(now/18)*7+Math.sin(now/41)*2+360)%360;window.demoDeviceHeading=heading;
- const h=heading.toFixed(1),dir=compassNames[Math.round(heading/45)%8];
- $("compassRose").style.transform="rotate("+(-heading)+"deg)";
- $("compassRose").querySelectorAll(".compass-label").forEach(el=>el.style.transform="translate(-50%,-50%) rotate("+heading+"deg)");
- $("compassValue").textContent=h+"°";$("compassDirection").textContent=dir;
- $("radarHeading").textContent=String(Math.round(heading)).padStart(3,"0")+"° · "+dir;$("gpsTime").textContent=new Date().toLocaleTimeString("ru-RU");renderRadarObjects();
+let deviceHeading=null,geoWatchId=null;
+function setDeviceHeading(value){
+ if(!Number.isFinite(value))return;deviceHeading=((value%360)+360)%360;window.demoDeviceHeading=deviceHeading;
+ $("compassRose").style.transform="rotate("+(-deviceHeading)+"deg)";
+ $("compassRose").querySelectorAll(".compass-label").forEach(el=>el.style.transform="translate(-50%,-50%) rotate("+deviceHeading+"deg)");
+ const dir=compassNames[Math.round(deviceHeading/45)%8];$("radarHeading").textContent=deviceHeading.toFixed(1)+"°";$("compassDirection").textContent=dir;renderRadarObjects();
 }
+function startDeviceOrientation(){
+ const onOrientation=e=>{
+  let heading=null;
+  if(Number.isFinite(e.webkitCompassHeading))heading=e.webkitCompassHeading;
+  else if(e.absolute===true&&Number.isFinite(e.alpha))heading=(360-e.alpha)%360;
+  if(heading!==null){setDeviceHeading(heading);$("deviceSensorNote").textContent="Компас получает курс от датчика ориентации устройства. Углы объектов на радаре остаются демонстрационными.";}
+ };
+ window.addEventListener("deviceorientationabsolute",onOrientation,true);
+ window.addEventListener("deviceorientation",onOrientation,true);
+ if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+  DeviceOrientationEvent.requestPermission().then(state=>{if(state!=="granted")throw Error("Доступ к компасу не разрешён");}).catch(err=>{$("deviceSensorNote").textContent="Компас недоступен: "+err.message+". Проверьте разрешение датчиков в настройках браузера.";});
+ }
+}
+function startDeviceLocation(){
+ if(!navigator.geolocation){$("deviceSensorNote").textContent="Этот браузер не предоставляет геолокацию.";return;}
+ if(geoWatchId!==null)navigator.geolocation.clearWatch(geoWatchId);
+ geoWatchId=navigator.geolocation.watchPosition(pos=>{
+  const c=pos.coords,lat=c.latitude,lon=c.longitude;
+  $("gpsLat").textContent=Math.abs(lat).toFixed(5)+"° "+(lat>=0?"N":"S");
+  $("gpsLon").textContent=Math.abs(lon).toFixed(5)+"° "+(lon>=0?"E":"W");
+  $("gpsAlt").textContent=Number.isFinite(c.altitude)?Math.round(c.altitude)+" м":"—";
+  $("gpsAccuracy").textContent="±"+Math.round(c.accuracy)+" м";
+  $("gpsTime").textContent=new Date(pos.timestamp).toLocaleTimeString("ru-RU");
+  $("gpsStatus").innerHTML="<i></i>GPS УСТРОЙСТВА";
+ },err=>{$("gpsStatus").textContent="НЕТ ДОСТУПА";$("deviceSensorNote").textContent="Не удалось получить координаты: "+err.message+". Разрешите геолокацию для этого сайта и повторите попытку.";},{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+}
+$("enableDeviceSensors").addEventListener("click",()=>{startDeviceLocation();startDeviceOrientation();});
+function updateDemoNavigation(){if(deviceHeading===null){$("radarHeading").textContent="—";$("compassDirection").textContent="Ожидание датчика ориентации";}}
 function addLog(code,message){const d=new Date();logItems.unshift([d.toLocaleTimeString("ru-RU"),code,message,message]);logItems=logItems.slice(0,30);renderLog();}
 function renderLog(){$("fullLog").innerHTML=logItems.map(row=>'<div class="log-row"><i class="event-dot '+(row[1]==="STOP"?"orange":row[1]==="NET"?"green":"blue")+'"></i><time>'+row[0]+'</time><code>'+row[1]+'</code><p>'+(lang==="en"?row[3]:row[2])+'</p></div>').join("");$("logCount").textContent=logItems.length+" EVENTS";}
 $("clearLog").addEventListener("click",()=>{logItems=[];renderLog();});
 function tick(){const d=new Date();$("clock").textContent=d.toLocaleTimeString(lang==="ru"?"ru-RU":"en-GB");$("today").textContent=d.toLocaleDateString(lang==="ru"?"ru-RU":"en-GB",{day:"2-digit",month:"long",year:"numeric"});}
-tick();setInterval(tick,1000);setAxes(objectData.iss.az,objectData.iss.el);updateDemoNavigation();setInterval(updateDemoNavigation,1000);renderRadarObjects();renderLog();setLanguage("ru");
+tick();setInterval(tick,1000);setAxes(objectData.iss.az,objectData.iss.el);updateDemoNavigation();renderRadarObjects();renderLog();setLanguage("ru");

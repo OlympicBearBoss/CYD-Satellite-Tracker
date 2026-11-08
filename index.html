@@ -80,7 +80,7 @@
 /* Realistic interactive Earth scene */
 
 .orbit-visibility{position:absolute;right:12px;bottom:12px;z-index:5;display:grid;gap:6px;min-width:150px;padding:10px 12px;background:#061522ef;border:1px solid #315c7c;border-radius:9px;box-shadow:0 8px 22px #0007;color:#c9e9ff;font-size:10px}.orbit-visibility>b{font:9px 'Space Mono';letter-spacing:.08em;color:#78cfff;margin-bottom:2px}.orbit-visibility label{display:flex;align-items:center;gap:7px;cursor:pointer}.orbit-visibility input{accent-color:#48baff;margin:0}.orbit-visibility small{font-size:8px;color:#7798b2;margin-top:2px}.earth-model-status{right:auto;left:12px;bottom:12px;max-width:42%;z-index:4}@media(max-width:700px){.orbit-visibility{right:7px;bottom:7px;padding:8px;font-size:9px}.earth-model-status{left:7px;bottom:7px;max-width:38%;font-size:8px}.earth-caption{bottom:115px}}
-.realistic-earth-scene{height:540px;isolation:isolate;background:radial-gradient(ellipse at 50% 52%,#0a3552 0,#061625 58%,#04101c 100%);border-radius:12px}
+.realistic-earth-scene{height:clamp(390px,62vh,720px);min-height:390px;isolation:isolate;background:radial-gradient(ellipse at 50% 52%,#0a3552 0,#061625 58%,#04101c 100%);border-radius:12px}
 #earth3d{position:absolute;inset:0;cursor:grab}
 #earth3d:active{cursor:grabbing}
 #earth3d canvas{display:block;width:100%;height:100%}
@@ -114,7 +114,7 @@
 .radar-rotor .radar-ring{display:none}.radar-rotor .radar-sweep{inset:0}
 .radar-cardinals{position:absolute;inset:0;pointer-events:none}.radar-cardinals span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:700 11px 'Space Mono';color:#9ac9e8;text-shadow:0 0 8px #061827}
 .radar-dot{position:absolute;left:50%;top:50%;width:11px;height:11px;border-radius:50%;transform:translate(-50%,-50%);z-index:3;box-shadow:0 0 13px currentColor;border:2px solid #eaf8ff}
-.radar-dot.iss{color:#53c5ff;background:#53c5ff}.radar-dot.noaa{color:#5de1a7;background:#5de1a7}.radar-dot.ao91{color:#ffb34d;background:#ffb34d}
+.radar-dot.iss{color:#53c5ff;background:#53c5ff}.radar-dot.noaa{color:#5de1a7;background:#5de1a7}.radar-dot.ao91{color:#ffb34d;background:#ffb34d}.radar-dot.starlink{color:#b58aff;background:#b58aff}
 .radar-dot-label{position:absolute;left:9px;top:-7px;white-space:nowrap;background:#09233b;border:1px solid currentColor;border-radius:5px;padding:3px 5px;color:#d8f2ff;font:9px 'Space Mono'}
 .radar-heading-readout{display:grid;gap:5px;padding:12px 14px;background:#091a2b;border:1px solid #1c3b55;border-radius:10px}
 .radar-heading-readout span,.gps-grid small{font:9px 'Space Mono';letter-spacing:.08em;color:#7195b2}.radar-heading-readout b{font:20px 'Space Mono';color:#bde8ff}.radar-heading-readout small{font-size:10px;color:#7895ae}
@@ -177,7 +177,7 @@
 <div class="radar-layout radar-navigation-layout">
 <article class="panel radar-panel"><div class="panel-title"><h2>Радар небесной сферы</h2><span class="subtle">ВИД С ПОЗИЦИИ СТАНЦИИ</span></div>
 <div class="radar-display radar-compass-combined" id="radarDisplay"><div class="radar-rotor" id="radarRotor"><div class="radar-ring r1"></div><div class="radar-ring r2"></div><div class="radar-ring r3"></div><div class="crosshair"></div><div class="radar-sweep"></div></div><div class="radar-cardinals" id="radarCardinals"><span data-dir="N">С</span><span data-dir="E">В</span><span data-dir="S">Ю</span><span data-dir="W">З</span></div><div class="compass-rose radar-compass-rose" id="compassRose"><i class="compass-tick tick-n"></i><i class="compass-tick tick-e"></i><i class="compass-tick tick-s"></i><i class="compass-tick tick-w"></i><span class="compass-label label-n">С</span><span class="compass-label label-e">В</span><span class="compass-label label-s">Ю</span><span class="compass-label label-w">З</span></div><div class="compass-needle radar-fixed-needle"><i></i><b></b></div><span class="radar-center">⌖</span><span class="radar-north-mark">N</span></div>
-<div class="radar-legend"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div><div class="radar-heading-readout"><span>КОМПАС УСТРОЙСТВА · КУРС</span><b id="radarHeading">—</b><small id="compassDirection">Ожидание датчика ориентации</small></div></article>
+<div class="radar-legend"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span><span><i class="legend" style="background:#b58aff"></i>Starlink</span></div><div class="radar-heading-readout"><span>КОМПАС УСТРОЙСТВА · КУРС</span><b id="radarHeading">—</b><small id="compassDirection">Ожидание датчика ориентации</small></div></article>
 <div class="radar-side-stack">
 <article class="panel gps-panel"><div class="panel-title"><h2>Точка наблюдения · GPS</h2><span class="status-pill" id="gpsStatus"><i></i>ОЖИДАНИЕ</span></div><div class="gps-grid"><div><small>ШИРОТА</small><b id="gpsLat">—</b></div><div><small>ДОЛГОТА</small><b id="gpsLon">—</b></div><div><small>ВЫСОТА</small><b id="gpsAlt">—</b></div><div><small>ТОЧНОСТЬ</small><b id="gpsAccuracy">—</b></div></div><div class="gps-meta"><span>GPS: <b id="gpsSatCount">браузер</b></span><span>Обновление: <b id="gpsTime">—</b></span></div><button class="btn btn-primary full" id="enableDeviceSensors">Разрешить GPS и компас</button><div class="note" id="deviceSensorNote">В демо-режиме используются координаты и ориентация, переданные браузеру от датчиков устройства. Разрешите доступ; на iPhone/iPad нужен HTTPS и подтверждение доступа.</div></article>
 <article class="panel"><div class="panel-title"><h2>Объекты наблюдения</h2></div><div id="radarObjects" class="object-list"></div></article>
@@ -523,6 +523,10 @@ if(host){
     if(!item.satrec)continue;
     const ecf=propagatedEcf(item.satrec,now);
     if(!ecf)continue;
+    const loc=window.cydObserverLocation||{latitude:56.8389,longitude:60.6057,height:0};
+    const observerNow={latitude:THREE.MathUtils.degToRad(loc.latitude),longitude:THREE.MathUtils.degToRad(loc.longitude),height:Number(loc.height)||0};
+    const look=satellite.ecfToLookAngles(observerNow,ecf);
+    if(look){window.cydRadarPositions=window.cydRadarPositions||{};window.cydRadarPositions[item.id]={az:(THREE.MathUtils.radToDeg(look.azimuth)+360)%360,el:THREE.MathUtils.radToDeg(look.elevation)};}
     // Маркер-шарик остаётся точно на расчётной орбите.
     item.body.position.copy(toThree(ecf,item.id==='iss'?.18:1));
     // Орбитальная линия — прогнозируемая траектория того же объекта из его TLE/OMM.
@@ -548,6 +552,7 @@ if(host){
     const modelLift=item.body.position.clone().normalize().multiplyScalar(.028);
     item.modelRoot.position.copy(modelLift.applyQuaternion(item.body.quaternion.clone().invert()));
    }
+   if(window.cydRadarPositions)window.dispatchEvent(new Event('cyd-orbit-update'));
   }
   await refreshRealOrbits();
   if(status&&!Object.values(orbitObjects).some(x=>x.satrec))status.textContent='Не удалось получить орбиты · проверьте соединение с CelesTrak';
@@ -556,7 +561,7 @@ if(host){
 
   // Predict actual visible ISS passes for the configured observer using SGP4.
   // Observer coordinates are the same as the red marker on the globe.
-  const observer={latitude:THREE.MathUtils.degToRad(56.8389),longitude:THREE.MathUtils.degToRad(60.6057),height:0};
+  const observer={get latitude(){return THREE.MathUtils.degToRad((window.cydObserverLocation||{latitude:56.8389}).latitude);},get longitude(){return THREE.MathUtils.degToRad((window.cydObserverLocation||{longitude:60.6057}).longitude);},get height(){return Number((window.cydObserverLocation||{height:0}).height)||0;}};
   const visibleElevation=THREE.MathUtils.degToRad(10);
   const passNotice=document.getElementById('passNotice');
   const passNoticeClose=document.getElementById('passNoticeClose');
@@ -653,7 +658,7 @@ if(host){
   if(!window.isSecureContext){setStatus('НУЖЕН HTTPS');if(note)note.textContent='Откройте защищённый адрес HTTPS.';return;}
   if(!navigator.geolocation){setStatus('GPS НЕДОСТУПЕН');if(note)note.textContent='Браузер не предоставил геолокацию. Проверьте настройки iPadOS.';return;}
   navigator.geolocation.getCurrentPosition(pos=>{
-   const c=pos.coords,lat=c.latitude,lon=c.longitude;
+   const c=pos.coords,lat=c.latitude,lon=c.longitude;window.cydObserverLocation={latitude:lat,longitude:lon,height:Number.isFinite(c.altitude)?c.altitude/1000:0};window.dispatchEvent(new Event("cyd-observer-change"));
    document.getElementById('gpsLat').textContent=Math.abs(lat).toFixed(5)+'° '+(lat>=0?'N':'S');
    document.getElementById('gpsLon').textContent=Math.abs(lon).toFixed(5)+'° '+(lon>=0?'E':'W');
    document.getElementById('gpsAlt').textContent=Number.isFinite(c.altitude)?Math.round(c.altitude)+' м':'—';

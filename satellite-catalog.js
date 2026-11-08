@@ -10,6 +10,29 @@
     { group: "visual", label: "Наблюдаемые" }
   ];
   let records = [];
+  const favoriteKey = "cyd-favorite-satellites-v1";
+  const favoriteNames = {"25544":"МКС (ZARYA)","33591":"NOAA 19","43017":"AO-91 (Fox-1B)"};
+  let favorites = new Set();
+  try { favorites = new Set(JSON.parse(localStorage.getItem(favoriteKey) || "[]").map(String)); } catch (_) {}
+  function saveFavorites(){ try { localStorage.setItem(favoriteKey, JSON.stringify([...favorites])); } catch (_) {} }
+  function renderFavorites(){
+    const root=$("favoriteSatellites"); if(!root)return;
+    const ids=[...favorites];
+    $("favoriteCount").textContent=ids.length+" ОБЪЕКТОВ";
+    if(!ids.length){root.innerHTML='<span class="subtle">Нажмите ☆ у спутника, чтобы добавить его сюда</span>';return;}
+    root.innerHTML=ids.map(id=>{const item=records.find(x=>String(x.NORAD_CAT_ID)===id);const name=item?item.OBJECT_NAME:(favoriteNames[id]||("NORAD "+id));return '<button type="button" class="btn favorite-chip" data-favorite-open="'+esc(id)+'" style="border-color:#8a713e;color:#ffe0a0">★ '+esc(name)+' <span style="opacity:.65">· '+esc(id)+'</span></button>';}).join("");
+    root.querySelectorAll("[data-favorite-open]").forEach(button=>button.addEventListener("click",()=>{
+      const id=button.dataset.favoriteOpen, item=records.find(x=>String(x.NORAD_CAT_ID)===id);
+      if(item){selected=item;showDetails().catch(error=>{$("liveSatelliteDetails").textContent=error.message;});$("liveSatelliteDetails").scrollIntoView({behavior:"smooth",block:"nearest"});}
+      else {$("satSearch").value=id;$("satCategory").value="all";render();}
+    }));
+  }
+  function toggleFavorite(id){id=String(id);if(favorites.has(id))favorites.delete(id);else favorites.add(id);saveFavorites();renderFavorites();renderFavoriteButtons();}
+  function renderFavoriteButtons(){
+    document.querySelectorAll("[data-favorite-id]").forEach(button=>{const on=favorites.has(button.dataset.favoriteId);button.textContent=on?"★ В избранном":"☆ В избранное";button.classList.toggle("btn-primary",on);});
+    document.querySelectorAll("[data-live-favorite]").forEach(button=>{const on=favorites.has(button.dataset.liveFavorite);button.textContent=on?"★":"☆";button.setAttribute("aria-label",on?"Убрать из избранного":"Добавить в избранное");});
+  }
+
   let catalogNotice = "";
   let selected = null;
   let satelliteLibReady = null;
@@ -208,10 +231,12 @@
         row.nextPass ? "Пролёт: " + row.nextPass.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) :
         "Нет пролёта за 24 ч";
       const passColor = row.visible ? "#55e1a7" : row.nextPass ? "#8cddff" : "#8da5bc";
-      return '<button type="button" class="object-row" data-live-id="' + esc(item.NORAD_CAT_ID) + '" style="width:100%;text-align:left;color:inherit;cursor:pointer"><span><b>' +
+      return '<div class="object-row" style="width:100%;text-align:left;color:inherit"><button type="button" data-live-id="' + esc(item.NORAD_CAT_ID) + '" style="flex:1;min-width:0;text-align:left;background:none;border:0;color:inherit;cursor:pointer;padding:0"><b>' +
         esc(item.OBJECT_NAME) + '</b><small>NORAD ' + esc(item.NORAD_CAT_ID) + ' · ' + esc(item._categoryLabel || item._category) +
-        ' · <span style="color:' + passColor + '">' + esc(passLabel) + '</span><br><span style="color:' + ageColor + '">' + esc(ageLabel) + '</span></small></span><strong>Выбрать ↗</strong></button>';
+        ' · <span style="color:' + passColor + '">' + esc(passLabel) + '</span><br><span style="color:' + ageColor + '">' + esc(ageLabel) + '</span></small></button><button type="button" class="btn" data-live-favorite="' + esc(item.NORAD_CAT_ID) + '" style="padding:7px 11px;font-size:18px" aria-label="Добавить в избранное">☆</button></div>';
     }).join("");
+    renderFavorites(); renderFavoriteButtons();
+    list.querySelectorAll("[data-live-favorite]").forEach(button=>button.addEventListener("click",event=>{event.stopPropagation();toggleFavorite(button.dataset.liveFavorite);}));
     list.querySelectorAll("[data-live-id]").forEach(button => {
       const item=records.find(entry=>String(entry.NORAD_CAT_ID)===button.dataset.liveId);
       if(item) attachSatellitePreview(button,item);
@@ -367,6 +392,8 @@
     }
   }
   document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll("[data-favorite-id]").forEach(button=>button.addEventListener("click",()=>toggleFavorite(button.dataset.favoriteId)));
+    renderFavorites(); renderFavoriteButtons();
     $("refreshOrbitData")?.addEventListener("click", refresh);
     $("predictPasses")?.addEventListener("click", predictPasses);
     $("satSearch")?.addEventListener("input", render);

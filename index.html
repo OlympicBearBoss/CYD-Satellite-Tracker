@@ -364,6 +364,21 @@ body[data-theme="terminal"] .content:before{opacity:.28}
  .nav-item{min-height:54px}
 }
 </style>
+
+<style id="account-toolbar-fit">
+/* Keep account access visible on iPad landscape and compact desktop widths. */
+@media (min-width:761px) and (max-width:1300px){
+ .topbar{padding-left:18px;padding-right:18px;gap:10px}
+ .top-actions{gap:9px;flex-shrink:0}
+ .connection-chip,.clock{display:none!important}
+ .account-trigger{display:inline-flex!important;flex-shrink:0;padding:6px 9px}
+ .theme-picker{min-width:104px;width:104px}
+}
+@media (max-width:760px){
+ .top-actions{min-width:0;flex-shrink:0}
+ .account-trigger{display:inline-flex!important;flex-shrink:0}
+}
+</style>
 </head>
 <body>
 <div class="shell">

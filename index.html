@@ -336,13 +336,19 @@ if(host){
    const clouds=new THREE.Mesh(new THREE.SphereGeometry(1.008,72,48),new THREE.MeshLambertMaterial({map:cloudMap,transparent:true,opacity:.23,depthWrite:false})); earthGroup.add(clouds);
   }catch(cloudError){console.warn('Cloud texture unavailable; continuing without clouds',cloudError);}
   const atmosphere=new THREE.Mesh(new THREE.SphereGeometry(1.035,64,48),new THREE.MeshBasicMaterial({color:0x4aaeff,transparent:true,opacity:.10,side:THREE.BackSide})); earthGroup.add(atmosphere);
-  // Geographic marker: Ekaterinburg, 56.8389 N, 60.6057 E.
-  const lat=THREE.MathUtils.degToRad(56.8389), lon=THREE.MathUtils.degToRad(60.6057);
-  // Match Three.js SphereGeometry UV longitude: u=(longitude+180)/360.
-  // This places 60.6057°E, 56.8389°N on the correct textured location.
-  const markerPos=new THREE.Vector3(Math.cos(lat)*Math.cos(lon),Math.sin(lat),-Math.cos(lat)*Math.sin(lon)).multiplyScalar(1.018);
-  const marker=new THREE.Mesh(new THREE.SphereGeometry(.018,20,16),new THREE.MeshBasicMaterial({color:0xff263f})); marker.position.copy(markerPos); earthGroup.add(marker);
-  const halo=new THREE.Mesh(new THREE.SphereGeometry(.035,20,16),new THREE.MeshBasicMaterial({color:0xff263f,transparent:true,opacity:.25})); halo.position.copy(markerPos); earthGroup.add(halo);
+  // Точка наблюдения: GPS устройства в демо-режиме или координаты GPS-модуля.
+  const demoObserver={latitude:56.8389,longitude:60.6057,height:0};
+  const initialObserver=window.cydObserverLocation||demoObserver;
+  const marker=new THREE.Mesh(new THREE.SphereGeometry(.018,20,16),new THREE.MeshBasicMaterial({color:0xff263f})); earthGroup.add(marker);
+  const halo=new THREE.Mesh(new THREE.SphereGeometry(.035,20,16),new THREE.MeshBasicMaterial({color:0xff263f,transparent:true,opacity:.25})); earthGroup.add(halo);
+  function updateObserverMarker(location){
+   if(!location||!Number.isFinite(Number(location.latitude))||!Number.isFinite(Number(location.longitude)))return;
+   const lat=THREE.MathUtils.degToRad(Number(location.latitude)),lon=THREE.MathUtils.degToRad(Number(location.longitude));
+   const p=new THREE.Vector3(Math.cos(lat)*Math.cos(lon),Math.sin(lat),-Math.cos(lat)*Math.sin(lon)).multiplyScalar(1.018);
+   marker.position.copy(p);halo.position.copy(p);
+  }
+  updateObserverMarker(initialObserver);
+  window.addEventListener('cyd-observer-change',()=>updateObserverMarker(window.cydObserverLocation));
   // Запускаем рендер сразу после создания Земли, не ожидая сеть спутников.
   // Это гарантирует видимый глобус даже при медленном/недоступном CelesTrak.
   function resizeEarthRenderer(){
@@ -525,7 +531,7 @@ if(host){
     if(!item.satrec)continue;
     const ecf=propagatedEcf(item.satrec,now);
     if(!ecf)continue;
-    const loc=window.cydObserverLocation||{latitude:56.8389,longitude:60.6057,height:0};
+    const loc=window.cydObserverLocation||demoObserver;
     const observerNow={latitude:THREE.MathUtils.degToRad(loc.latitude),longitude:THREE.MathUtils.degToRad(loc.longitude),height:Number(loc.height)||0};
     const look=satellite.ecfToLookAngles(observerNow,ecf);
     if(look){window.cydRadarPositions=window.cydRadarPositions||{};window.cydRadarPositions[item.id]={az:(THREE.MathUtils.radToDeg(look.azimuth)+360)%360,el:THREE.MathUtils.radToDeg(look.elevation)};}
@@ -563,7 +569,7 @@ if(host){
 
   // Predict actual visible ISS passes for the configured observer using SGP4.
   // Observer coordinates are the same as the red marker on the globe.
-  const observer={get latitude(){return THREE.MathUtils.degToRad((window.cydObserverLocation||{latitude:56.8389}).latitude);},get longitude(){return THREE.MathUtils.degToRad((window.cydObserverLocation||{longitude:60.6057}).longitude);},get height(){return Number((window.cydObserverLocation||{height:0}).height)||0;}};
+  const observer={get latitude(){return THREE.MathUtils.degToRad((window.cydObserverLocation||demoObserver).latitude);},get longitude(){return THREE.MathUtils.degToRad((window.cydObserverLocation||demoObserver).longitude);},get height(){return Number((window.cydObserverLocation||demoObserver).height)||0;}};
   const visibleElevation=THREE.MathUtils.degToRad(10);
   const passNotice=document.getElementById('passNotice');
   const passNoticeClose=document.getElementById('passNoticeClose');
@@ -633,6 +639,10 @@ if(host){
    if(!active&&remaining<=10*60*1000&&lastNoticeKey!==key){lastNoticeKey=key;}
   }
   calculateNextVisiblePass();
+  window.addEventListener('cyd-observer-change',()=>{
+   updateRealPositions(false);
+   calculateNextVisiblePass();
+  });
   passTimer=setInterval(()=>{
    updatePassNotice();
    if(nextVisiblePass&&new Date()>nextVisiblePass.end)calculateNextVisiblePass();
@@ -654,19 +664,35 @@ if(host){
  button.dataset.sensorHandler='ready';
  const status=document.getElementById('gpsStatus'),note=document.getElementById('deviceSensorNote');
  const setStatus=v=>{if(status)status.textContent=v;};
+ // Интерфейс для GPS-модуля: адаптер ESP32/контроллера передаёт fix событием cyd-gps-module-fix.
+ window.addEventListener('cyd-gps-module-fix',event=>{
+  const fix=event.detail||{};
+  const latitude=Number(fix.latitude),longitude=Number(fix.longitude);
+  if(!Number.isFinite(latitude)||!Number.isFinite(longitude))return;
+  const height=Number(fix.heightKm??(Number(fix.altitudeMeters)/1000));
+  window.cydObserverLocation={latitude,longitude,height:Number.isFinite(height)?height:0,source:'gps-module',accuracy:Number(fix.accuracy),timestamp:fix.timestamp||Date.now()};
+  window.cydObserverSource='gps-module';
+  document.getElementById('gpsLat').textContent=Math.abs(latitude).toFixed(5)+'° '+(latitude>=0?'N':'S');
+  document.getElementById('gpsLon').textContent=Math.abs(longitude).toFixed(5)+'° '+(longitude>=0?'E':'W');
+  document.getElementById('gpsAlt').textContent=Number.isFinite(height)?Math.round(height*1000)+' м':'—';
+  document.getElementById('gpsAccuracy').textContent=Number.isFinite(Number(fix.accuracy))?'±'+Math.round(Number(fix.accuracy))+' м':'—';
+  document.getElementById('gpsTime').textContent=new Date(window.cydObserverLocation.timestamp).toLocaleTimeString('ru-RU');
+  setStatus('GPS-МОДУЛЬ');if(note)note.textContent='Координаты получены от GPS-модуля. Точка на глобусе, радар и прогноз пролётов обновлены.';
+  window.dispatchEvent(new Event('cyd-observer-change'));
+ });
  button.addEventListener('click',()=>{
   setStatus('ЗАПРОС GPS');
   if(note)note.textContent='Запрашиваю доступ к геопозиции устройства…';
   if(!window.isSecureContext){setStatus('НУЖЕН HTTPS');if(note)note.textContent='Откройте защищённый адрес HTTPS.';return;}
   if(!navigator.geolocation){setStatus('GPS НЕДОСТУПЕН');if(note)note.textContent='Браузер не предоставил геолокацию. Проверьте настройки iPadOS.';return;}
   navigator.geolocation.getCurrentPosition(pos=>{
-   const c=pos.coords,lat=c.latitude,lon=c.longitude;window.cydObserverLocation={latitude:lat,longitude:lon,height:Number.isFinite(c.altitude)?c.altitude/1000:0};window.dispatchEvent(new Event("cyd-observer-change"));
+   const c=pos.coords,lat=c.latitude,lon=c.longitude;window.cydObserverLocation={latitude:lat,longitude:lon,height:Number.isFinite(c.altitude)?c.altitude/1000:0,source:'device-demo',accuracy:c.accuracy,timestamp:pos.timestamp};window.cydObserverSource='device-demo';window.dispatchEvent(new Event("cyd-observer-change"));
    document.getElementById('gpsLat').textContent=Math.abs(lat).toFixed(5)+'° '+(lat>=0?'N':'S');
    document.getElementById('gpsLon').textContent=Math.abs(lon).toFixed(5)+'° '+(lon>=0?'E':'W');
    document.getElementById('gpsAlt').textContent=Number.isFinite(c.altitude)?Math.round(c.altitude)+' м':'—';
    document.getElementById('gpsAccuracy').textContent='±'+Math.round(c.accuracy)+' м';
    document.getElementById('gpsTime').textContent=new Date(pos.timestamp).toLocaleTimeString('ru-RU');
-   setStatus('GPS УСТРОЙСТВА');if(note)note.textContent='Координаты получены от службы геолокации iPadOS.';
+   setStatus('GPS УСТРОЙСТВА');if(note)note.textContent='Демо-режим: точка наблюдения взята из геолокации устройства и обновлена на 3D-глобусе, в радаре и расчёте пролётов.';
   },err=>{
    const msg=err.code===1?'Доступ запрещён. Разрешите геолокацию для Яндекс Браузера в настройках iPadOS.':err.code===2?'iPad не смог определить местоположение. Проверьте службы геолокации.':'Истекло время ожидания координат. Повторите запрос.';
    setStatus(err.code===1?'ДОСТУП ЗАПРЕЩЁН':err.code===2?'НЕТ СИГНАЛА':'ТАЙМ-АУТ');if(note)note.textContent=msg;

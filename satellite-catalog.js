@@ -47,6 +47,8 @@
 
   let catalogNotice = "";
   let selected = null;
+  let trackingId = null;
+  let trackingTimer = null;
   let satelliteLibReady = null;
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -243,12 +245,14 @@
         row.nextPass ? "Пролёт: " + row.nextPass.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) :
         "Нет пролёта за 24 ч";
       const passColor = row.visible ? "#55e1a7" : row.nextPass ? "#8cddff" : "#8da5bc";
+      const tracking = trackingId === String(item.NORAD_CAT_ID);
       return '<div class="object-row" style="width:100%;text-align:left;color:inherit"><button type="button" data-live-id="' + esc(item.NORAD_CAT_ID) + '" style="flex:1;min-width:0;text-align:left;background:none;border:0;color:inherit;cursor:pointer;padding:0"><b>' +
         esc(item.OBJECT_NAME) + '</b><small>NORAD ' + esc(item.NORAD_CAT_ID) + ' · ' + esc(item._categoryLabel || item._category) +
-        ' · <span style="color:' + passColor + '">' + esc(passLabel) + '</span><br><span style="color:' + ageColor + '">' + esc(ageLabel) + '</span></small></button><button type="button" class="btn" data-live-favorite="' + esc(item.NORAD_CAT_ID) + '" style="padding:7px 11px;font-size:18px" aria-label="Добавить в избранное">☆</button></div>';
+        ' · <span style="color:' + passColor + '">' + esc(passLabel) + '</span><br><span style="color:' + ageColor + '">' + esc(ageLabel) + '</span></small></button><button type="button" class="btn" data-live-track="' + esc(item.NORAD_CAT_ID) + '" style="padding:7px 10px;white-space:nowrap;font-size:12px" aria-pressed="' + tracking + '">' + (tracking ? '● Слежение' : 'Следить') + '</button><button type="button" class="btn" data-live-favorite="' + esc(item.NORAD_CAT_ID) + '" style="padding:7px 11px;font-size:18px" aria-label="Добавить в избранное">☆</button></div>';
     }).join("");
     renderFavorites(); renderFavoriteButtons();
     list.querySelectorAll("[data-live-favorite]").forEach(button=>button.addEventListener("click",event=>{event.stopPropagation();toggleFavorite(button.dataset.liveFavorite);}));
+    list.querySelectorAll("[data-live-track]").forEach(button=>button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();toggleCatalogTracking(button.dataset.liveTrack);}));
     list.querySelectorAll("[data-live-id]").forEach(button => {
       const item=records.find(entry=>String(entry.NORAD_CAT_ID)===button.dataset.liveId);
       if(item) attachSatellitePreview(button,item);
@@ -258,10 +262,31 @@
       });
     });
   }
+  function toggleCatalogTracking(id) {
+    id=String(id);
+    if(trackingId===id){
+      trackingId=null;
+      if(trackingTimer){clearInterval(trackingTimer);trackingTimer=null;}
+      render();
+      if($("liveSatelliteDetails")) $("liveSatelliteDetails").insertAdjacentHTML("afterbegin",'<div class="note" style="margin-bottom:8px">Слежение за объектом остановлено. Команды на антенну не отправлялись.</div>');
+      return;
+    }
+    const item=records.find(entry=>String(entry.NORAD_CAT_ID)===id);
+    if(!item)return;
+    trackingId=id;
+    selected=item;
+    if(trackingTimer)clearInterval(trackingTimer);
+    showDetails().then(()=>{
+      const update=()=>{if(trackingId!==id||!selected||String(selected.NORAD_CAT_ID)!==id)return;calculatePosition();};
+      update();
+      trackingTimer=setInterval(update,5000);
+    }).catch(error=>{$("liveSatelliteDetails").textContent=error.message;});
+    render();
+  }
   async function showDetails() {
     if (!selected) return;
     const epoch = selected.EPOCH ? new Date(selected.EPOCH).toLocaleString() : "не указана";
-    $("liveSatelliteDetails").innerHTML = '<b>' + esc(selected.OBJECT_NAME) + '</b> · NORAD ' + esc(selected.NORAD_CAT_ID) +
+    $("liveSatelliteDetails").innerHTML = (trackingId===String(selected.NORAD_CAT_ID)?'<div class="note" style="margin-bottom:8px;color:#55e1a7">● Слежение активно · обновление положения каждые 5 секунд</div>':'') + '<b>' + esc(selected.OBJECT_NAME) + '</b> · NORAD ' + esc(selected.NORAD_CAT_ID) +
       '<br>Эпоха орбитальных элементов (UTC): ' + esc(epoch) +
       '<br>Возраст эпохи: ' + esc(selected.EPOCH ? Math.max(0, (Date.now() - Date.parse(selected.EPOCH)) / 3600000).toFixed(1) + ' ч' : 'неизвестен') + '<br>Наклонение: ' + esc(selected.INCLINATION) + '° · Эксцентриситет: ' + esc(selected.ECCENTRICITY) +
       '<br>Среднее движение: ' + esc(selected.MEAN_MOTION) + ' об/сутки' +

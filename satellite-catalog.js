@@ -93,9 +93,9 @@
   }
 
   const satelliteInfo = {
-    "25544": {title:"Международная космическая станция · ISS",image:"https://images-assets.nasa.gov/image/iss056e201248/iss056e201248~large.jpg",history:"Первый модуль выведен на орбиту в 1998 году. Постоянно обитаемый международный комплекс для научных экспериментов и наблюдения Земли.",tech:"Пилотируемая многоцелевая станция на низкой околоземной орбите, масса порядка 400 т. NORAD 25544.",frequencies:"Голос: приём 145.800 MHz FM; передача в ITU Region 1 — 145.200 MHz FM. APRS: 145.825 MHz. Репитер: uplink 145.990 MHz (CTCSS 67 Hz) / downlink 437.800 MHz. Активность режимов меняется.",source:"https://www.ariss.org/contact-the-iss.html"},
+    "25544": {title:"Международная космическая станция · ISS",image:"https://images-assets.nasa.gov/image/iss056e201248/iss056e201248~large.jpg",history:"Первый модуль выведен на орбиту в 1998 году. Постоянно обитаемый международный комплекс для научных экспериментов и наблюдения Земли.",tech:"Пилотируемый орбитальный комплекс на низкой околоземной орбите. Идентификатор каталога NORAD 25544. Массу не приводим: она меняется по мере стыковки кораблей и конфигурации станции.",frequencies:"Голос: приём 145.800 MHz FM; передача в ITU Region 1 — 145.200 MHz FM. Пакетный режим VHF: 145.825 MHz. Радиолюбительский FM-репитер: uplink 145.990 MHz (CTCSS 67 Hz) / downlink 437.800 MHz. Частоты и доступность радиостанций меняются; перед передачей сверяйтесь со статусом ARISS.",source:"https://www.ariss.org/contact-the-iss.html"},
     "43017": {title:"AO-91 · Fox-1B",image:"https://www.amsat.org/wordpress/wp-content/uploads/2017/11/Fox-1B.jpg",history:"Любительский CubeSat AMSAT-NA, запущен в 2017 году для экспериментов и радиолюбительской связи.",tech:"CubeSat 1U с FM ретранслятором типа bent-pipe. NORAD 43017.",frequencies:"Uplink 435.250 MHz FM; downlink 145.960 MHz FM. По данным AMSAT работа ограничена состоянием аккумулятора и солнечным освещением; проверьте текущий статус.",source:"https://www.amsat.org/two-way-satellites/ao-91/"},
-    "33591": {title:"NOAA-19 · метеоспутник",image:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/NOAA-19.jpg/640px-NOAA-19.jpg",history:"Запущен в феврале 2009 года в рамках программы NOAA POES для наблюдения облачности, температуры и атмосферы.",tech:"Полярно-орбитальная метеоплатформа с радиометрами и передачей изображений APT. NORAD 33591.",frequencies:"APT: 137.100 MHz (при активной передаче). Это приёмная частота изображений, не канал управления. Актуальную активность следует проверить.",source:"https://www.noaa.gov/"}
+    "33591": {title:"NOAA-19 · метеоспутник",image:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/NOAA-19.jpg/640px-NOAA-19.jpg",history:"Запущен 6 февраля 2009 года в составе программы NOAA POES для метеорологических наблюдений. NOAA вывела аппарат из эксплуатации 13 августа 2025 года.",tech:"Полярно-орбитальный метеоспутник серии POES. NORAD 33591. По данным NOAA, аппарат decommissioned; его не следует считать действующим источником метеоданных.",frequencies:"Историческая частота APT: 137.100 MHz; HRPT: 1698.0 MHz. NOAA-19 выведен из эксплуатации 13.08.2025 — не рассчитывайте на действующую передачу. Это справочные частоты, не подтверждение активности.",source:"https://www.ospo.noaa.gov/operations/poes/status.html"}
   };
   const categoryInfo = {
     stations:{history:"Орбитальные станции и транспортные корабли обслуживают экипажи, эксперименты и инфраструктуру на орбите.",tech:"Низкая околоземная орбита; конструкция и оборудование зависят от конкретного аппарата.",frequencies:"Частоты индивидуальны для каждого корабля и радиослужбы. Проверенная карточка частот для этого объекта пока не добавлена."},
@@ -110,7 +110,7 @@
   function ensureSatellitePreview(){
     if($("satelliteHoverPreview")) return;
     const css=document.createElement("style");
-    css.textContent="#satelliteHoverPreview{position:fixed;z-index:99999;width:min(370px,calc(100vw - 24px));max-height:72vh;overflow:auto;padding:13px;border:1px solid #52718c;border-radius:16px;background:rgba(12,22,36,.97);color:#edf6ff;box-shadow:0 18px 55px #0009;backdrop-filter:blur(18px);font:13px/1.45 -apple-system,BlinkMacSystemFont,sans-serif}#satelliteHoverPreview[hidden]{display:none}#satelliteHoverPreview img{width:100%;height:140px;object-fit:cover;border-radius:10px;margin-bottom:8px}#satelliteHoverPreview h3{font-size:15px;margin:0 0 7px}#satelliteHoverPreview p{margin:6px 0}#satelliteHoverPreview b,#satelliteHoverPreview a{color:#8ed7ff}";
+    css.textContent="#satelliteHoverPreview{position:fixed;z-index:99999;width:min(440px,calc(100vw - 24px));max-height:72vh;overflow:auto;padding:13px;border:1px solid #52718c;border-radius:16px;background:rgba(12,22,36,.97);color:#edf6ff;box-shadow:0 18px 55px #0009;backdrop-filter:blur(18px);font:13px/1.45 -apple-system,BlinkMacSystemFont,sans-serif}#satelliteHoverPreview[hidden]{display:none}#satelliteHoverPreview img{display:block;width:100%;height:240px;object-fit:contain;object-position:center;background:rgba(255,255,255,.06);border-radius:12px;margin-bottom:12px}#satelliteHoverPreview h3{font-size:15px;margin:0 0 7px}#satelliteHoverPreview p{margin:6px 0}#satelliteHoverPreview b,#satelliteHoverPreview a{color:#8ed7ff}";
     document.head.appendChild(css);
     const box=document.createElement("aside");box.id="satelliteHoverPreview";box.hidden=true;box.setAttribute("role","tooltip");
     box.addEventListener("pointerenter",()=>clearTimeout(previewHideTimer));
@@ -127,9 +127,9 @@
       '<p><b>Технически:</b> '+esc(info.tech||generic.tech)+'</p>'+
       '<p><b>Рабочие частоты:</b> '+esc(info.frequencies||generic.frequencies)+'</p>'+
       (info.source?'<p><a href="'+esc(info.source)+'" target="_blank" rel="noopener">Источник характеристик ↗</a></p>':'')+
-      '<p style="font-size:11px;color:#9eb1c5">Справочные частоты. Перед передачей проверьте действующий статус и требования радиолюбительской лицензии.</p>';
+      '<p style="font-size:11px;color:#9eb1c5">Справочная информация не гарантирует текущую работоспособность радиоканала. Частоты и статус проверяйте по ссылке на первичный источник перед использованием.</p>';
     box.hidden=false;
-    const w=Math.min(370,window.innerWidth-24),h=Math.min(box.offsetHeight,window.innerHeight-24);
+    const w=Math.min(440,window.innerWidth-24),h=Math.min(box.offsetHeight,window.innerHeight-24);
     box.style.left=Math.max(12,Math.min(x+16,window.innerWidth-w-12))+"px";
     box.style.top=Math.max(12,Math.min(y+16,window.innerHeight-h-12))+"px";
   }

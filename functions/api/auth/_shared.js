@@ -20,6 +20,7 @@ export function cookie(request,name) {
 export const sessionCookie = (token, maxAge=2592000) => "cyd_session="+encodeURIComponent(token)+"; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age="+maxAge;
 export const clearSessionCookie = "cyd_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0";
 export async function currentUser(request, env) {
+  if (!env?.DB) return null;
   const token=cookie(request,"cyd_session");
   if(!token) return null;
   const hash=await digest(token), now=Math.floor(Date.now()/1000);

@@ -45,6 +45,13 @@
     document.querySelectorAll("[data-live-favorite]").forEach(button=>{const on=favorites.has(button.dataset.liveFavorite);button.textContent=on?"★":"☆";button.setAttribute("aria-label",on?"Убрать из избранного":"Добавить в избранное");});
   }
 
+  const groupVisibilityKey = "cyd-catalog-group-visibility-v1";
+  const groupVisibility = Object.fromEntries(sources.map(source=>[source.group,true]));
+  try {
+    const saved=JSON.parse(localStorage.getItem(groupVisibilityKey)||"{}");
+    sources.forEach(source=>{if(typeof saved[source.group]==="boolean")groupVisibility[source.group]=saved[source.group];});
+  } catch (_) {}
+  function saveGroupVisibility(){try{localStorage.setItem(groupVisibilityKey,JSON.stringify(groupVisibility));}catch(_){}}
   let catalogNotice = "";
   let selected = null;
   let trackingId = null;
@@ -237,7 +244,7 @@
     try { ranked = await rankByVisibility(filtered.slice(0, 100)); }
     catch (_) { ranked = filtered.slice(0, 100).map(item => ({item,visible:false,nextPass:null,elevation:-90})); }
     if (!ranked.length) { list.innerHTML = catalogNotice + '<div class="note">По запросу ничего не найдено.</div>'; return; }
-    list.innerHTML = catalogNotice + '<div class="note" style="margin-bottom:8px">Сортировка: сначала видимые сейчас (угол места ≥ 10°), далее — по времени ближайшего пролёта в следующие 24 часа. Координаты по умолчанию: Екатеринбург; можно изменить в настройках наблюдателя.</div>' + ranked.map(row => {
+    const rowMarkup = row => {
       const item = row.item;
       const age = item.EPOCH ? (Date.now() - Date.parse(item.EPOCH)) / 3600000 : null;
       const ageLabel = age === null ? "эпоха не указана" : age < 0 ? "эпоха из будущего — проверьте источник" :
@@ -251,7 +258,27 @@
       return '<div class="object-row" style="width:100%;text-align:left;color:inherit"><button type="button" data-live-id="' + esc(item.NORAD_CAT_ID) + '" style="flex:1;min-width:0;text-align:left;background:none;border:0;color:inherit;cursor:pointer;padding:0"><b>' +
         esc(item.OBJECT_NAME) + '</b><small>NORAD ' + esc(item.NORAD_CAT_ID) + ' · ' + esc(item._categoryLabel || item._category) +
         ' · <span style="color:' + passColor + '">' + esc(passLabel) + '</span><br><span style="color:' + ageColor + '">' + esc(ageLabel) + '</span></small></button><button type="button" class="btn" data-live-track="' + esc(item.NORAD_CAT_ID) + '" style="padding:7px 10px;white-space:nowrap;font-size:12px" aria-pressed="' + tracking + '">' + (tracking ? '● Слежение' : 'Следить') + '</button><button type="button" class="btn" data-live-favorite="' + esc(item.NORAD_CAT_ID) + '" style="padding:7px 11px;font-size:18px" aria-label="Добавить в избранное">☆</button></div>';
+    };
+    const groupSections = sources.map(source=>{
+      const rows=ranked.filter(row=>row.item._category===source.group);
+      if(!rows.length)return "";
+      const enabled=groupVisibility[source.group]!==false;
+      return '<section class="catalog-group" style="margin:10px 0;border:1px solid #29445d;border-radius:12px;overflow:hidden">' +
+        '<label style="display:flex;align-items:center;gap:10px;padding:12px;background:#10263a;cursor:pointer;font-weight:700">' +
+        '<input type="checkbox" data-group-toggle="'+source.group+'" '+(enabled?'checked':'')+' style="width:19px;height:19px;accent-color:#55c7ff">' +
+        '<span style="flex:1">'+esc(source.label)+'</span><span class="subtle">'+rows.length+' объектов</span></label>' +
+        (enabled?'<div style="padding:8px">'+rows.map(rowMarkup).join("")+'</div>':'')+'</section>';
     }).join("");
+    const visibleGroupCount=sources.filter(source=>groupVisibility[source.group]!==false).length;
+    list.innerHTML = catalogNotice +
+      '<div class="note" style="margin-bottom:8px">Сначала отображаются видимые сейчас спутники, затем — по времени ближайшего пролёта. Отключение группы скрывает её в списке, но не исключает спутники из расчётов уведомлений о восходе.</div>' +
+      '<div class="button-row" style="margin:8px 0"><button type="button" class="btn" id="catalogGroupsAll">Включить все группы</button><button type="button" class="btn" id="catalogGroupsNone">Отключить все группы</button><small class="subtle">'+visibleGroupCount+' из '+sources.length+' групп включено</small></div>' +
+      groupSections;
+    list.querySelectorAll("[data-group-toggle]").forEach(input=>input.addEventListener("change",()=>{
+      groupVisibility[input.dataset.groupToggle]=input.checked;saveGroupVisibility();render();
+    }));
+    $("catalogGroupsAll")?.addEventListener("click",()=>{sources.forEach(source=>groupVisibility[source.group]=true);saveGroupVisibility();render();});
+    $("catalogGroupsNone")?.addEventListener("click",()=>{sources.forEach(source=>groupVisibility[source.group]=false);saveGroupVisibility();render();});
     renderFavorites(); renderFavoriteButtons();
     list.querySelectorAll("[data-live-favorite]").forEach(button=>button.addEventListener("click",event=>{event.stopPropagation();toggleFavorite(button.dataset.liveFavorite);}));
     list.querySelectorAll("[data-live-track]").forEach(button=>button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();toggleCatalogTracking(button.dataset.liveTrack);}));

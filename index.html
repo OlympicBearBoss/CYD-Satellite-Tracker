@@ -288,7 +288,7 @@ function renderTarget(){
  const summary=summaries[selected];
  $("selectedSummary").textContent=summary?(lang==="en"?summary.en:summary.ru):(lang==="en"?"Satellite selected for tracking. Orbit data is calculated from the latest available public orbital elements.":"Выбранный объект для сопровождения. Орбита рассчитывается по последним доступным открытым орбитальным элементам.");
 }
-function selectTarget(id){selected=id;const o=objectData[id];renderTarget();setAxes(o.az,o.el);$("targetSelect").value=id;addLog("SELECT",lang==="ru"?"Выбран объект "+o.name:"Selected target "+o.name);go("control");}
+function selectTarget(id,openControl=true){selected=id;const o=objectData[id];renderTarget();setAxes(o.az,o.el);$("targetSelect").value=id;addLog("SELECT",lang==="ru"?"Выбран объект "+o.name:"Selected target "+o.name);if(openControl)go("control");}
 // Expose the target selector to the satellite catalog quick-access panel.
 window.selectTarget=selectTarget;
 document.querySelectorAll("[data-select]").forEach(b=>b.addEventListener("click",()=>selectTarget(b.dataset.select)));

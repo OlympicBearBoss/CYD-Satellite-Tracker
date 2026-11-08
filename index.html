@@ -74,7 +74,7 @@
 <section class="view active" id="view-overview">
 <div class="page-heading"><div><div class="eyebrow" data-i18n="eyebrow">ЦЕНТР УПРАВЛЕНИЯ · CYD ESP32</div><h1 data-i18n="welcome">Добро пожаловать на станцию</h1><p data-i18n="welcome_desc">Мониторинг спутников, положение антенны и состояние оборудования.</p></div><div class="heading-actions"><span class="date-label" id="today"></span><button class="btn btn-primary" data-go="control" data-i18n="open_control">Открыть управление ↗</button></div></div>
 <div class="overview-grid">
-<article class="panel globe-panel"><div class="panel-title"><div><span class="section-icon">◉</span><h2 data-i18n="earth_view">Орбитальная обстановка</h2></div><span class="subtle">LIVE ORBITS · SGP4</span></div><div class="earth-scene realistic-earth-scene"><div id="earth3d" role="img" aria-label="Трёхмерная модель Земли, спутник на орбите и красная точка наблюдения в Екатеринбурге"></div><label class="model-picker" style="position:absolute;top:12px;right:12px;z-index:4;background:#071726dd;border:1px solid #315c7c;border-radius:8px;padding:7px 9px;color:#bde8ff;font-size:10px">3D-модель <select id="spacecraftModel" style="margin-left:6px;background:#102b42;color:#e7f6ff;border:1px solid #35617f;border-radius:5px;padding:5px"><option value="iss">МКС · NASA/JSC</option><option value="landsat8">Landsat 8 · NASA</option></select></label><div class="earth-caption"><b>ЗЕМЛЯ / ОРБИТА LEO</b><small>Екатеринбург · 56.8389° с. ш. · 60.6057° в. д.</small></div><div class="earth-location-key"><i></i> Точка наблюдения · Екатеринбург</div><div class="earth-model-status" id="earthModelStatus">Загрузка 3D-модели…</div><div class="orbit-visibility" aria-label="Видимость спутников"><b>ОТОБРАЖЕНИЕ НА ОРБИТЕ</b><label><input type="checkbox" data-orbit-toggle="iss" checked> МКС · NASA</label><label><input type="checkbox" data-orbit-toggle="noaa" checked> NOAA 19</label><label><input type="checkbox" data-orbit-toggle="ao91" checked> AO-91</label><label><input type="checkbox" data-orbit-toggle="starlink" checked> Starlink · группа</label><small>Координаты рассчитываются по OMM CelesTrak · SGP4</small></div></div><div class="globe-foot"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div></article>
+<article class="panel globe-panel"><div class="panel-title"><div><span class="section-icon">◉</span><h2 data-i18n="earth_view">Орбитальная обстановка</h2></div><span class="subtle">LIVE ORBITS · SGP4</span></div><div class="earth-scene realistic-earth-scene"><div id="earth3d" role="img" aria-label="Трёхмерная модель Земли, спутник на орбите и красная точка наблюдения в Екатеринбурге"></div><div class="model-picker" style="position:absolute;top:12px;right:12px;z-index:4;background:#071726dd;border:1px solid #315c7c;border-radius:8px;padding:8px 10px;color:#bde8ff;font-size:10px">3D-МОДЕЛИ · АВТОВЫБОР ПО СПУТНИКУ</div><div class="earth-caption"><b>ЗЕМЛЯ / ОРБИТА LEO</b><small>Екатеринбург · 56.8389° с. ш. · 60.6057° в. д.</small></div><div class="earth-location-key"><i></i> Точка наблюдения · Екатеринбург</div><div class="earth-model-status" id="earthModelStatus">Загрузка 3D-модели…</div><div id="earthModelAssetsStatus" style="position:absolute;left:16px;right:16px;bottom:54px;z-index:3;font-size:9px;line-height:1.35;color:#9bc5df;text-shadow:0 1px 5px #00101e;pointer-events:none">Загрузка открытых 3D-моделей…</div><div class="orbit-visibility" aria-label="Видимость спутников"><b>ОТОБРАЖЕНИЕ НА ОРБИТЕ</b><label><input type="checkbox" data-orbit-toggle="iss" checked> МКС · NASA</label><label><input type="checkbox" data-orbit-toggle="noaa" checked> NOAA 19</label><label><input type="checkbox" data-orbit-toggle="ao91" checked> AO-91</label><label><input type="checkbox" data-orbit-toggle="starlink" checked> Starlink · группа</label><small>Координаты рассчитываются по OMM CelesTrak · SGP4</small></div></div><div class="globe-foot"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div></article>
 <article class="panel target-panel"><div class="panel-title"><div><span class="section-icon">⌖</span><h2 data-i18n="selected_sat">Выбранный спутник</h2></div><span class="status-pill"><i></i><span data-i18n="tracking_demo">ДЕМО</span></span></div><div class="target-name"><div class="sat-avatar">✦</div><div><h3 id="selectedName">МКС (ZARYA)</h3><small id="selectedNorad">NORAD 25544 · НОО</small></div></div><div class="target-coords"><div><small data-i18n="azimuth">АЗИМУТ</small><b id="overviewAz">132.4°</b></div><div><small data-i18n="elevation">УГОЛ МЕСТА</small><b id="overviewEl">67.8°</b></div></div><div class="pass-card"><span data-i18n="next_pass">СЛЕДУЮЩИЙ ВИДИМЫЙ ПРОЛЁТ МКС</span><b id="nextPassCountdown">Расчёт пролёта…</b><small id="nextPassMeta">Условие видимости: высота над горизонтом ≥ 10°</small></div><button class="text-link" data-go="satellites" data-i18n="all_satellites">Каталог спутников →</button></article>
 </div>
 <div class="kpi-grid">
@@ -269,43 +269,64 @@ if(host){
    renderer.render(scene,camera);
   }
   renderEarthFrame();
-  // Real NASA spacecraft assets (official GLB downloads).
-  const sat=new THREE.Group(); earthGroup.add(sat);
+  // Real spacecraft GLB assets from NASA and the open satvis model collection.
+  // Models are visual representations; SGP4 coordinates remain the source of position.
+  const sat=new THREE.Group();
   const dracoLoader=new DRACOLoader();
   dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
   const gltfLoader=new GLTFLoader();
   gltfLoader.setDRACOLoader(dracoLoader);
   const modelSources={
-    iss:'https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/international-space-station-%28iss%29-%28a%29/International%20Space%20Station%20%28ISS%29%20%28A%29.glb',
-    landsat8:'https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/landsat-8/Landsat%208.glb'
+    iss:{
+      url:'https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/international-space-station-%28iss%29-%28a%29/International%20Space%20Station%20%28ISS%29%20%28A%29.glb',
+      label:'МКС · NASA/JSC · точная модель станции',scale:.68
+    },
+    noaa:{
+      url:'https://raw.githubusercontent.com/Flowm/satvis-3d-models/main/public/SUOMI-NPP.glb',
+      label:'NOAA 19 · модель платформы Suomi-NPP/NOAA-20 (аналог, не точная копия NOAA-19)',scale:.17
+    },
+    ao91:{
+      url:'https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/cubesat---1-ru-generic/CubeSat%20-%201%20RU%20Generic.glb',
+      label:'AO-91 · типовая модель CubeSat 1U NASA (не точная копия AO-91)',scale:.13
+    },
+    starlink:{
+      url:'https://raw.githubusercontent.com/Flowm/satvis-3d-models/main/public/STARLINK-V1.glb',
+      label:'Starlink · модель платформы Starlink V1 из satvis (типовая для поколения)',scale:.16
+    }
   };
-  let modelRequest=0;
-  async function loadSpacecraftModel(id){
-    const request=++modelRequest;
-    if(status)status.textContent='Загрузка модели NASA: '+(id==='iss'?'МКС':'Landsat 8')+'…';
+  const modelLoadStates={};
+  const modelStatusNode=document.getElementById('earthModelAssetsStatus');
+  function updateModelStatus(){
+    if(!modelStatusNode)return;
+    const loaded=Object.entries(modelLoadStates).filter(([,v])=>v.ok).map(([,v])=>v.label);
+    const failed=Object.entries(modelLoadStates).filter(([,v])=>!v.ok).map(([,v])=>v.label+' — не загрузилась');
+    modelStatusNode.textContent=(loaded.length?'Загружено 3D: '+loaded.join(' · '):'Загрузка открытых 3D-моделей…')+(failed.length?' · '+failed.join(' · '):'');
+  }
+  async function loadSpacecraftModel(id,target=sat){
+    const def=modelSources[id];
+    if(!def)return;
     try{
-      const gltf=await gltfLoader.loadAsync(modelSources[id]);
-      if(request!==modelRequest)return;
-      while(sat.children.length)sat.remove(sat.children[0]);
+      const gltf=await gltfLoader.loadAsync(def.url);
+      while(target.children.length)target.remove(target.children[0]);
       const model=gltf.scene;
       const box=new THREE.Box3().setFromObject(model);
       const size=box.getSize(new THREE.Vector3());
       const center=box.getCenter(new THREE.Vector3());
       model.position.sub(center);
       const maxDim=Math.max(size.x,size.y,size.z)||1;
-      model.scale.setScalar(.68/maxDim);
-      sat.add(model);
-      // Keep the imported NASA geometry, materials and textures intact.
-      sat.userData.modelId=id;
-      if(status)status.textContent='Модель NASA загружена: '+(id==='iss'?'МКС · NASA/JSC':'Landsat 8 · NASA');
+      model.scale.setScalar(def.scale/maxDim);
+      target.add(model);
+      target.userData.modelId=id;
+      modelLoadStates[id]={ok:true,label:def.label};
+      updateModelStatus();
+      return true;
     }catch(error){
-      if(status)status.textContent='Не удалось загрузить модель NASA: '+error.message;
-      console.error('NASA GLB load failed',error);
+      modelLoadStates[id]={ok:false,label:def.label};
+      updateModelStatus();
+      console.error('Open spacecraft GLB failed:',id,error);
+      return false;
     }
   }
-  const modelPicker=document.getElementById('spacecraftModel');
-  if(modelPicker)modelPicker.addEventListener('change',()=>loadSpacecraftModel(modelPicker.value));
-  loadSpacecraftModel('iss');
   // Реальные положения рассчитываются по свежим OMM/CelesTrak через SGP4.
   let satellite;
   try{satellite=await import('https://cdn.jsdelivr.net/npm/satellite.js@6.0.1/+esm');}
@@ -340,24 +361,23 @@ if(host){
    const orbitLine=new THREE.Mesh(new THREE.BufferGeometry(),new THREE.MeshBasicMaterial({color:def.color,transparent:true,opacity:.92,depthWrite:false}));
    group.add(orbitLine);
    const body=new THREE.Group();group.add(body);
-   if(def.id==='iss'){body.add(sat);sat.scale.multiplyScalar(1.0);}
-   else{
-    const mat=new THREE.MeshStandardMaterial({color:def.color,metalness:.55,roughness:.38});
-    body.add(new THREE.Mesh(new THREE.BoxGeometry(.014,.009,.018),mat));
-    for(const side of [-1,1]){
-     const panelMesh=new THREE.Mesh(new THREE.BoxGeometry(.035,.002,.018),new THREE.MeshStandardMaterial({color:def.id==='starlink'?0x899ac5:0x315f91,metalness:.35,roughness:.5}));
-     panelMesh.position.x=side*.026;body.add(panelMesh);
-    }
-   }
+   const modelRoot=def.id==='iss'?sat:new THREE.Group();
+   body.add(modelRoot);
    // Яркая точка-маркер остаётся заметной даже если детальная модель спутника мала.
    const beacon=new THREE.Mesh(new THREE.SphereGeometry(.022,16,12),new THREE.MeshBasicMaterial({color:def.color}));
    beacon.renderOrder=3;body.add(beacon);
    const beaconGlow=new THREE.Mesh(new THREE.SphereGeometry(.043,16,12),new THREE.MeshBasicMaterial({color:def.color,transparent:true,opacity:.22,depthWrite:false}));
    beaconGlow.renderOrder=2;body.add(beaconGlow);
    orbitLine.renderOrder=1;
-   orbitObjects[def.id]={...def,group,body,orbitLine,satrec:null,record:null};
+   orbitObjects[def.id]={...def,group,body,modelRoot,orbitLine,satrec:null,record:null};
   }
   satelliteFeeds.forEach(buildSatelliteVisual);
+  // Load one public 3D asset per tracked object. The beacon remains as a locator,
+  // not as a substitute for the spacecraft mesh.
+  loadSpacecraftModel('iss',orbitObjects.iss.modelRoot);
+  loadSpacecraftModel('noaa',orbitObjects.noaa.modelRoot);
+  loadSpacecraftModel('ao91',orbitObjects.ao91.modelRoot);
+  loadSpacecraftModel('starlink',orbitObjects.starlink.modelRoot);
   document.querySelectorAll('[data-orbit-toggle]').forEach(input=>input.addEventListener('change',()=>{
    const item=orbitObjects[input.dataset.orbitToggle];if(item)item.group.visible=input.checked;
   }));

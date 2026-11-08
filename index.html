@@ -821,6 +821,7 @@ if(host){
   }
   window.addEventListener('cyd-catalog-track',event=>addCatalogOrbit(event.detail&&event.detail.record));
   // Каталог может быть готов раньше Three.js/SGP4. Обрабатываем накопленные события.
+  window.cydOrbitSceneReady=true;
   const pendingCatalogTracks=window.cydPendingCatalogTracks||[];
   window.cydPendingCatalogTracks=[];
   pendingCatalogTracks.forEach(addCatalogOrbit);

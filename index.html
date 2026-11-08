@@ -19,7 +19,9 @@
 </style>
 <style>
 /* Realistic interactive Earth scene */
-.realistic-earth-scene{height:360px;isolation:isolate;background:radial-gradient(ellipse at 50% 52%,#0a3552 0,#061625 58%,#04101c 100%);border-radius:12px}
+
+.orbit-visibility{position:absolute;right:12px;bottom:12px;z-index:5;display:grid;gap:6px;min-width:150px;padding:10px 12px;background:#061522ef;border:1px solid #315c7c;border-radius:9px;box-shadow:0 8px 22px #0007;color:#c9e9ff;font-size:10px}.orbit-visibility>b{font:9px 'Space Mono';letter-spacing:.08em;color:#78cfff;margin-bottom:2px}.orbit-visibility label{display:flex;align-items:center;gap:7px;cursor:pointer}.orbit-visibility input{accent-color:#48baff;margin:0}.orbit-visibility small{font-size:8px;color:#7798b2;margin-top:2px}.earth-model-status{right:auto;left:12px;bottom:12px;max-width:42%;z-index:4}@media(max-width:700px){.orbit-visibility{right:7px;bottom:7px;padding:8px;font-size:9px}.earth-model-status{left:7px;bottom:7px;max-width:38%;font-size:8px}.earth-caption{bottom:115px}}
+.realistic-earth-scene{height:390px;isolation:isolate;background:radial-gradient(ellipse at 50% 52%,#0a3552 0,#061625 58%,#04101c 100%);border-radius:12px}
 #earth3d{position:absolute;inset:0;cursor:grab}
 #earth3d:active{cursor:grabbing}
 #earth3d canvas{display:block;width:100%;height:100%}
@@ -53,7 +55,7 @@
 <section class="view active" id="view-overview">
 <div class="page-heading"><div><div class="eyebrow" data-i18n="eyebrow">ЦЕНТР УПРАВЛЕНИЯ · CYD ESP32</div><h1 data-i18n="welcome">Добро пожаловать на станцию</h1><p data-i18n="welcome_desc">Мониторинг спутников, положение антенны и состояние оборудования.</p></div><div class="heading-actions"><span class="date-label" id="today"></span><button class="btn btn-primary" data-go="control" data-i18n="open_control">Открыть управление ↗</button></div></div>
 <div class="overview-grid">
-<article class="panel globe-panel"><div class="panel-title"><div><span class="section-icon">◉</span><h2 data-i18n="earth_view">Орбитальная обстановка</h2></div><span class="subtle">LIVE SIMULATION</span></div><div class="earth-scene realistic-earth-scene"><div id="earth3d" role="img" aria-label="Трёхмерная модель Земли, спутник на орбите и красная точка наблюдения в Екатеринбурге"></div><label class="model-picker" style="position:absolute;top:12px;right:12px;z-index:4;background:#071726dd;border:1px solid #315c7c;border-radius:8px;padding:7px 9px;color:#bde8ff;font-size:10px">3D-модель <select id="spacecraftModel" style="margin-left:6px;background:#102b42;color:#e7f6ff;border:1px solid #35617f;border-radius:5px;padding:5px"><option value="iss">МКС · NASA/JSC</option><option value="landsat8">Landsat 8 · NASA</option></select></label><div class="earth-caption"><b>ЗЕМЛЯ / ОРБИТА LEO</b><small>Екатеринбург · 56.8389° с. ш. · 60.6057° в. д.</small></div><div class="earth-location-key"><i></i> Точка наблюдения · Екатеринбург</div><div class="earth-model-status" id="earthModelStatus">Загрузка 3D-модели…</div></div><div class="globe-foot"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div></article>
+<article class="panel globe-panel"><div class="panel-title"><div><span class="section-icon">◉</span><h2 data-i18n="earth_view">Орбитальная обстановка</h2></div><span class="subtle">LIVE SIMULATION</span></div><div class="earth-scene realistic-earth-scene"><div id="earth3d" role="img" aria-label="Трёхмерная модель Земли, спутник на орбите и красная точка наблюдения в Екатеринбурге"></div><label class="model-picker" style="position:absolute;top:12px;right:12px;z-index:4;background:#071726dd;border:1px solid #315c7c;border-radius:8px;padding:7px 9px;color:#bde8ff;font-size:10px">3D-модель <select id="spacecraftModel" style="margin-left:6px;background:#102b42;color:#e7f6ff;border:1px solid #35617f;border-radius:5px;padding:5px"><option value="iss">МКС · NASA/JSC</option><option value="landsat8">Landsat 8 · NASA</option></select></label><div class="earth-caption"><b>ЗЕМЛЯ / ОРБИТА LEO</b><small>Екатеринбург · 56.8389° с. ш. · 60.6057° в. д.</small></div><div class="earth-location-key"><i></i> Точка наблюдения · Екатеринбург</div><div class="earth-model-status" id="earthModelStatus">Загрузка 3D-модели…</div><div class="orbit-visibility" aria-label="Видимость спутников"><b>ОТОБРАЖЕНИЕ НА ОРБИТЕ</b><label><input type="checkbox" data-orbit-toggle="iss" checked> МКС · NASA</label><label><input type="checkbox" data-orbit-toggle="noaa" checked> NOAA 19</label><label><input type="checkbox" data-orbit-toggle="ao91" checked> AO-91</label><label><input type="checkbox" data-orbit-toggle="starlink" checked> Starlink · группа</label><small>Модели кроме МКС показаны условно</small></div></div><div class="globe-foot"><span><i class="legend blue"></i>МКС</span><span><i class="legend green"></i>NOAA 19</span><span><i class="legend orange"></i>AO-91</span></div></article>
 <article class="panel target-panel"><div class="panel-title"><div><span class="section-icon">⌖</span><h2 data-i18n="selected_sat">Выбранный спутник</h2></div><span class="status-pill"><i></i><span data-i18n="tracking_demo">ДЕМО</span></span></div><div class="target-name"><div class="sat-avatar">✦</div><div><h3 id="selectedName">МКС (ZARYA)</h3><small id="selectedNorad">NORAD 25544 · НОО</small></div></div><div class="target-coords"><div><small data-i18n="azimuth">АЗИМУТ</small><b id="overviewAz">132.4°</b></div><div><small data-i18n="elevation">УГОЛ МЕСТА</small><b id="overviewEl">67.8°</b></div></div><div class="pass-card"><span data-i18n="next_pass">СЛЕДУЮЩИЙ ПРОЛЁТ</span><b data-i18n="in_12">Через 12 минут</b><small data-i18n="max_elev">Максимальная высота: 78.4°</small></div><button class="text-link" data-go="satellites" data-i18n="all_satellites">Каталог спутников →</button></article>
 </div>
 <div class="kpi-grid">
@@ -246,13 +248,33 @@ if(host){
   const modelPicker=document.getElementById('spacecraftModel');
   if(modelPicker)modelPicker.addEventListener('change',()=>loadSpacecraftModel(modelPicker.value));
   loadSpacecraftModel('iss');
-  const orbit=new THREE.Group(); earthGroup.add(orbit); const orbitPts=[]; const inclination=.68;
-  for(let i=0;i<=240;i++){const a=i/240*Math.PI*2;orbitPts.push(new THREE.Vector3(1.32*Math.cos(a),1.32*Math.sin(a)*Math.sin(inclination),1.32*Math.sin(a)*Math.cos(inclination)));}
-  const orbitLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(orbitPts),new THREE.LineBasicMaterial({color:0x55c7ff,transparent:true,opacity:.7})); orbit.add(orbitLine); sat.position.copy(orbitPts[0]); orbit.add(sat);
-  if(status)status.textContent='NASA 3D · МКС · спутник на орбите · Екатеринбург отмечен красным';
+  // Близкие к поверхности орбиты и отдельная видимость каждого набора.
+  const orbitDefs=[
+   {id:'iss',radius:1.13,inclination:.68,color:0x55c7ff,speed:1,phase:0},
+   {id:'noaa',radius:1.19,inclination:1.02,color:0x5de1a7,speed:.78,phase:2},
+   {id:'ao91',radius:1.25,inclination:.38,color:0xffb34d,speed:1.16,phase:4.1},
+   {id:'starlink',radius:1.31,inclination:.82,color:0xb58aff,speed:.92,phase:1.1}
+  ];
+  const orbitObjects={};
+  function addOrbit(def){
+   const group=new THREE.Group();earthGroup.add(group);const points=[];
+   for(let i=0;i<=240;i++){const a=i/240*Math.PI*2;points.push(new THREE.Vector3(def.radius*Math.cos(a),def.radius*Math.sin(a)*Math.sin(def.inclination),def.radius*Math.sin(a)*Math.cos(def.inclination)));}
+   group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:def.color,transparent:true,opacity:.36})));
+   const body=new THREE.Group();group.add(body);
+   if(def.id==='iss'){body.add(sat);sat.scale.multiplyScalar(.72);}
+   else{
+    body.add(new THREE.Mesh(new THREE.BoxGeometry(.035,.022,.045),new THREE.MeshStandardMaterial({color:def.color,metalness:.55,roughness:.38})));
+    for(const side of [-1,1]){const panelMesh=new THREE.Mesh(new THREE.BoxGeometry(.075,.008,.04),new THREE.MeshStandardMaterial({color:def.id==='starlink'?0x899ac5:0x315f91,metalness:.35,roughness:.5}));panelMesh.position.x=side*.065;body.add(panelMesh);}
+    if(def.id==='starlink'){for(let k=1;k<4;k++){const clone=body.clone();clone.position.set((k-2)*.075,.035,0);group.add(clone);}}
+   }
+   orbitObjects[def.id]={group,body,points,def};
+  }
+  orbitDefs.forEach(addOrbit);
+  document.querySelectorAll('[data-orbit-toggle]').forEach(input=>input.addEventListener('change',()=>{const item=orbitObjects[input.dataset.orbitToggle];if(item)item.group.visible=input.checked;}));
+  if(status)status.textContent='NASA 3D · МКС и орбитальные объекты · Екатеринбург отмечен красным';
   const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();};
-  new ResizeObserver(resize).observe(host); resize();
-  let t=0; function animate(){requestAnimationFrame(animate);t+=.003;const idx=Math.floor((t%(Math.PI*2))/(Math.PI*2)*240);sat.position.copy(orbitPts[idx]);sat.rotation.y=t*1.8;clouds.rotation.y+=.00018;controls.update();renderer.render(scene,camera);} animate();
+  new ResizeObserver(resize).observe(host);resize();
+  let t=0;function animate(){requestAnimationFrame(animate);t+=.003;for(const item of Object.values(orbitObjects)){const phase=(t*item.def.speed+item.def.phase)%(Math.PI*2);const idx=Math.floor(phase/(Math.PI*2)*240);item.body.position.copy(item.points[idx]);item.body.rotation.y=phase*1.8;}sat.rotation.y=t*1.8;clouds.rotation.y+=.00018;controls.update();renderer.render(scene,camera);}animate();
  }catch(e){if(status)status.textContent='3D не загрузилось: '+e.message;console.error(e);}
 }
 </script></body></html>

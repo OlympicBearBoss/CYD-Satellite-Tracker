@@ -506,7 +506,7 @@ if(host){
   calculateNextVisiblePass();
   passTimer=setInterval(()=>{
    updatePassNotice();
-   if(!nextVisiblePass||new Date()>nextVisiblePass.end||nextVisiblePass.start-new Date()>24*60*60*1000)calculateNextVisiblePass();
+   if(nextVisiblePass&&new Date()>nextVisiblePass.end)calculateNextVisiblePass();
   },1000);
   setInterval(calculateNextVisiblePass,5*60*1000);
 

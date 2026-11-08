@@ -607,7 +607,31 @@ if(host){
    setStatus(err.code===1?'ДОСТУП ЗАПРЕЩЁН':err.code===2?'НЕТ СИГНАЛА':'ТАЙМ-АУТ');if(note)note.textContent=msg;
   },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
   const D=window.DeviceOrientationEvent;
-  if(D&&typeof D.requestPermission==='function')D.requestPermission().catch(()=>{if(note)note.textContent+=' Компас недоступен или запрещён.';});
+  const onHeading=e=>{
+   let heading=null;
+   if(Number.isFinite(e.webkitCompassHeading))heading=e.webkitCompassHeading;
+   else if(e.absolute===true&&Number.isFinite(e.alpha))heading=(360-e.alpha)%360;
+   if(heading===null)return;
+   heading=((heading%360)+360)%360;
+   const angle=-heading;
+   const rotor=document.getElementById('radarRotor');
+   const rose=document.getElementById('compassRose');
+   const cardinals=document.getElementById('radarCardinals');
+   if(rotor)rotor.style.transform='rotate('+angle+'deg)';
+   if(rose)rose.style.transform='rotate('+angle+'deg)';
+   if(cardinals)cardinals.style.transform='rotate('+angle+'deg)';
+   if(cardinals)cardinals.querySelectorAll('span').forEach(el=>el.style.transform='rotate('+(-angle)+'deg)');
+   if(rose)rose.querySelectorAll('.compass-label').forEach(el=>el.style.transform='translate(-50%,-50%) rotate('+(-angle)+'deg)');
+   const readout=document.getElementById('radarHeading');
+   if(readout)readout.textContent=heading.toFixed(1)+'°';
+   const names=['СЕВЕР','СЕВЕРО-ВОСТОК','ВОСТОК','ЮГО-ВОСТОК','ЮГ','ЮГО-ЗАПАД','ЗАПАД','СЕВЕРО-ЗАПАД'];
+   const dir=document.getElementById('compassDirection');
+   if(dir)dir.textContent=names[Math.round(heading/45)%8];
+   if(note)note.textContent='Радар ориентирован по магнитному/географическому курсу датчика устройства; точка наблюдения берётся из геолокации iPad.';
+  };
+  window.addEventListener('deviceorientationabsolute',onHeading,true);
+  window.addEventListener('deviceorientation',onHeading,true);
+  if(D&&typeof D.requestPermission==='function')D.requestPermission().then(p=>{if(p!=='granted'&&note)note.textContent+=' Доступ к компасу не разрешён.';}).catch(()=>{if(note)note.textContent+=' Компас недоступен или запрещён.';});
  });
 })();
 </script>

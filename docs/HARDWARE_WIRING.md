@@ -39,15 +39,17 @@ Connect four SPDT switches using COM and NC:
 - PCF8574 P1: AZ_RIGHT
 - PCF8574 P2: EL_BOTTOM
 - PCF8574 P3: EL_TOP
+- PCF8574 P4: common HR4988 ENABLE control (both drivers together; verify the carrier exposes active-low ENABLE). Use a 10 kΩ pull-up to 3.3 V so the drivers default disabled at power-up; firmware may pull P4 low only after safety checks.
 
 Wire each NC loop so it is closed during normal travel and opens when the switch is actuated. With PCF8574 powered at 3.3 V, initialise P0–P3 as high/input and read them periodically. An open circuit is treated as a limit/fault. Confirm the actual switch terminal markings with a multimeter.
 
-The PCF8574 is a status/input expander, not a safety-rated emergency-stop circuit. Add a separate latching emergency stop that disconnects the 12 V motor supply, and use physical mechanical stops. Firmware must block movement further into an active limit while allowing controlled movement away from it.
+The PCF8574 is a status/input expander, not a safety-rated emergency-stop circuit. P4 can provide a shared active-low ENABLE request only after the exact HR4988 carrier is verified; it is not a substitute for an emergency stop. Add a separate latching emergency stop that disconnects the 12 V motor supply, and use physical mechanical stops. Firmware must block movement further into an active limit while allowing controlled movement away from it.
 
 ## HR4988 driver connections
 For each carrier, use the carrier's verified STEP, DIR, ENABLE, RESET, SLEEP, VDD, VMOT and GND labels:
 - AZ STEP=GPIO4, AZ DIR=GPIO18
 - EL STEP=GPIO19, EL DIR=GPIO23
+- Both active-low ENABLE inputs may be controlled together from PCF8574 P4 through the verified carrier interface; fit a 10 kΩ pull-up to 3.3 V so power-up defaults to disabled. Firmware sets P4 low only after checking sensors and limits.
 - Logic VDD from the verified 3.3 V-compatible logic supply; common ground with CYD.
 - VMOT from the separate 12 V motor supply.
 - Motor coils go to the two output coil pairs; identify coil pairs with a multimeter, do not rely on wire colours.

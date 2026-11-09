@@ -4,6 +4,8 @@
 #include <TJpg_Decoder.h>
 #include <XPT2046_Touchscreen.h>
 #include <SPI.h>
+#include <mbedtls/base64.h>
+#include "BearBossLogo.h"
 #include <TinyGPSPlus.h>
 #include "BoardConfig.h"
 #include "SiteLink.h"
@@ -81,7 +83,12 @@ void drawSkipButton() {
 }
 void drawSplash() {
   tft.fillScreen(TFT_BLACK);
-  TJpg_Decoder.drawJpg(120, 75, BEAR_BOSS_LOGO_JPG, sizeof(BEAR_BOSS_LOGO_JPG));
+  static uint8_t jpg[1800];
+  String encoded = FPSTR(BEAR_BOSS_LOGO_BASE64);
+  size_t decodedLength = 0;
+  int rc = mbedtls_base64_decode(jpg, sizeof(jpg), &decodedLength,
+      reinterpret_cast<const unsigned char*>(encoded.c_str()), encoded.length());
+  if (rc == 0 && decodedLength > 0) TJpg_Decoder.drawJpg(120, 75, jpg, decodedLength);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawCentreString("CYD SATELLITE TRACKER", 160, 165, 2);

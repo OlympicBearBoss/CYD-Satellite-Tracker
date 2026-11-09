@@ -213,9 +213,14 @@ void drawRotationTest(uint8_t rotation) {
 }
 
 void runDisplayDiagnostic() {
-  // Rotation 3 is the opposite landscape direction from rotation 1.
-  // Keep native ILI9341 geometry (240x320) and validate 320x240 at runtime.
-  tft.setRotation(3);
+  // Show all four controller orientations so the physical panel direction
+  // can be identified from a short video. Each screen includes its dimensions.
+  for (uint8_t rotation = 0; rotation < 4; ++rotation) {
+    drawRotationTest(rotation);
+    delay(2000);
+  }
+  // Return to landscape for the rest of the firmware.
+  tft.setRotation(1);
   Serial.printf("TFT SELECTED GEOMETRY: %dx%d\\n", tft.width(), tft.height());
 }
 
@@ -233,7 +238,9 @@ void setup() {
   }
   drawSplash();
   delay(5000);
-  setCheck(1, CheckState::PASS, "Экран 320x240 активен");
+  const bool landscapeReady = (tft.width() == 320 && tft.height() == 240);
+  setCheck(1, landscapeReady ? CheckState::PASS : CheckState::FAIL,
+           landscapeReady ? "Экран 320x240 активен" : "Ошибка: " + String(tft.width()) + "x" + String(tft.height()));
   if (skipInitialization) { enterSiteStage(); return; }
   setCheck(2, CheckState::RUNNING, "GPIO27 SDA / GPIO22 SCL");
   Wire.begin(Pins::I2C_SDA, Pins::I2C_SCL);

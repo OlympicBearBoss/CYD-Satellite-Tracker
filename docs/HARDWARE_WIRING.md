@@ -3,7 +3,7 @@
 Status: wiring plan v1.0. Confirm the exact carrier-board pin labels and component revisions before applying motor power.
 
 ## Hardware
-- CYD ESP32-2432S028, ESP32-WROOM-32
+- CYD ESP32-2432S028; confirm exact ESP32 module marking on the board. Some 2432S028 revisions use ESP32-WROVER, where GPIO16/17 are reserved for PSRAM; this plan deliberately does not use GPIO16/17.
 - 2 × US-17HS4401S stepper motors
 - 2 × HR4988 driver modules (carrier-board pinout and sense resistor must be checked)
 - 2 × AS5600 magnetic angle sensors
@@ -26,7 +26,7 @@ Status: wiring plan v1.0. Confirm the exact carrier-board pin labels and compone
 | GPS UART2 RX | 16 | Connect GPS TX to ESP32 GPIO16 |
 | GPS UART2 TX | 17 | Connect ESP32 GPIO17 to GPS RX |
 
-GPIO16 and GPIO17 are used for GPS, so the onboard RGB LED is unavailable. GPIO4 is used for AZ STEP, so the red LED channel is also unavailable. The microSD interface is not used because GPIO18/19/23 are reassigned to motor control. USB programming/serial console remains on GPIO1/GPIO3.
+GPIO16 and GPIO17 are deliberately avoided because some ESP32-2432S028 versions use them for WROVER PSRAM. GPIO4 is reassigned from its onboard RGB LED channel to AZ STEP. The microSD interface is not used because GPIO18/19/23 are reassigned to motor control. GPIO34 is also connected to the onboard light sensor on common revisions; that sensor is sacrificed for GPS RX. USB programming/serial console remains on GPIO1/GPIO3.
 
 ## I2C devices
 - AS5600 azimuth: VCC=3.3 V, GND, SDA=GPIO27, SCL=GPIO22; expected address 0x36.
@@ -39,9 +39,9 @@ Connect four SPDT switches using COM and NC:
 - PCF8574 P1: AZ_RIGHT
 - PCF8574 P2: EL_BOTTOM
 - PCF8574 P3: EL_TOP
-- PCF8574 P4: common HR4988 ENABLE control (both drivers together; verify the carrier exposes active-low ENABLE). Use a 10 kΩ pull-up to 3.3 V so the drivers default disabled at power-up; firmware may pull P4 low only after safety checks.
+- PCF8574 P4: common HR4988 ENABLE request (both drivers together; only if verified carrier exposes active-low ENABLE). Use a 10 kΩ pull-up to 3.3 V so drivers default disabled at power-up; firmware may pull P4 low only after safety checks.\n- PCF8574 P5: auxiliary NC contact of a latching emergency-stop switch, for status indication only. The emergency stop must independently interrupt motor power.
 
-Wire each NC loop so it is closed during normal travel and opens when the switch is actuated. With PCF8574 powered at 3.3 V, initialise P0–P3 as high/input and read them periodically. An open circuit is treated as a limit/fault. Confirm the actual switch terminal markings with a multimeter.
+Wire each NC loop so it is closed during normal travel and opens when the switch is actuated. With PCF8574 powered at 3.3 V, initialise P0–P3 and P5 as high/input and read them periodically. An open circuit is treated as a limit/fault. Confirm the actual switch terminal markings with a multimeter.
 
 The PCF8574 is a status/input expander, not a safety-rated emergency-stop circuit. P4 can provide a shared active-low ENABLE request only after the exact HR4988 carrier is verified; it is not a substitute for an emergency stop. Add a separate latching emergency stop that disconnects the 12 V motor supply, and use physical mechanical stops. Firmware must block movement further into an active limit while allowing controlled movement away from it.
 
@@ -72,7 +72,7 @@ Do not set current limit, microstep jumpers, RESET/SLEEP or ENABLE wiring until 
 - Since azimuth wiring is not routed through a slip ring, the usable travel must be less than the full turn by a cable-safe margin. Determine the final angle after measuring the cable loop and mechanical stops.
 
 ## Commissioning sequence
-1. With all power disconnected, identify board revision and verify connector pin order.
+1. With all power disconnected, identify the exact ESP32 module marking (WROOM/WROVER), board revision and verify connector pin order.
 2. Verify GPS breakout supply requirements and UART logic level.
 3. Verify AS5600 OUT mode and voltage with a meter.
 4. Verify PCF8574 address and all four NC switch states using 3.3 V only.

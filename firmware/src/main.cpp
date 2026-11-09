@@ -218,9 +218,9 @@ void runDisplayDiagnostic() {
     drawRotationTest(rotation);
     delay(1800);
   }
-  // Rotations 1 and 3 are landscape; select the opposite landscape direction
-  // from the previous firmware while keeping the 320x240 UI coordinate system.
-  tft.setRotation(3);
+  // Video test on the physical CYD showed rotation 2 as the only readable
+  // orientation. Keep this selection explicit for the next hardware check.
+  tft.setRotation(2);
   Serial.printf("TFT SELECTED GEOMETRY: %dx%d\\n", tft.width(), tft.height());
 }
 

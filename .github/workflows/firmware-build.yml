@@ -57,7 +57,6 @@ jobs:
           # Individual images are kept for diagnostics/manual recovery.
           cp "$BUILD_DIR/bootloader.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-bootloader.bin
           cp "$BUILD_DIR/partitions.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-partitions.bin
-          cp "$(find "$HOME/.platformio/packages" -type f -name boot_app0.bin -print -quit)" release/CYD-Satellite-Tracker-${FW_VERSION}-boot_app0.bin
           cp "$BUILD_DIR/firmware.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-application.bin
           cp "$BUILD_DIR/firmware.elf" release/CYD-Satellite-Tracker-${FW_VERSION}.elf
 
@@ -68,6 +67,7 @@ jobs:
             find "$HOME/.platformio/packages" -maxdepth 5 -type f -name '*boot*app*.bin' -print || true
             exit 1
           fi
+          cp "$BOOT_APP0" release/CYD-Satellite-Tracker-${FW_VERSION}-boot_app0.bin
 
           # PlatformIO 6.2 installs esptool v5 in tool-esptool (not tool-esptoolpy).
           ESPTOOL="$(find "$HOME/.platformio/packages/tool-esptool" -type f -name esptool -perm -u+x -print -quit)"

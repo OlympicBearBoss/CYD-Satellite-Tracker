@@ -74,21 +74,35 @@ void drawSkipButton() {
   tft.setTextColor(TFT_WHITE, TFT_MAROON);
   tft.drawCentreString("ПРЕРВАТЬ ЗАПУСК → ПОДКЛЮЧЕНИЕ К САЙТУ", 160, 213, 1);
 }
-// Decode 160x120 splash JPEG and scale each block 2x to fill the 320x240 display.
+// Decode the 160x120 JPEG in MCU blocks and enlarge it 2x for the 320x240 panel.
+// A callback must not abort JPEG decoding for a clipped edge block.
 bool splashJpegOutput(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) {
   static uint16_t scaled[32 * 32];
-  if (x < 0 || y < 0 || x + w > 160 || y + h > 120 || w > 16 || h > 16) return false;
-  for (uint16_t row = 0; row < h; ++row) {
-    for (uint16_t col = 0; col < w; ++col) {
-      const uint16_t pixel = bitmap[row * w + col];
-      const uint16_t dx = col * 2, dy = row * 2;
-      scaled[dy * (w * 2) + dx] = pixel;
-      scaled[dy * (w * 2) + dx + 1] = pixel;
-      scaled[(dy + 1) * (w * 2) + dx] = pixel;
-      scaled[(dy + 1) * (w * 2) + dx + 1] = pixel;
+  if (!bitmap || w == 0 || h == 0 || w > 16 || h > 16) {
+    Serial.printf("SPLASH BLOCK INVALID x=%d y=%d w=%u h=%u\\n", x, y, w, h);
+    return true;
+  }
+  if (x < 0 || y < 0 || x >= 160 || y >= 120) return true;
+
+  const uint16_t srcW = w;
+  const uint16_t drawW = (uint16_t)min((int)w, 160 - (int)x);
+  const uint16_t drawH = (uint16_t)min((int)h, 120 - (int)y);
+  for (uint16_t row = 0; row < drawH; ++row) {
+    for (uint16_t col = 0; col < drawW; ++col) {
+      const uint16_t pixel = bitmap[row * srcW + col];
+      const uint16_t dx = col * 2;
+      const uint16_t dy = row * 2;
+      const uint16_t outW = drawW * 2;
+      scaled[dy * outW + dx] = pixel;
+      scaled[dy * outW + dx + 1] = pixel;
+      scaled[(dy + 1) * outW + dx] = pixel;
+      scaled[(dy + 1) * outW + dx + 1] = pixel;
     }
   }
-  tft.pushImage(x * 2, y * 2, w * 2, h * 2, scaled);
+
+  const int16_t dstX = (tft.width() - 320) / 2 + x * 2;
+  const int16_t dstY = (tft.height() - 240) / 2 + y * 2;
+  tft.pushImage(dstX, dstY, drawW * 2, drawH * 2, scaled);
   return true;
 }
 
@@ -102,6 +116,7 @@ void drawSplash() {
   if (rc == 0 && decodedLength > 0) {
     const JRESULT result = TJpgDec.drawJpg(0, 0, jpg, decodedLength);
     if (result != JDR_OK) {
+      Serial.printf("SPLASH JPEG ERROR: JRESULT=%d\\n", (int)result);
       tft.setTextDatum(MC_DATUM);
       tft.setTextColor(TFT_RED, TFT_BLACK);
       tft.drawCentreString("SPLASH JPEG ERROR", 160, 120, 2);
@@ -201,7 +216,8 @@ void setup() {
   tft.setRotation(1);
   pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
-  tft.setSwapBytes(true);
+  // Byte order belongs to TJpg_Decoder's RGB565 output, not TFT_eSPI.
+  TJpgDec.setSwapBytes(true);
   TJpgDec.setJpgScale(1);
   TJpgDec.setCallback(splashJpegOutput);
   drawSplash();

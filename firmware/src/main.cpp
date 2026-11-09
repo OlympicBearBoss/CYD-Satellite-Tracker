@@ -2,8 +2,6 @@
 #include <Wire.h>
 #include <TFT_eSPI.h>
 #include <TJpg_Decoder.h>
-#include <XPT2046_Touchscreen.h>
-#include <SPI.h>
 #include <mbedtls/base64.h>
 #include "BearBossLogo.h"
 #include <TinyGPSPlus.h>
@@ -11,8 +9,6 @@
 #include "SiteLink.h"
 
 TFT_eSPI tft;
-SPIClass touchSPI(VSPI);
-XPT2046_Touchscreen touch(33, 36);
 bool skipInitialization = false;
 bool siteStageStarted = false;
 TinyGPSPlus gps;
@@ -69,11 +65,9 @@ uint16_t stateColor(CheckState s) {
 }
 
 bool touchSkipPressed() {
-  if (!touch.touched()) return false;
-  TS_Point pt = touch.getPoint();
-  int sx = map(pt.x, 250, 3800, 0, 320);
-  int sy = map(pt.y, 250, 3800, 0, 240);
-  return sx >= 8 && sx <= 312 && sy >= 205 && sy <= 238;
+  uint16_t sx = 0, sy = 0;
+  return tft.getTouch(&sx, &sy, 600) &&
+         sx >= 8 && sx <= 312 && sy >= 205 && sy <= 238;
 }
 void drawSkipButton() {
   tft.fillRoundRect(8, 207, 304, 27, 5, TFT_MAROON);
@@ -200,9 +194,6 @@ void setup() {
     tft.pushImage(x, y, w, h, bitmap);
     return 1;
   });
-  touchSPI.begin(25, 39, 32, 33);
-  touch.begin(touchSPI);
-  touch.setRotation(1);
   drawSplash();
   delay(5000);
   setCheck(1, CheckState::PASS, "Экран 320x240 активен");

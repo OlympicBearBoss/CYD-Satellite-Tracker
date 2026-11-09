@@ -1,9 +1,6 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <TFT_eSPI.h>
-#include <TJpg_Decoder.h>
-#include <mbedtls/base64.h>
-#include "BearBossLogo.h"
 #include <TinyGPSPlus.h>
 #include "BoardConfig.h"
 #include "SiteLink.h"
@@ -74,39 +71,47 @@ void drawSkipButton() {
   tft.setTextColor(TFT_WHITE, TFT_MAROON);
   tft.drawCentreString("ПРЕРВАТЬ ЗАПУСК → ПОДКЛЮЧЕНИЕ К САЙТУ", 160, 213, 1);
 }
-// Diagnostic pass: bypass all scaling and draw native JPEG MCU blocks.
-// The embedded source image is 160x120; center it on the 320x240 panel.
-// This isolates JPEG decoding from the former 2x block-scaling path.
-bool splashJpegOutput(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) {
-  if (!bitmap || w == 0 || h == 0 || x < 0 || y < 0 ||
-      x + w > 160 || y + h > 120) {
-    Serial.printf("SPLASH BLOCK INVALID x=%d y=%d w=%u h=%u\\n", x, y, w, h);
-    return true;
-  }
-  tft.pushImage(x + 80, y + 60, w, h, bitmap);
-  return true;
-}
-
+// Native TFT splash: no JPEG decoder, compressed image, scaling, or byte swapping.
 void drawSplash() {
   tft.fillScreen(TFT_BLACK);
-  static uint8_t jpg[8192];
-  String encoded = FPSTR(BEAR_BOSS_LOGO_BASE64);
-  size_t decodedLength = 0;
-  int rc = mbedtls_base64_decode(jpg, sizeof(jpg), &decodedLength,
-      reinterpret_cast<const unsigned char*>(encoded.c_str()), encoded.length());
-  if (rc == 0 && decodedLength > 0) {
-    const JRESULT result = TJpgDec.drawJpg(0, 0, jpg, decodedLength);
-    if (result != JDR_OK) {
-      Serial.printf("SPLASH JPEG ERROR: JRESULT=%d\\n", (int)result);
-      tft.setTextDatum(MC_DATUM);
-      tft.setTextColor(TFT_RED, TFT_BLACK);
-      tft.drawCentreString("SPLASH JPEG ERROR", 160, 120, 2);
-    }
-  } else {
+  const int16_t W = tft.width();
+  const int16_t H = tft.height();
+  if (W != 320 || H != 240) {
+    Serial.printf("SPLASH TFT GEOMETRY ERROR: %dx%d\\n", W, H);
     tft.setTextDatum(MC_DATUM);
     tft.setTextColor(TFT_RED, TFT_BLACK);
-    tft.drawCentreString("SPLASH DATA ERROR", 160, 120, 2);
+    tft.drawCentreString("DISPLAY GEOMETRY ERROR", W / 2, H / 2 - 10, 2);
+    tft.drawCentreString(String(W) + " x " + String(H), W / 2, H / 2 + 14, 2);
+    return;
   }
+  for (int i = 0; i < 54; ++i) {
+    const int16_t x = (i * 73 + 19) % W;
+    const int16_t y = (i * 47 + 11) % H;
+    tft.drawPixel(x, y, (i % 4 == 0) ? 0x7DFF : 0x39C7);
+  }
+  const int cx = 160, cy = 91;
+  for (int a = 0; a < 360; a += 2) {
+    const float rad = a * 0.0174532925f;
+    tft.drawPixel(cx + (int)(112.0f * cosf(rad)),
+                  cy + (int)(36.0f * sinf(rad)), 0x4D7F);
+  }
+  tft.fillCircle(cx, cy, 27, 0x021F);
+  tft.drawCircle(cx, cy, 27, TFT_CYAN);
+  tft.drawCircle(cx, cy, 22, 0x3D7F);
+  tft.fillCircle(cx - 8, cy - 7, 5, 0x7FFF);
+  tft.drawLine(cx - 48, cy - 17, cx - 31, cy - 8, TFT_CYAN);
+  tft.drawLine(cx + 27, cy + 12, cx + 47, cy + 21, TFT_CYAN);
+  tft.fillRect(cx - 55, cy - 23, 17, 12, 0x39E7);
+  tft.drawRect(cx - 55, cy - 23, 17, 12, TFT_WHITE);
+  tft.fillRect(cx + 38, cy + 15, 17, 12, 0x39E7);
+  tft.drawRect(cx + 38, cy + 15, 17, 12, TFT_WHITE);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.drawCentreString("CYD SATELLITE TRACKER", 160, 151, 4);
+  tft.setTextColor(TFT_CYAN, TFT_BLACK);
+  tft.drawCentreString("BY OLYMPIC BEAR", 160, 180, 2);
+  tft.setTextColor(0x9E7F, TFT_BLACK);
+  tft.drawCentreString("VHF 145 MHz  |  ORBITAL TRACKING", 160, 211, 1);
 }
 void enterSiteStage() {
   if (siteStageStarted) return;
@@ -202,10 +207,6 @@ void setup() {
   }
   pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
-  // Byte order belongs to TJpg_Decoder's RGB565 output, not TFT_eSPI.
-  TJpgDec.setSwapBytes(true);
-  TJpgDec.setJpgScale(1);
-  TJpgDec.setCallback(splashJpegOutput);
   drawSplash();
   delay(5000);
   setCheck(1, CheckState::PASS, "Экран 320x240 активен");

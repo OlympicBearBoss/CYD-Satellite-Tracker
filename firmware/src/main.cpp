@@ -12,9 +12,27 @@ constexpr int16_t UI_W = 320;
 constexpr int16_t UI_H = 240;
 constexpr int16_t UI_OUTPUT_ROTATION_DEG = 90;
 void presentUI() {
-  if (!ui.pushRotated(UI_OUTPUT_ROTATION_DEG)) {
-    Serial.println("DISPLAY ERROR: rotated framebuffer was not pushed");
+  // Rotate RGB565 in software, one scanline at a time. This avoids the
+  // TFT_eSprite::pushRotated() transform path while keeping the same
+  // 90-degree landscape orientation and using only a 480-byte line buffer.
+  const uint16_t* src = static_cast<const uint16_t*>(ui.getPointer());
+  if (src == nullptr || !ui.created()) {
+    Serial.println("DISPLAY ERROR: RGB565 framebuffer is unavailable");
+    return;
   }
+
+  static uint16_t rotatedLine[UI_H];
+  tft.startWrite();
+  tft.setAddrWindow(0, 0, UI_H, UI_W);
+  for (int16_t dstY = 0; dstY < UI_W; ++dstY) {
+    for (int16_t dstX = 0; dstX < UI_H; ++dstX) {
+      const int16_t srcX = dstY;
+      const int16_t srcY = UI_H - 1 - dstX;
+      rotatedLine[dstX] = src[srcY * UI_W + srcX];
+    }
+    tft.pushPixels(rotatedLine, UI_H);
+  }
+  tft.endWrite();
 }
 bool skipInitialization = false;
 bool siteStageStarted = false;

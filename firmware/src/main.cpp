@@ -3,6 +3,7 @@
 #include <TFT_eSPI.h>
 #include <TinyGPSPlus.h>
 #include "BoardConfig.h"
+#include "SiteLink.h"
 
 TFT_eSPI tft;
 TinyGPSPlus gps;
@@ -80,6 +81,9 @@ void drawScreen(const char* headline = "Проверка системы") {
     tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
     tft.drawString(checks[i].detail, x + 31, y + 13, 1);
   }
+
+  tft.setTextColor(TFT_CYAN, TFT_BLACK);
+  tft.drawString("САЙТ: " + SiteLink::status(), 8, 196, 1);
 
   tft.fillRoundRect(8, 211, 304, 24, 4, TFT_MAROON);
   tft.setTextColor(TFT_WHITE, TFT_MAROON);
@@ -210,11 +214,22 @@ void setup() {
   }
   drawScreen(anyFail ? "СИСТЕМА ЗАБЛОКИРОВАНА" :
              anyWarning ? "ГОТОВО С ПРЕДУПРЕЖДЕНИЕМ" : "ДИАГНОСТИКА ЗАВЕРШЕНА");
+  SiteLink::begin();
+  drawScreen(anyFail ? "СИСТЕМА ЗАБЛОКИРОВАНА" :
+             anyWarning ? "ГОТОВО С ПРЕДУПРЕЖДЕНИЕМ" : "ДИАГНОСТИКА ЗАВЕРШЕНА");
   Serial.println("Boot diagnostics complete. Motors remain disabled.");
 }
 
 void loop() {
   // Continue parsing GPS without commanding motors.
   while (GPS.available()) gps.encode(GPS.read());
+  SiteLink::loop();
+  static uint32_t lastStatusDraw = 0;
+  if (millis() - lastStatusDraw > 2000) {
+    lastStatusDraw = millis();
+    tft.fillRect(8, 194, 304, 15, TFT_BLACK);
+    tft.setTextColor(TFT_CYAN, TFT_BLACK);
+    tft.drawString("САЙТ: " + SiteLink::status(), 8, 196, 1);
+  }
   delay(10);
 }

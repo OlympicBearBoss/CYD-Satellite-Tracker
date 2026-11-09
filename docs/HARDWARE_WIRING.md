@@ -23,8 +23,8 @@ Status: wiring plan v1.0. Confirm the exact carrier-board pin labels and compone
 | AZ DIR | 18 | SD-card SPI pin; SD card unused |
 | EL STEP | 19 | SD-card SPI pin; SD card unused |
 | EL DIR | 23 | SD-card SPI pin; SD card unused |
-| GPS UART2 RX | 16 | Connect GPS TX to ESP32 GPIO16 |
-| GPS UART2 TX | 17 | Connect ESP32 GPIO17 to GPS RX |
+| GPS UART2 RX | 34 | Connect GPS TX to ESP32 GPIO34; input-only pin is suitable for UART RX |
+| GPS UART2 TX | — | Not connected; NEO-6M data is read-only for this design |
 
 GPIO16 and GPIO17 are deliberately avoided because some ESP32-2432S028 versions use them for WROVER PSRAM. GPIO4 is reassigned from its onboard RGB LED channel to AZ STEP. The microSD interface is not used because GPIO18/19/23 are reassigned to motor control. GPIO34 is also connected to the onboard light sensor on common revisions; that sensor is sacrificed for GPS RX. USB programming/serial console remains on GPIO1/GPIO3.
 

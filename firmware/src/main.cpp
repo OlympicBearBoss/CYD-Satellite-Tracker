@@ -213,14 +213,10 @@ void drawRotationTest(uint8_t rotation) {
 }
 
 void runDisplayDiagnostic() {
-  // Show all controller orientations so the physical panel mapping can be identified.
-  for (uint8_t rotation = 0; rotation < 4; ++rotation) {
-    drawRotationTest(rotation);
-    delay(1800);
-  }
-  // Video test on the physical CYD showed rotation 2 as the only readable
-  // orientation. Keep this selection explicit for the next hardware check.
-  tft.setRotation(2);
+  // ILI9341 uses a native 240x320 coordinate system. Rotation 1 maps it
+  // to the CYD's physical 320x240 landscape panel without changing driver
+  // geometry definitions or cycling through orientations at every boot.
+  tft.setRotation(1);
   Serial.printf("TFT SELECTED GEOMETRY: %dx%d\\n", tft.width(), tft.height());
 }
 

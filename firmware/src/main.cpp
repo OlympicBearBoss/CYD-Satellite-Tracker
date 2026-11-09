@@ -74,6 +74,24 @@ void drawSkipButton() {
   tft.setTextColor(TFT_WHITE, TFT_MAROON);
   tft.drawCentreString("ПРЕРВАТЬ ЗАПУСК → ПОДКЛЮЧЕНИЕ К САЙТУ", 160, 213, 1);
 }
+// Source JPEG is 160x90 (16:9): enlarge 2x and center on 320x240.
+bool splashJpegOutput(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) {
+  static uint16_t scaled[32 * 32];
+  if (x < 0 || y < 0 || x + w > 160 || y + h > 90 || w > 16 || h > 16) return false;
+  for (uint16_t row = 0; row < h; ++row) {
+    for (uint16_t col = 0; col < w; ++col) {
+      const uint16_t pixel = bitmap[row * w + col];
+      const uint16_t dx = col * 2, dy = row * 2;
+      scaled[dy * (w * 2) + dx] = pixel;
+      scaled[dy * (w * 2) + dx + 1] = pixel;
+      scaled[(dy + 1) * (w * 2) + dx] = pixel;
+      scaled[(dy + 1) * (w * 2) + dx + 1] = pixel;
+    }
+  }
+  tft.pushImage(x * 2, 30 + y * 2, w * 2, h * 2, scaled);
+  return true;
+}
+
 void drawSplash() {
   tft.fillScreen(TFT_BLACK);
   static uint8_t jpg[16000];
@@ -81,10 +99,21 @@ void drawSplash() {
   size_t decodedLength = 0;
   int rc = mbedtls_base64_decode(jpg, sizeof(jpg), &decodedLength,
       reinterpret_cast<const unsigned char*>(encoded.c_str()), encoded.length());
-  if (rc == 0 && decodedLength > 0) TJpgDec.drawJpg(0, 0, jpg, decodedLength);
+  if (rc == 0 && decodedLength > 0) {
+    const JRESULT result = TJpgDec.drawJpg(0, 0, jpg, decodedLength);
+    if (result != JDR_OK) {
+      tft.setTextDatum(MC_DATUM);
+      tft.setTextColor(TFT_RED, TFT_BLACK);
+      tft.drawCentreString("SPLASH JPEG ERROR", 160, 120, 2);
+    }
+  } else {
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TFT_RED, TFT_BLACK);
+    tft.drawCentreString("SPLASH DATA ERROR", 160, 120, 2);
+  }
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawCentreString("CYD SATELLITE TRACKER", 160, 165, 2);
+  tft.drawCentreString("CYD SATELLITE TRACKER", 160, 216, 2);
 }
 void enterSiteStage() {
   if (siteStageStarted) return;
@@ -175,12 +204,9 @@ void setup() {
   tft.setRotation(1);
   pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
+  tft.setSwapBytes(true);
   TJpgDec.setJpgScale(1);
-  TJpgDec.setCallback([](int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) -> bool {
-    if (y >= 240) return false;
-    tft.pushImage(x, y, w, h, bitmap);
-    return true;
-  });
+  TJpgDec.setCallback(splashJpegOutput);
   drawSplash();
   delay(5000);
   setCheck(1, CheckState::PASS, "Экран 320x240 активен");

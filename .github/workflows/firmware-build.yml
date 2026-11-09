@@ -1,0 +1,46 @@
+name: CYD firmware build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Build CYD firmware
+        working-directory: firmware
+        run: pio run -e cyd_esp32_2432s028
+
+      - name: Collect firmware
+        run: |
+          mkdir -p release
+          cp firmware/.pio/build/cyd_esp32_2432s028/firmware.bin release/CYD-Satellite-Tracker-boot-diagnostics.bin
+          cp firmware/.pio/build/cyd_esp32_2432s028/firmware.elf release/CYD-Satellite-Tracker-boot-diagnostics.elf
+          sha256sum release/* > release/SHA256SUMS.txt
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: CYD-Satellite-Tracker-firmware
+          path: release/
+          if-no-files-found: error
+          retention-days: 30

@@ -193,20 +193,49 @@ void initSafeOutputs() {
   digitalWrite(Pins::EL_DIR, LOW);
 }
 
+void drawRotationTest(uint8_t rotation) {
+  tft.setRotation(rotation);
+  const int16_t w = tft.width(), h = tft.height();
+  tft.fillScreen(TFT_BLACK);
+  tft.drawRect(0, 0, w, h, TFT_WHITE);
+  tft.fillRect(4, 4, 18, 18, TFT_RED);
+  tft.fillRect(w - 22, 4, 18, 18, TFT_GREEN);
+  tft.fillRect(4, h - 22, 18, 18, TFT_BLUE);
+  tft.fillRect(w - 22, h - 22, 18, 18, TFT_YELLOW);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.drawCentreString("DISPLAY ORIENTATION TEST", w / 2, h / 2 - 24, 2);
+  tft.setTextColor(TFT_CYAN, TFT_BLACK);
+  tft.drawCentreString("ROTATION " + String(rotation), w / 2, h / 2 + 4, 4);
+  tft.setTextColor(TFT_GREEN, TFT_BLACK);
+  tft.drawCentreString(String(w) + " x " + String(h), w / 2, h / 2 + 34, 2);
+  Serial.printf("TFT ROTATION TEST %u: %dx%d\\n", rotation, w, h);
+}
+
+void runDisplayDiagnostic() {
+  // Show all controller orientations so the physical panel mapping can be identified.
+  for (uint8_t rotation = 0; rotation < 4; ++rotation) {
+    drawRotationTest(rotation);
+    delay(1800);
+  }
+  // Rotations 1 and 3 are landscape; select the opposite landscape direction
+  // from the previous firmware while keeping the 320x240 UI coordinate system.
+  tft.setRotation(3);
+  Serial.printf("TFT SELECTED GEOMETRY: %dx%d\\n", tft.width(), tft.height());
+}
+
 void setup() {
   initSafeOutputs();
   Serial.begin(115200);
   delay(50);
   checks[0] = {"ESP32 / запуск", CheckState::PASS, "Запуск выполнен"};
   tft.init();
-  tft.setRotation(1);
-  if (tft.width() < tft.height()) tft.setRotation(3);
-  Serial.printf("TFT ACTIVE GEOMETRY: %dx%d\\n", tft.width(), tft.height());
+  pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
+  digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
+  runDisplayDiagnostic();
   if (tft.width() != 320 || tft.height() != 240) {
     Serial.println("TFT GEOMETRY WARNING: expected 320x240 landscape");
   }
-  pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
-  digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
   drawSplash();
   delay(5000);
   setCheck(1, CheckState::PASS, "Экран 320x240 активен");

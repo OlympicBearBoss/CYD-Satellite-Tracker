@@ -127,9 +127,8 @@ void setup() {
   delay(50);
 
   checks[0] = {"ESP32 / watchdog", CheckState::PASS, "Запуск выполнен"};
-  drawScreen();
 
-  setCheck(1, CheckState::RUNNING, "Инициализация ILI9341");
+  // Bring up the panel before the first drawing call.
   tft.init();
   tft.setRotation(1); // 320x240 landscape
   pinMode(Pins::TFT_BACKLIGHT, OUTPUT);

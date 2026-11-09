@@ -10,29 +10,14 @@ TFT_eSPI tft;
 TFT_eSprite ui(&tft);
 constexpr int16_t UI_W = 320;
 constexpr int16_t UI_H = 240;
-constexpr int16_t UI_OUTPUT_ROTATION_DEG = 90;
 void presentUI() {
-  // Rotate RGB565 in software, one scanline at a time. This avoids the
-  // TFT_eSprite::pushRotated() transform path while keeping the same
-  // 90-degree landscape orientation and using only a 480-byte line buffer.
-  const uint16_t* src = static_cast<const uint16_t*>(ui.getPointer());
-  if (src == nullptr || !ui.created()) {
-    Serial.println("DISPLAY ERROR: RGB565 framebuffer is unavailable");
+  // Standard RGB565 sprite transfer in the controller native landscape mode.
+  // No software rotation, raw address-window writes, or pushRotated path.
+  if (!ui.created()) {
+    Serial.println("DISPLAY ERROR: framebuffer is unavailable");
     return;
   }
-
-  static uint16_t rotatedLine[UI_H];
-  tft.startWrite();
-  tft.setAddrWindow(0, 0, UI_H, UI_W);
-  for (int16_t dstY = 0; dstY < UI_W; ++dstY) {
-    for (int16_t dstX = 0; dstX < UI_H; ++dstX) {
-      const int16_t srcX = dstY;
-      const int16_t srcY = UI_H - 1 - dstX;
-      rotatedLine[dstX] = src[srcY * UI_W + srcX];
-    }
-    tft.pushPixels(rotatedLine, UI_H);
-  }
-  tft.endWrite();
+  ui.pushSprite(0, 0);
 }
 bool skipInitialization = false;
 bool siteStageStarted = false;
@@ -226,11 +211,10 @@ void initSafeOutputs() {
 }
 
 void runDisplayDiagnostic() {
-  // Portrait controller mode; the complete 320x240 landscape framebuffer is
-  // rotated as a single image so text, graphics and layout stay aligned.
-  tft.setRotation(2);
-  Serial.printf("TFT PHYSICAL GEOMETRY: %dx%d; UI LOGICAL GEOMETRY: %dx%d; frame rotation=%d\\n",
-                tft.width(), tft.height(), UI_W, UI_H, UI_OUTPUT_ROTATION_DEG);
+  // Use the controller native landscape mode and transfer the sprite directly.
+  tft.setRotation(1);
+  Serial.printf("TFT GEOMETRY: %dx%d; UI GEOMETRY: %dx%d; direct sprite output\\n",
+                tft.width(), tft.height(), UI_W, UI_H);
 }
 
 void setup() {
@@ -242,8 +226,7 @@ void setup() {
   pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
   runDisplayDiagnostic();
-  // pushRotated() sends RGB565 pixels to the ILI9341. An 8-bit indexed
-  // sprite is not compatible with this path and produces corrupted/noisy output.
+  // Keep the framebuffer in RGB565 for the standard pushSprite() transfer.
   Serial.printf("Free heap before framebuffer: %u bytes\\n", ESP.getFreeHeap());
   ui.setColorDepth(16);
   if (!ui.createSprite(UI_W, UI_H)) {
@@ -257,7 +240,7 @@ void setup() {
   drawSplash();
   delay(5000);
   const bool landscapeReady = (ui.width() == UI_W && ui.height() == UI_H &&
-                               tft.width() == 240 && tft.height() == 320);
+                               tft.width() == 320 && tft.height() == 240);
   char geometryDetail[32];
   if (landscapeReady) {
     snprintf(geometryDetail, sizeof(geometryDetail), "Экран 320x240 активен");

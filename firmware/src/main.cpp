@@ -74,34 +74,16 @@ void drawSkipButton() {
   tft.setTextColor(TFT_WHITE, TFT_MAROON);
   tft.drawCentreString("ПРЕРВАТЬ ЗАПУСК → ПОДКЛЮЧЕНИЕ К САЙТУ", 160, 213, 1);
 }
-// Decode the 160x120 JPEG in MCU blocks and enlarge it 2x for the 320x240 panel.
-// A callback must not abort JPEG decoding for a clipped edge block.
+// Diagnostic pass: bypass all scaling and draw native JPEG MCU blocks.
+// The embedded source image is 160x120; center it on the 320x240 panel.
+// This isolates JPEG decoding from the former 2x block-scaling path.
 bool splashJpegOutput(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) {
-  static uint16_t scaled[32 * 32];
-  if (!bitmap || w == 0 || h == 0 || w > 16 || h > 16) {
+  if (!bitmap || w == 0 || h == 0 || x < 0 || y < 0 ||
+      x + w > 160 || y + h > 120) {
     Serial.printf("SPLASH BLOCK INVALID x=%d y=%d w=%u h=%u\\n", x, y, w, h);
     return true;
   }
-  if (x < 0 || y < 0 || x >= 160 || y >= 120) return true;
-
-  const uint16_t srcW = w;
-  const uint16_t drawW = (uint16_t)min((int)w, 160 - (int)x);
-  const uint16_t drawH = (uint16_t)min((int)h, 120 - (int)y);
-  for (uint16_t row = 0; row < drawH; ++row) {
-    for (uint16_t col = 0; col < drawW; ++col) {
-      const uint16_t pixel = bitmap[row * srcW + col];
-      const uint16_t dx = col * 2;
-      const uint16_t dy = row * 2;
-      const uint16_t outW = drawW * 2;
-      scaled[dy * outW + dx] = pixel;
-      scaled[dy * outW + dx + 1] = pixel;
-      scaled[(dy + 1) * outW + dx] = pixel;
-      scaled[(dy + 1) * outW + dx + 1] = pixel;
-    }
-  }
-
-  // Fixed 320x240 target: do not offset using potentially stale TFT geometry.
-  tft.pushImage(x * 2, y * 2, drawW * 2, drawH * 2, scaled);
+  tft.pushImage(x + 80, y + 60, w, h, bitmap);
   return true;
 }
 

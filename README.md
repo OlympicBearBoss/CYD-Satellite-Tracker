@@ -1,6 +1,26 @@
 # CYD Satellite Tracker
 
+[🌐 Открыть сайт CYD Satellite Tracker](https://cyd-satellite-tracker.pages.dev)
+
 Демонстрационный веб-интерфейс проекта двухосевого спутникового ротатора на CYD ESP32-2432S028R.
+
+## Иллюстрации проекта
+
+**Главная панель и орбитальная обстановка**
+
+![Веб-панель CYD Satellite Tracker](docs/screenshots/images/website-dashboard.svg)
+
+**Каталог спутников — изображения, используемые в опубликованном сайте**
+
+| МКС | NOAA 19 | AO-91 |
+|---|---|---|
+| ![МКС](https://db-satnogs.freetls.fastly.net/media/satellites/ISS.jpg) | ![NOAA 19](https://db-satnogs.freetls.fastly.net/media/satellites/NOAA-19_5rtz25e.jpg) | ![AO-91](https://db-satnogs.freetls.fastly.net/media/satellites/RadFxSat_Flight-300x300.jpg) |
+
+**Концепты мобильных интерфейсов**
+
+![Мобильные интерфейсы CYD Satellite Tracker](docs/screenshots/images/mobile-apps.svg)
+
+Полная [галерея сайта и мобильных интерфейсов](docs/screenshots/README.md).
 
 ## Интерфейс версии 1.1
 
@@ -53,6 +73,7 @@ python -m http.server 8000
 
 ## Cloudflare Pages
 
+- **Сайт:** https://cyd-satellite-tracker.pages.dev
 - Repository: `OlympicBearBoss/CYD-Satellite-Tracker`
 - Production branch: `main`
 - Framework preset: `None`

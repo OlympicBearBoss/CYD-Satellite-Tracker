@@ -11,7 +11,11 @@ TFT_eSprite ui(&tft);
 constexpr int16_t UI_W = 320;
 constexpr int16_t UI_H = 240;
 constexpr int16_t UI_OUTPUT_ROTATION_DEG = 90;
-void presentUI() { ui.pushRotated(UI_OUTPUT_ROTATION_DEG); }
+void presentUI() {
+  if (!ui.pushRotated(UI_OUTPUT_ROTATION_DEG)) {
+    Serial.println("DISPLAY ERROR: rotated framebuffer was not pushed");
+  }
+}
 bool skipInitialization = false;
 bool siteStageStarted = false;
 TinyGPSPlus gps;
@@ -220,13 +224,18 @@ void setup() {
   pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
   runDisplayDiagnostic();
-  ui.setColorDepth(8);
+  // pushRotated() sends RGB565 pixels to the ILI9341. An 8-bit indexed
+  // sprite is not compatible with this path and produces corrupted/noisy output.
+  Serial.printf("Free heap before framebuffer: %u bytes\\n", ESP.getFreeHeap());
+  ui.setColorDepth(16);
   if (!ui.createSprite(UI_W, UI_H)) {
     Serial.println("FATAL: unable to allocate 320x240 UI framebuffer");
     while (true) delay(1000);
   }
   ui.setTextWrap(false);
-  Serial.println("UI framebuffer allocated; full-frame rotation enabled.");
+  Serial.printf("RGB565 framebuffer allocated: %dx%d, free heap: %u bytes\\n",
+                ui.width(), ui.height(), ESP.getFreeHeap());
+  Serial.println("UI framebuffer allocated; RGB565 full-frame rotation enabled.");
   drawSplash();
   delay(5000);
   const bool landscapeReady = (ui.width() == UI_W && ui.height() == UI_H &&

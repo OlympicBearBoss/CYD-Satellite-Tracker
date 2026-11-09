@@ -12,7 +12,7 @@ enum class CheckState : uint8_t { WAITING, RUNNING, PASS, WARNING, FAIL, SKIPPED
 struct CheckItem { const char* name; CheckState state; const char* detail; };
 
 CheckItem checks[] = {
-  {"ESP32 / watchdog", CheckState::WAITING, "Ожидание"},
+  {"ESP32 / запуск", CheckState::WAITING, "Ожидание"},
   {"TFT ILI9341", CheckState::WAITING, "Ожидание"},
   {"I2C", CheckState::WAITING, "Ожидание"},
   {"AS5600 азимут", CheckState::WAITING, "Ожидание"},
@@ -126,7 +126,7 @@ void setup() {
   Serial.begin(115200);
   delay(50);
 
-  checks[0] = {"ESP32 / watchdog", CheckState::PASS, "Запуск выполнен"};
+  checks[0] = {"ESP32 / запуск", CheckState::PASS, "Запуск выполнен"};
 
   // Bring up the panel before the first drawing call.
   tft.init();
@@ -145,8 +145,7 @@ void setup() {
 
   setCheck(3, CheckState::RUNNING, "Адрес 0x36, регистр ANGLE");
   azSensorReady = i2cReady &&
-      readRegister16(Devices::AS5600_ADDRESS, 0x0E, azRaw) &&
-      true;
+      readRegister16(Devices::AS5600_ADDRESS, 0x0E, azRaw);
   setCheck(3, azSensorReady ? CheckState::PASS : CheckState::FAIL,
            azSensorReady ? "AS5600 отвечает" : "Датчик не найден / нет данных");
 

@@ -67,20 +67,23 @@ void drawScreen(const char* headline = "Проверка системы") {
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawString(headline, 8, 32, 2);
 
-  int y = 57;
+  // Two compact columns fit all checks on the 320x240 landscape screen.
   for (size_t i = 0; i < CHECK_COUNT; ++i) {
+    const int col = (i >= 5) ? 1 : 0;
+    const int row = (int)(i % 5);
+    const int x = col ? 164 : 8;
+    const int y = 58 + row * 29;
     tft.setTextColor(stateColor(checks[i].state), TFT_BLACK);
-    tft.drawString(stateGlyph(checks[i].state), 8, y, 2);
+    tft.drawString(stateGlyph(checks[i].state), x, y, 2);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.drawString(checks[i].name, 42, y, 2);
+    tft.drawString(checks[i].name, x + 31, y, 1);
     tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-    tft.drawString(checks[i].detail, 42, y + 15, 1);
-    y += 30;
+    tft.drawString(checks[i].detail, x + 31, y + 13, 1);
   }
 
-  tft.fillRoundRect(8, 207, 304, 25, 4, TFT_MAROON);
+  tft.fillRoundRect(8, 211, 304, 24, 4, TFT_MAROON);
   tft.setTextColor(TFT_WHITE, TFT_MAROON);
-  tft.drawCentreString("STOP  |  ДВИГАТЕЛИ ЗАБЛОКИРОВАНЫ", 160, 213, 2);
+  tft.drawCentreString("STOP | МОТОРЫ ЗАБЛОКИРОВАНЫ", 160, 216, 2);
 }
 
 void setCheck(size_t i, CheckState state, const char* detail) {
@@ -144,7 +147,7 @@ void setup() {
   setCheck(3, CheckState::RUNNING, "Адрес 0x36, регистр ANGLE");
   azSensorReady = i2cReady &&
       readRegister16(Devices::AS5600_ADDRESS, 0x0E, azRaw) &&
-      ((azRaw & 0x0FFF) <= 4095);
+      true;
   setCheck(3, azSensorReady ? CheckState::PASS : CheckState::FAIL,
            azSensorReady ? "AS5600 отвечает" : "Датчик не найден / нет данных");
 

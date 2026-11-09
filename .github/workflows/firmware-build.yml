@@ -60,16 +60,24 @@ jobs:
           cp "$BUILD_DIR/firmware.elf" release/CYD-Satellite-Tracker.elf
 
           # Arduino-ESP32 uses this small second-stage OTA metadata image.
-          BOOT_APP0="$(find "$HOME/.platformio" -type f -name boot_app0.bin -print -quit)"
-          test -n "$BOOT_APP0"
-          test -f "$BOOT_APP0"
+          BOOT_APP0="$(find "$HOME/.platformio/packages" -type f -name boot_app0.bin -print -quit)"
+          if [[ -z "$BOOT_APP0" || ! -f "$BOOT_APP0" ]]; then
+            echo "::error::boot_app0.bin was not found in the installed Arduino-ESP32 framework"
+            find "$HOME/.platformio/packages" -maxdepth 5 -type f -name '*boot*app*.bin' -print || true
+            exit 1
+          fi
 
-          ESPTOOL="$HOME/.platformio/packages/tool-esptoolpy/esptool.py"
-          test -f "$ESPTOOL"
+          # PlatformIO 6.2 installs esptool v5 in tool-esptool (not tool-esptoolpy).
+          ESPTOOL="$(find "$HOME/.platformio/packages/tool-esptool" -type f -name esptool -perm -u+x -print -quit)"
+          if [[ -z "$ESPTOOL" || ! -x "$ESPTOOL" ]]; then
+            echo "::error::esptool executable was not found in PlatformIO tool-esptool"
+            find "$HOME/.platformio/packages" -maxdepth 4 -type f -name 'esptool*' -print || true
+            exit 1
+          fi
 
           # A single merged image starts at flash address 0x0000.
-          python "$ESPTOOL" --chip esp32 merge_bin \
-            --flash_mode dio --flash_freq 40m --flash_size 4MB \
+          "$ESPTOOL" --chip esp32 merge-bin \
+            --flash-mode dio --flash-freq 40m --flash-size 4MB \
             -o release/CYD-Satellite-Tracker-full-flash.bin \
             0x1000 "$BUILD_DIR/bootloader.bin" \
             0x8000 "$BUILD_DIR/partitions.bin" \

@@ -76,19 +76,19 @@ bool touchSkipPressed() {
   return sx >= 8 && sx <= 312 && sy >= 205 && sy <= 238;
 }
 void drawSkipButton() {
-  tft.fillRoundRect(8, 207, 304, 27, 5, TFT_RED);
-  tft.drawRoundRect(8, 207, 304, 27, 5, TFT_WHITE);
-  tft.setTextColor(TFT_WHITE, TFT_RED);
-  tft.drawCentreString("ПРОПУСТИТЬ → ПОДКЛЮЧЕНИЕ К САЙТУ", 160, 213, 1);
+  tft.fillRoundRect(8, 207, 304, 27, 5, TFT_MAROON);
+  tft.drawRoundRect(8, 207, 304, 27, 5, TFT_ORANGE);
+  tft.setTextColor(TFT_WHITE, TFT_MAROON);
+  tft.drawCentreString("ПРЕРВАТЬ ЗАПУСК → ПОДКЛЮЧЕНИЕ К САЙТУ", 160, 213, 1);
 }
 void drawSplash() {
   tft.fillScreen(TFT_BLACK);
-  static uint8_t jpg[1800];
+  static uint8_t jpg[4000];
   String encoded = FPSTR(BEAR_BOSS_LOGO_BASE64);
   size_t decodedLength = 0;
   int rc = mbedtls_base64_decode(jpg, sizeof(jpg), &decodedLength,
       reinterpret_cast<const unsigned char*>(encoded.c_str()), encoded.length());
-  if (rc == 0 && decodedLength > 0) TJpg_Decoder.drawJpg(120, 75, jpg, decodedLength);
+  if (rc == 0 && decodedLength > 0) TJpg_Decoder.drawJpg(80, 75, jpg, decodedLength);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawCentreString("CYD SATELLITE TRACKER", 160, 165, 2);
@@ -140,7 +140,7 @@ void drawScreen(const char* headline = "Проверка системы") {
   }
 
   tft.setTextColor(TFT_CYAN, TFT_BLACK);
-  tft.drawString("САЙТ: " + SiteLink::status(), 8, 196, 1);
+  tft.drawString("ИНИЦИАЛИЗАЦИЯ: БЕЗ ДВИЖЕНИЯ МОТОРОВ", 8, 196, 1);
 
   drawSkipButton();
 }

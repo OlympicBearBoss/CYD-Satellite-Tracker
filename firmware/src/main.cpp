@@ -100,9 +100,8 @@ bool splashJpegOutput(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bi
     }
   }
 
-  const int16_t dstX = (tft.width() - 320) / 2 + x * 2;
-  const int16_t dstY = (tft.height() - 240) / 2 + y * 2;
-  tft.pushImage(dstX, dstY, drawW * 2, drawH * 2, scaled);
+  // Fixed 320x240 target: do not offset using potentially stale TFT geometry.
+  tft.pushImage(x * 2, y * 2, drawW * 2, drawH * 2, scaled);
   return true;
 }
 
@@ -214,6 +213,11 @@ void setup() {
   checks[0] = {"ESP32 / запуск", CheckState::PASS, "Запуск выполнен"};
   tft.init();
   tft.setRotation(1);
+  if (tft.width() < tft.height()) tft.setRotation(3);
+  Serial.printf("TFT ACTIVE GEOMETRY: %dx%d\\n", tft.width(), tft.height());
+  if (tft.width() != 320 || tft.height() != 240) {
+    Serial.println("TFT GEOMETRY WARNING: expected 320x240 landscape");
+  }
   pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
   // Byte order belongs to TJpg_Decoder's RGB565 output, not TFT_eSPI.

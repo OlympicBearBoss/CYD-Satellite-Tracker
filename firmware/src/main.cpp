@@ -42,9 +42,9 @@ void drawGridTest() {
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE, bg);
   char title[48];
-  snprintf(title, sizeof(title), "CYD V19  %s", pageNames[pageIndex]);
+  snprintf(title, sizeof(title), "CYD V20  %s", pageNames[pageIndex]);
   tft.drawCentreString(title, w / 2, h / 2, 4);
-  Serial.printf("V19 GRID TEST: rotation=0 geometry=%dx%d page=%u (%s)\\n",
+  Serial.printf("V20 GRID TEST: rotation=2 geometry=%dx%d page=%u (%s)\\n",
                 w, h, pageIndex, pageNames[pageIndex]);
 }
 
@@ -54,7 +54,7 @@ void setup() {
   pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
   tft.init();
-  tft.setRotation(0);
+  tft.setRotation(2);
   tft.fillScreen(TFT_BLACK);
   pageIndex = 0;
   drawGridTest();

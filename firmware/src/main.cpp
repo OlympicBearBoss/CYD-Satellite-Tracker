@@ -1,11 +1,18 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <TFT_eSPI.h>
+#include <TJpg_Decoder.h>
+#include <XPT2046_Touchscreen.h>
+#include <SPI.h>
 #include <TinyGPSPlus.h>
 #include "BoardConfig.h"
 #include "SiteLink.h"
 
 TFT_eSPI tft;
+SPIClass touchSPI(VSPI);
+XPT2046_Touchscreen touch(33, 36);
+bool skipInitialization = false;
+bool siteStageStarted = false;
 TinyGPSPlus gps;
 HardwareSerial GPS(2);
 
@@ -59,6 +66,49 @@ uint16_t stateColor(CheckState s) {
   }
 }
 
+bool touchSkipPressed() {
+  if (!touch.touched()) return false;
+  TS_Point pt = touch.getPoint();
+  int sx = map(pt.x, 250, 3800, 0, 320);
+  int sy = map(pt.y, 250, 3800, 0, 240);
+  return sx >= 8 && sx <= 312 && sy >= 205 && sy <= 238;
+}
+void drawSkipButton() {
+  tft.fillRoundRect(8, 207, 304, 27, 5, TFT_RED);
+  tft.drawRoundRect(8, 207, 304, 27, 5, TFT_WHITE);
+  tft.setTextColor(TFT_WHITE, TFT_RED);
+  tft.drawCentreString("ПРОПУСТИТЬ → ПОДКЛЮЧЕНИЕ К САЙТУ", 160, 213, 1);
+}
+void drawSplash() {
+  tft.fillScreen(TFT_BLACK);
+  TJpg_Decoder.drawJpg(120, 75, BEAR_BOSS_LOGO_JPG, sizeof(BEAR_BOSS_LOGO_JPG));
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.drawCentreString("CYD SATELLITE TRACKER", 160, 165, 2);
+}
+void enterSiteStage() {
+  if (siteStageStarted) return;
+  siteStageStarted = true;
+  SiteLink::begin();
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_CYAN, TFT_BLACK);
+  tft.drawCentreString("ПОДКЛЮЧЕНИЕ К САЙТУ", 160, 92, 2);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.drawCentreString("Wi-Fi / привязка устройства", 160, 122, 2);
+  tft.drawCentreString("Точка настройки: CYD-Setup", 160, 151, 1);
+  tft.drawCentreString("192.168.4.1 | пароль: cydsetup", 160, 170, 1);
+}
+void pollSkip() {
+  if (skipInitialization) return;
+  if (Serial.available()) {
+    char c = (char)Serial.read();
+    if (c == 's' || c == 'S') skipInitialization = true;
+  }
+  if (touchSkipPressed()) { skipInitialization = true; delay(250); }
+  if (skipInitialization) enterSiteStage();
+}
+
 void drawScreen(const char* headline = "Проверка системы") {
   tft.fillScreen(TFT_BLACK);
   tft.setTextDatum(TL_DATUM);
@@ -85,17 +135,16 @@ void drawScreen(const char* headline = "Проверка системы") {
   tft.setTextColor(TFT_CYAN, TFT_BLACK);
   tft.drawString("САЙТ: " + SiteLink::status(), 8, 196, 1);
 
-  tft.fillRoundRect(8, 211, 304, 24, 4, TFT_MAROON);
-  tft.setTextColor(TFT_WHITE, TFT_MAROON);
-  tft.drawCentreString("STOP | МОТОРЫ ЗАБЛОКИРОВАНЫ", 160, 216, 2);
+  drawSkipButton();
 }
 
 void setCheck(size_t i, CheckState state, const char* detail) {
   checks[i].state = state;
   checks[i].detail = detail;
   drawScreen();
+  pollSkip();
 }
-void waitBrief() { delay(80); }
+void waitBrief() { pollSkip(); delay(80); }
 
 bool readRegister16(uint8_t address, uint8_t reg, uint16_t &value) {
   Wire.beginTransmission(address);
@@ -137,8 +186,20 @@ void setup() {
   tft.setRotation(1); // 320x240 landscape
   pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
+  TJpg_Decoder.setJpgScale(1);
+  TJpg_Decoder.setCallback([](int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) {
+    if (y >= 240) return 0;
+    tft.pushImage(x, y, w, h, bitmap);
+    return 1;
+  });
+  touchSPI.begin(25, 39, 32, 33);
+  touch.begin(touchSPI);
+  touch.setRotation(1);
+  drawSplash();
+  delay(5000);
   setCheck(1, CheckState::PASS, "Экран 320x240 активен");
 
+  if (skipInitialization) { enterSiteStage(); return; }
   setCheck(2, CheckState::RUNNING, "GPIO27 SDA / GPIO22 SCL");
   Wire.begin(Pins::I2C_SDA, Pins::I2C_SCL);
   Wire.setClock(100000);
@@ -147,12 +208,14 @@ void setup() {
   setCheck(2, i2cReady ? CheckState::PASS : CheckState::FAIL,
            i2cReady ? "Шина отвечает хотя бы одним устройством" : "Нет ответа I2C");
 
+  if (skipInitialization) { enterSiteStage(); return; }
   setCheck(3, CheckState::RUNNING, "Адрес 0x36, регистр ANGLE");
   azSensorReady = i2cReady &&
       readRegister16(Devices::AS5600_ADDRESS, 0x0E, azRaw);
   setCheck(3, azSensorReady ? CheckState::PASS : CheckState::FAIL,
            azSensorReady ? "AS5600 отвечает" : "Датчик не найден / нет данных");
 
+  if (skipInitialization) { enterSiteStage(); return; }
   setCheck(4, CheckState::RUNNING, "PCF8574, P0..P3");
   pcfReady = devicePresent(Devices::PCF8574_ADDRESS);
   if (pcfReady) {
@@ -175,12 +238,14 @@ void setup() {
     setCheck(4, CheckState::FAIL, "PCF8574 не отвечает");
   }
 
+  if (skipInitialization) { enterSiteStage(); return; }
   setCheck(5, CheckState::RUNNING, "P5 — вспомогательный контакт E-STOP");
   estopReleased = pcfReady && ((pcfInputs & Devices::PCF_ESTOP_BIT) == 0);
   setCheck(5, estopReleased ? CheckState::PASS : CheckState::FAIL,
            estopReleased ? "Цепь замкнута (стоп отпущен)" :
                            "Разомкнута / не подтверждена; движение запрещено");
 
+  if (skipInitialization) { enterSiteStage(); return; }
   setCheck(6, CheckState::RUNNING, "ADC GPIO35, аналоговый OUT");
   analogReadResolution(12);
   elevationAdc = analogRead(Pins::EL_AS5600_ANALOG);
@@ -189,10 +254,12 @@ void setup() {
            elAnalogPlausible ? "Сигнал есть; угловая калибровка не задана" :
                                "Нет достоверного сигнала ADC");
 
+  if (skipInitialization) { enterSiteStage(); return; }
   setCheck(7, CheckState::RUNNING, "UART2 RX GPIO34, 9600 бод");
   GPS.begin(9600, SERIAL_8N1, Pins::GPS_RX, -1);
   const uint32_t start = millis();
-  while (millis() - start < 1200) {
+  while (millis() - start < 1200 && !skipInitialization) {
+    pollSkip();
     while (GPS.available()) {
       if (gps.encode(GPS.read())) gpsSentenceSeen = true;
     }
@@ -202,6 +269,7 @@ void setup() {
            gpsSentenceSeen ? "NMEA принимается; GPS fix проверяется отдельно" :
                              "Нет NMEA; проверьте питание и TX->GPIO34");
 
+  if (skipInitialization) { enterSiteStage(); return; }
   setCheck(8, CheckState::RUNNING, "STEP/DIR настроены, ENABLE не включён");
   setCheck(8, CheckState::PASS, "Линии управления подготовлены; силовой тест не выполнен");
 
@@ -214,22 +282,11 @@ void setup() {
   }
   drawScreen(anyFail ? "СИСТЕМА ЗАБЛОКИРОВАНА" :
              anyWarning ? "ГОТОВО С ПРЕДУПРЕЖДЕНИЕМ" : "ДИАГНОСТИКА ЗАВЕРШЕНА");
-  SiteLink::begin();
-  drawScreen(anyFail ? "СИСТЕМА ЗАБЛОКИРОВАНА" :
-             anyWarning ? "ГОТОВО С ПРЕДУПРЕЖДЕНИЕМ" : "ДИАГНОСТИКА ЗАВЕРШЕНА");
+  enterSiteStage();
   Serial.println("Boot diagnostics complete. Motors remain disabled.");
 }
 
 void loop() {
-  // Continue parsing GPS without commanding motors.
-  while (GPS.available()) gps.encode(GPS.read());
   SiteLink::loop();
-  static uint32_t lastStatusDraw = 0;
-  if (millis() - lastStatusDraw > 2000) {
-    lastStatusDraw = millis();
-    tft.fillRect(8, 194, 304, 15, TFT_BLACK);
-    tft.setTextColor(TFT_CYAN, TFT_BLACK);
-    tft.drawString("САЙТ: " + SiteLink::status(), 8, 196, 1);
-  }
   delay(10);
 }

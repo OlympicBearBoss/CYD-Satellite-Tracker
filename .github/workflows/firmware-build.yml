@@ -35,10 +35,10 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           certs = [Path(f"firmware/include/ca/gtsr{i}.pem").read_text() for i in range(1, 5)]
-          bundle = "\\n".join(certs)
+          bundle = "\n".join(certs)
           Path("firmware/include/RootCACert.h").write_text(
-              '#pragma once\\n#include <Arduino.h>\\nstatic const char ROOT_CA_BUNDLE[] PROGMEM = R"ROOTCERTS('
-              + bundle + ')ROOTCERTS";\\n'
+              '#pragma once\n#include <Arduino.h>\nstatic const char ROOT_CA_BUNDLE[] PROGMEM = R"ROOTCERTS('
+              + bundle + ')ROOTCERTS";\n'
           )
           PY
 

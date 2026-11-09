@@ -74,10 +74,10 @@ void drawSkipButton() {
   tft.setTextColor(TFT_WHITE, TFT_MAROON);
   tft.drawCentreString("ПРЕРВАТЬ ЗАПУСК → ПОДКЛЮЧЕНИЕ К САЙТУ", 160, 213, 1);
 }
-// Source JPEG is 160x90 (16:9): enlarge 2x and center on 320x240.
+// Decode 160x120 splash JPEG and scale each block 2x to fill the 320x240 display.
 bool splashJpegOutput(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) {
   static uint16_t scaled[32 * 32];
-  if (x < 0 || y < 0 || x + w > 160 || y + h > 90 || w > 16 || h > 16) return false;
+  if (x < 0 || y < 0 || x + w > 160 || y + h > 120 || w > 16 || h > 16) return false;
   for (uint16_t row = 0; row < h; ++row) {
     for (uint16_t col = 0; col < w; ++col) {
       const uint16_t pixel = bitmap[row * w + col];
@@ -88,13 +88,13 @@ bool splashJpegOutput(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bi
       scaled[(dy + 1) * (w * 2) + dx + 1] = pixel;
     }
   }
-  tft.pushImage(x * 2, 30 + y * 2, w * 2, h * 2, scaled);
+  tft.pushImage(x * 2, y * 2, w * 2, h * 2, scaled);
   return true;
 }
 
 void drawSplash() {
   tft.fillScreen(TFT_BLACK);
-  static uint8_t jpg[16000];
+  static uint8_t jpg[8192];
   String encoded = FPSTR(BEAR_BOSS_LOGO_BASE64);
   size_t decodedLength = 0;
   int rc = mbedtls_base64_decode(jpg, sizeof(jpg), &decodedLength,
@@ -111,9 +111,6 @@ void drawSplash() {
     tft.setTextColor(TFT_RED, TFT_BLACK);
     tft.drawCentreString("SPLASH DATA ERROR", 160, 120, 2);
   }
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawCentreString("CYD SATELLITE TRACKER", 160, 216, 2);
 }
 void enterSiteStage() {
   if (siteStageStarted) return;

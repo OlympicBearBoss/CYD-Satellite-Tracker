@@ -76,12 +76,12 @@ void drawSkipButton() {
 }
 void drawSplash() {
   tft.fillScreen(TFT_BLACK);
-  static uint8_t jpg[4000];
+  static uint8_t jpg[16000];
   String encoded = FPSTR(BEAR_BOSS_LOGO_BASE64);
   size_t decodedLength = 0;
   int rc = mbedtls_base64_decode(jpg, sizeof(jpg), &decodedLength,
       reinterpret_cast<const unsigned char*>(encoded.c_str()), encoded.length());
-  if (rc == 0 && decodedLength > 0) TJpgDec.drawJpg(80, 75, jpg, decodedLength);
+  if (rc == 0 && decodedLength > 0) TJpgDec.drawJpg(0, 0, jpg, decodedLength);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawCentreString("CYD SATELLITE TRACKER", 160, 165, 2);

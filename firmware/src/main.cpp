@@ -2,32 +2,46 @@
 #include <TFT_eSPI.h>
 #include "BoardConfig.h"
 
-// v16 hardware isolation test: no sprites, no framebuffer, no rotation helpers.
 TFT_eSPI tft;
 
-void drawPattern() {
-  tft.fillScreen(TFT_BLACK);
+static uint8_t rotationIndex = 0;
+static uint8_t colorIndex = 0;
+static uint32_t lastColorChange = 0;
+static uint32_t lastRotationChange = 0;
+
+static const uint16_t testColors[] = {
+  TFT_RED, TFT_GREEN, TFT_BLUE, TFT_WHITE, TFT_BLACK
+};
+static const char* colorNames[] = {
+  "RED", "GREEN", "BLUE", "WHITE", "BLACK"
+};
+
+void drawRotationTest() {
+  const uint16_t bg = testColors[colorIndex];
+  tft.fillScreen(bg);
+
   const int16_t w = tft.width();
   const int16_t h = tft.height();
-  Serial.printf("TFT native geometry: %d x %d\\n", w, h);
+  const int16_t mark = 18;
 
-  // Four large solid RGB565 fields make pixel corruption easy to identify.
-  const int16_t band = h / 4;
-  tft.fillRect(0, 0, w, band, TFT_RED);
-  tft.fillRect(0, band, w, band, TFT_GREEN);
-  tft.fillRect(0, band * 2, w, band, TFT_BLUE);
-  tft.fillRect(0, band * 3, w, h - band * 3, TFT_WHITE);
+  // Four differently colored corner markers expose clipping and address-window errors.
+  tft.fillRect(0, 0, mark, mark, TFT_RED);
+  tft.fillRect(w - mark, 0, mark, mark, TFT_GREEN);
+  tft.fillRect(0, h - mark, mark, mark, TFT_BLUE);
+  tft.fillRect(w - mark, h - mark, mark, mark, TFT_YELLOW);
 
-  tft.drawRect(2, 2, w - 4, h - 4, TFT_YELLOW);
+  tft.drawRect(1, 1, w - 2, h - 2, TFT_CYAN);
+
+  const uint16_t textColor = (bg == TFT_WHITE || bg == TFT_GREEN || bg == TFT_YELLOW)
+                               ? TFT_BLACK : TFT_WHITE;
   tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_BLACK, TFT_WHITE);
-  tft.drawCentreString("DIRECT TFT TEST v16", w / 2, band * 3 + band / 2, 2);
-  tft.setTextColor(TFT_WHITE, TFT_RED);
-  tft.drawCentreString("RED", w / 2, band / 2, 2);
-  tft.setTextColor(TFT_BLACK, TFT_GREEN);
-  tft.drawCentreString("GREEN", w / 2, band + band / 2, 2);
-  tft.setTextColor(TFT_WHITE, TFT_BLUE);
-  tft.drawCentreString("BLUE", w / 2, band * 2 + band / 2, 2);
+  tft.setTextColor(textColor, bg);
+  char label[48];
+  snprintf(label, sizeof(label), "ROT %u  %s", rotationIndex, colorNames[colorIndex]);
+  tft.drawCentreString(label, w / 2, h / 2, 4);
+
+  Serial.printf("DISPLAY TEST: rotation=%u geometry=%dx%d color=%s\\n",
+                rotationIndex, w, h, colorNames[colorIndex]);
 }
 
 void setup() {
@@ -36,10 +50,30 @@ void setup() {
   pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
   tft.init();
-  tft.setRotation(1); // native 320x240 landscape
-  drawPattern();
+
+  rotationIndex = 0;
+  colorIndex = 0;
+  tft.setRotation(rotationIndex);
+  drawRotationTest();
+  lastColorChange = millis();
+  lastRotationChange = millis();
 }
 
 void loop() {
-  delay(1000);
+  const uint32_t now = millis();
+
+  // Change solid fill every 2 seconds to check every pixel and RGB565 color path.
+  if (now - lastColorChange >= 2000) {
+    lastColorChange = now;
+    colorIndex = (colorIndex + 1) % (sizeof(testColors) / sizeof(testColors[0]));
+    drawRotationTest();
+  }
+
+  // Cycle all four ILI9341 orientations every 10 seconds.
+  if (now - lastRotationChange >= 10000) {
+    lastRotationChange = now;
+    rotationIndex = (rotationIndex + 1) % 4;
+    tft.setRotation(rotationIndex);
+    drawRotationTest();
+  }
 }

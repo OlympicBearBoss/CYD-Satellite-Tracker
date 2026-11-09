@@ -213,10 +213,9 @@ void drawRotationTest(uint8_t rotation) {
 }
 
 void runDisplayDiagnostic() {
-  // ILI9341 uses a native 240x320 coordinate system. Rotation 1 maps it
-  // to the CYD's physical 320x240 landscape panel without changing driver
-  // geometry definitions or cycling through orientations at every boot.
-  tft.setRotation(1);
+  // Rotation 3 is the opposite landscape direction from rotation 1.
+  // Keep native ILI9341 geometry (240x320) and validate 320x240 at runtime.
+  tft.setRotation(3);
   Serial.printf("TFT SELECTED GEOMETRY: %dx%d\\n", tft.width(), tft.height());
 }
 

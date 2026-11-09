@@ -50,14 +50,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          FW_VERSION="v2026.11.09.2"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 
           # Individual images are kept for diagnostics/manual recovery.
           cp "$BUILD_DIR/bootloader.bin" release/bootloader.bin
           cp "$BUILD_DIR/partitions.bin" release/partitions.bin
-          cp "$BUILD_DIR/firmware.bin" release/CYD-Satellite-Tracker-application.bin
-          cp "$BUILD_DIR/firmware.elf" release/CYD-Satellite-Tracker.elf
+          cp "$BUILD_DIR/firmware.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-application.bin
+          cp "$BUILD_DIR/firmware.elf" release/CYD-Satellite-Tracker-${FW_VERSION}.elf
 
           # Arduino-ESP32 uses this small second-stage OTA metadata image.
           BOOT_APP0="$(find "$HOME/.platformio/packages" -type f -name boot_app0.bin -print -quit)"
@@ -78,7 +79,7 @@ jobs:
           # A single merged image starts at flash address 0x0000.
           "$ESPTOOL" --chip esp32 merge-bin \
             --flash-mode dio --flash-freq 40m --flash-size 4MB \
-            -o release/CYD-Satellite-Tracker-full-flash.bin \
+            -o release/CYD-Satellite-Tracker-${FW_VERSION}-full-flash.bin \
             0x1000 "$BUILD_DIR/bootloader.bin" \
             0x8000 "$BUILD_DIR/partitions.bin" \
             0xE000 "$BOOT_APP0" \
@@ -87,7 +88,7 @@ jobs:
           cat > release/FLASH-INSTRUCTIONS.txt <<'EOF'
           CYD ESP32-2432S028 — full flash image
 
-          Recommended: flash CYD-Satellite-Tracker-full-flash.bin at address 0x0000.
+          Recommended: flash CYD-Satellite-Tracker-${FW_VERSION}-full-flash.bin at address 0x0000.
           This merged image includes bootloader, partition table, boot_app0 metadata,
           and the application. It is built for 4 MB flash with the project's huge_app.csv.
 
@@ -95,7 +96,7 @@ jobs:
             bootloader.bin                         0x1000
             partitions.bin                        0x8000
             boot_app0.bin                          0xE000
-            CYD-Satellite-Tracker-application.bin  0x10000
+            CYD-Satellite-Tracker-${FW_VERSION}-application.bin  0x10000
 
           Select ESP32 (not ESP32-S2/S3/C3), 4 MB flash. If using esptool, erase flash
           before first installation when migrating from a different partition layout.
@@ -107,7 +108,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CYD-Satellite-Tracker-firmware
+          name: CYD-Satellite-Tracker-firmware-v2026.11.09.2
           path: release/
           if-no-files-found: error
           retention-days: 30

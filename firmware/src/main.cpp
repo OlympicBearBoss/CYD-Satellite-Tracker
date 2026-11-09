@@ -149,7 +149,8 @@ void setCheck(size_t i, CheckState state, const char* detail) {
   checks[i].state = state;
   checks[i].detail = detail;
   drawScreen();
-  pollSkip();
+  const uint32_t until = millis() + 250;
+  while (!skipInitialization && millis() < until) { pollSkip(); delay(10); }
 }
 void waitBrief() { pollSkip(); delay(80); }
 

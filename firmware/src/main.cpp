@@ -239,8 +239,13 @@ void setup() {
   drawSplash();
   delay(5000);
   const bool landscapeReady = (tft.width() == 320 && tft.height() == 240);
-  setCheck(1, landscapeReady ? CheckState::PASS : CheckState::FAIL,
-           landscapeReady ? "Экран 320x240 активен" : "Ошибка: " + String(tft.width()) + "x" + String(tft.height()));
+  char geometryDetail[32];
+  if (landscapeReady) {
+    snprintf(geometryDetail, sizeof(geometryDetail), "Экран 320x240 активен");
+  } else {
+    snprintf(geometryDetail, sizeof(geometryDetail), "Ошибка: %dx%d", tft.width(), tft.height());
+  }
+  setCheck(1, landscapeReady ? CheckState::PASS : CheckState::FAIL, geometryDetail);
   if (skipInitialization) { enterSiteStage(); return; }
   setCheck(2, CheckState::RUNNING, "GPIO27 SDA / GPIO22 SCL");
   Wire.begin(Pins::I2C_SDA, Pins::I2C_SCL);

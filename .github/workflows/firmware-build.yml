@@ -26,6 +26,22 @@ jobs:
       - name: Install PlatformIO
         run: pip install --upgrade platformio
 
+      - name: Prepare HTTPS trust roots
+        run: |
+          mkdir -p firmware/include/ca
+          for root in gtsr1 gtsr2 gtsr3 gtsr4; do
+            curl --fail --silent --show-error --location "https://pki.goog/repo/certs/${root}.pem" -o "firmware/include/ca/${root}.pem"
+          done
+          python - <<'PY'
+          from pathlib import Path
+          certs = [Path(f"firmware/include/ca/gtsr{i}.pem").read_text() for i in range(1, 5)]
+          bundle = "\\n".join(certs)
+          Path("firmware/include/RootCACert.h").write_text(
+              '#pragma once\\n#include <Arduino.h>\\nstatic const char ROOT_CA_BUNDLE[] PROGMEM = R"ROOTCERTS('
+              + bundle + ')ROOTCERTS";\\n'
+          )
+          PY
+
       - name: Build CYD firmware
         working-directory: firmware
         run: pio run -e cyd_esp32_2432s028

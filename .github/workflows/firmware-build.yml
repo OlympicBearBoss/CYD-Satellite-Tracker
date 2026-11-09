@@ -55,8 +55,9 @@ jobs:
           mkdir -p release
 
           # Individual images are kept for diagnostics/manual recovery.
-          cp "$BUILD_DIR/bootloader.bin" release/bootloader.bin
-          cp "$BUILD_DIR/partitions.bin" release/partitions.bin
+          cp "$BUILD_DIR/bootloader.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-bootloader.bin
+          cp "$BUILD_DIR/partitions.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-partitions.bin
+          cp "$(find "$HOME/.platformio/packages" -type f -name boot_app0.bin -print -quit)" release/CYD-Satellite-Tracker-${FW_VERSION}-boot_app0.bin
           cp "$BUILD_DIR/firmware.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-application.bin
           cp "$BUILD_DIR/firmware.elf" release/CYD-Satellite-Tracker-${FW_VERSION}.elf
 
@@ -85,7 +86,7 @@ jobs:
             0xE000 "$BOOT_APP0" \
             0x10000 "$BUILD_DIR/firmware.bin"
 
-          cat > release/FLASH-INSTRUCTIONS.txt <<'EOF'
+          cat > release/FLASH-INSTRUCTIONS-${FW_VERSION}.txt <<EOF
           CYD ESP32-2432S028 — full flash image
 
           Recommended: flash CYD-Satellite-Tracker-${FW_VERSION}-full-flash.bin at address 0x0000.
@@ -93,9 +94,9 @@ jobs:
           and the application. It is built for 4 MB flash with the project's huge_app.csv.
 
           Alternative manual images:
-            bootloader.bin                         0x1000
-            partitions.bin                        0x8000
-            boot_app0.bin                          0xE000
+            CYD-Satellite-Tracker-${FW_VERSION}-bootloader.bin  0x1000
+            CYD-Satellite-Tracker-${FW_VERSION}-partitions.bin 0x8000
+            CYD-Satellite-Tracker-${FW_VERSION}-boot_app0.bin   0xE000
             CYD-Satellite-Tracker-${FW_VERSION}-application.bin  0x10000
 
           Select ESP32 (not ESP32-S2/S3/C3), 4 MB flash. If using esptool, erase flash
@@ -103,7 +104,7 @@ jobs:
           Erasing flash deletes existing settings/data.
           EOF
 
-          sha256sum release/* > release/SHA256SUMS.txt
+          sha256sum release/* > release/SHA256SUMS-${FW_VERSION}.txt
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

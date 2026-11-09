@@ -41,7 +41,6 @@ bool gpsSentenceSeen = false;
 uint8_t pcfInputs = 0xFF;
 uint16_t elevationAdc = 0;
 uint16_t azRaw = 0;
-uint32_t lastGpsPoll = 0;
 
 const char* stateGlyph(CheckState s) {
   switch (s) {
@@ -82,7 +81,7 @@ void drawSplash() {
   size_t decodedLength = 0;
   int rc = mbedtls_base64_decode(jpg, sizeof(jpg), &decodedLength,
       reinterpret_cast<const unsigned char*>(encoded.c_str()), encoded.length());
-  if (rc == 0 && decodedLength > 0) TJpg_Decoder.drawJpg(80, 75, jpg, decodedLength);
+  if (rc == 0 && decodedLength > 0) TJpgDec.drawJpg(80, 75, jpg, decodedLength);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawCentreString("CYD SATELLITE TRACKER", 160, 165, 2);
@@ -118,8 +117,6 @@ void drawScreen(const char* headline = "Проверка системы") {
   tft.drawFastHLine(8, 26, 304, TFT_DARKGREY);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawString(headline, 8, 32, 2);
-
-  // Two compact columns fit all checks on the 320x240 landscape screen.
   for (size_t i = 0; i < CHECK_COUNT; ++i) {
     const int col = (i >= 5) ? 1 : 0;
     const int row = (int)(i % 5);
@@ -132,10 +129,8 @@ void drawScreen(const char* headline = "Проверка системы") {
     tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
     tft.drawString(checks[i].detail, x + 31, y + 13, 1);
   }
-
   tft.setTextColor(TFT_CYAN, TFT_BLACK);
   tft.drawString("ИНИЦИАЛИЗАЦИЯ: БЕЗ ДВИЖЕНИЯ МОТОРОВ", 8, 196, 1);
-
   drawSkipButton();
 }
 
@@ -156,14 +151,11 @@ bool readRegister16(uint8_t address, uint8_t reg, uint16_t &value) {
   value = ((uint16_t)Wire.read() << 8) | Wire.read();
   return true;
 }
-
 bool devicePresent(uint8_t address) {
   Wire.beginTransmission(address);
   return Wire.endTransmission() == 0;
 }
-
 void initSafeOutputs() {
-  // First firmware action: STEP low. No pulse is ever generated during boot.
   pinMode(Pins::AZ_STEP, OUTPUT);
   digitalWrite(Pins::AZ_STEP, LOW);
   pinMode(Pins::EL_STEP, OUTPUT);
@@ -172,24 +164,19 @@ void initSafeOutputs() {
   digitalWrite(Pins::AZ_DIR, LOW);
   pinMode(Pins::EL_DIR, OUTPUT);
   digitalWrite(Pins::EL_DIR, LOW);
-  // No ENABLE GPIO is driven by this build. External pull-up must keep
-  // active-low driver ENABLE inactive. Hardware E-stop must cut motor power.
 }
 
 void setup() {
   initSafeOutputs();
   Serial.begin(115200);
   delay(50);
-
   checks[0] = {"ESP32 / запуск", CheckState::PASS, "Запуск выполнен"};
-
-  // Bring up the panel before the first drawing call.
   tft.init();
-  tft.setRotation(1); // 320x240 landscape
+  tft.setRotation(1);
   pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
-  TJpg_Decoder.setJpgScale(1);
-  TJpg_Decoder.setCallback([](int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) {
+  TJpgDec.setJpgScale(1);
+  TJpgDec.setCallback([](int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) {
     if (y >= 240) return 0;
     tft.pushImage(x, y, w, h, bitmap);
     return 1;
@@ -197,7 +184,6 @@ void setup() {
   drawSplash();
   delay(5000);
   setCheck(1, CheckState::PASS, "Экран 320x240 активен");
-
   if (skipInitialization) { enterSiteStage(); return; }
   setCheck(2, CheckState::RUNNING, "GPIO27 SDA / GPIO22 SCL");
   Wire.begin(Pins::I2C_SDA, Pins::I2C_SCL);
@@ -206,20 +192,17 @@ void setup() {
              devicePresent(Devices::PCF8574_ADDRESS);
   setCheck(2, i2cReady ? CheckState::PASS : CheckState::FAIL,
            i2cReady ? "Шина отвечает хотя бы одним устройством" : "Нет ответа I2C");
-
   if (skipInitialization) { enterSiteStage(); return; }
   setCheck(3, CheckState::RUNNING, "Адрес 0x36, регистр ANGLE");
-  azSensorReady = i2cReady &&
-      readRegister16(Devices::AS5600_ADDRESS, 0x0E, azRaw);
+  azSensorReady = i2cReady && readRegister16(Devices::AS5600_ADDRESS, 0x0E, azRaw);
   setCheck(3, azSensorReady ? CheckState::PASS : CheckState::FAIL,
            azSensorReady ? "AS5600 отвечает" : "Датчик не найден / нет данных");
-
   if (skipInitialization) { enterSiteStage(); return; }
   setCheck(4, CheckState::RUNNING, "PCF8574, P0..P3");
   pcfReady = devicePresent(Devices::PCF8574_ADDRESS);
   if (pcfReady) {
     Wire.beginTransmission(Devices::PCF8574_ADDRESS);
-    Wire.write(0xFF); // quasi-bidirectional inputs released high
+    Wire.write(0xFF);
     pcfReady = Wire.endTransmission() == 0;
     if (pcfReady && Wire.requestFrom((int)Devices::PCF8574_ADDRESS, 1) == 1)
       pcfInputs = Wire.read();
@@ -236,14 +219,12 @@ void setup() {
     limitsValid = false;
     setCheck(4, CheckState::FAIL, "PCF8574 не отвечает");
   }
-
   if (skipInitialization) { enterSiteStage(); return; }
   setCheck(5, CheckState::RUNNING, "P5 — вспомогательный контакт E-STOP");
   estopReleased = pcfReady && ((pcfInputs & Devices::PCF_ESTOP_BIT) == 0);
   setCheck(5, estopReleased ? CheckState::PASS : CheckState::FAIL,
            estopReleased ? "Цепь замкнута (стоп отпущен)" :
                            "Разомкнута / не подтверждена; движение запрещено");
-
   if (skipInitialization) { enterSiteStage(); return; }
   setCheck(6, CheckState::RUNNING, "ADC GPIO35, аналоговый OUT");
   analogReadResolution(12);
@@ -252,26 +233,21 @@ void setup() {
   setCheck(6, elAnalogPlausible ? CheckState::WARNING : CheckState::FAIL,
            elAnalogPlausible ? "Сигнал есть; угловая калибровка не задана" :
                                "Нет достоверного сигнала ADC");
-
   if (skipInitialization) { enterSiteStage(); return; }
   setCheck(7, CheckState::RUNNING, "UART2 RX GPIO34, 9600 бод");
   GPS.begin(9600, SERIAL_8N1, Pins::GPS_RX, -1);
   const uint32_t start = millis();
   while (millis() - start < 1200 && !skipInitialization) {
     pollSkip();
-    while (GPS.available()) {
-      if (gps.encode(GPS.read())) gpsSentenceSeen = true;
-    }
+    while (GPS.available()) if (gps.encode(GPS.read())) gpsSentenceSeen = true;
     delay(2);
   }
   setCheck(7, gpsSentenceSeen ? CheckState::PASS : CheckState::WARNING,
            gpsSentenceSeen ? "NMEA принимается; GPS fix проверяется отдельно" :
                              "Нет NMEA; проверьте питание и TX->GPIO34");
-
   if (skipInitialization) { enterSiteStage(); return; }
   setCheck(8, CheckState::RUNNING, "STEP/DIR настроены, ENABLE не включён");
   setCheck(8, CheckState::PASS, "Линии управления подготовлены; силовой тест не выполнен");
-
   checks[9].state = CheckState::SKIPPED;
   checks[9].detail = "Не запускался автоматически — это безопасно";
   bool anyFail = false, anyWarning = false;
@@ -284,7 +260,6 @@ void setup() {
   enterSiteStage();
   Serial.println("Boot diagnostics complete. Motors remain disabled.");
 }
-
 void loop() {
   SiteLink::loop();
   delay(10);

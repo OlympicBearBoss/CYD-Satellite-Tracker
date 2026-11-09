@@ -35,10 +35,10 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           certs = [Path(f"firmware/include/ca/gtsr{i}.pem").read_text() for i in range(1, 5)]
-          bundle = "\n".join(certs)
+          bundle = "\\n".join(certs)
           Path("firmware/include/RootCACert.h").write_text(
-              '#pragma once\n#include <Arduino.h>\nstatic const char ROOT_CA_BUNDLE[] PROGMEM = R"ROOTCERTS('
-              + bundle + ')ROOTCERTS";\n'
+              '#pragma once\\n#include <Arduino.h>\\nstatic const char ROOT_CA_BUNDLE[] PROGMEM = R"ROOTCERTS('
+              + bundle + ')ROOTCERTS";\\n'
           )
           PY
 
@@ -46,11 +46,54 @@ jobs:
         working-directory: firmware
         run: pio run -e cyd_esp32_2432s028
 
-      - name: Collect firmware
+      - name: Collect firmware and create full-flash image
+        shell: bash
         run: |
+          set -euo pipefail
+          BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
-          cp firmware/.pio/build/cyd_esp32_2432s028/firmware.bin release/CYD-Satellite-Tracker-boot-diagnostics.bin
-          cp firmware/.pio/build/cyd_esp32_2432s028/firmware.elf release/CYD-Satellite-Tracker-boot-diagnostics.elf
+
+          # Individual images are kept for diagnostics/manual recovery.
+          cp "$BUILD_DIR/bootloader.bin" release/bootloader.bin
+          cp "$BUILD_DIR/partitions.bin" release/partitions.bin
+          cp "$BUILD_DIR/firmware.bin" release/CYD-Satellite-Tracker-application.bin
+          cp "$BUILD_DIR/firmware.elf" release/CYD-Satellite-Tracker.elf
+
+          # Arduino-ESP32 uses this small second-stage OTA metadata image.
+          BOOT_APP0="$(find "$HOME/.platformio" -type f -name boot_app0.bin -print -quit)"
+          test -n "$BOOT_APP0"
+          test -f "$BOOT_APP0"
+
+          ESPTOOL="$HOME/.platformio/packages/tool-esptoolpy/esptool.py"
+          test -f "$ESPTOOL"
+
+          # A single merged image starts at flash address 0x0000.
+          python "$ESPTOOL" --chip esp32 merge_bin \
+            --flash_mode dio --flash_freq 40m --flash_size 4MB \
+            -o release/CYD-Satellite-Tracker-full-flash.bin \
+            0x1000 "$BUILD_DIR/bootloader.bin" \
+            0x8000 "$BUILD_DIR/partitions.bin" \
+            0xE000 "$BOOT_APP0" \
+            0x10000 "$BUILD_DIR/firmware.bin"
+
+          cat > release/FLASH-INSTRUCTIONS.txt <<'EOF'
+          CYD ESP32-2432S028 — full flash image
+
+          Recommended: flash CYD-Satellite-Tracker-full-flash.bin at address 0x0000.
+          This merged image includes bootloader, partition table, boot_app0 metadata,
+          and the application. It is built for 4 MB flash with the project's huge_app.csv.
+
+          Alternative manual images:
+            bootloader.bin                         0x1000
+            partitions.bin                        0x8000
+            boot_app0.bin                          0xE000
+            CYD-Satellite-Tracker-application.bin  0x10000
+
+          Select ESP32 (not ESP32-S2/S3/C3), 4 MB flash. If using esptool, erase flash
+          before first installation when migrating from a different partition layout.
+          Erasing flash deletes existing settings/data.
+          EOF
+
           sha256sum release/* > release/SHA256SUMS.txt
 
       - name: Upload build artifacts

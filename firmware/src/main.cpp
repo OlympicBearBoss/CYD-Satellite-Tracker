@@ -455,9 +455,6 @@ void loop() {
       screen=Screen::Failed;
       showFailed();
     }
-  } else if(screen==Screen::Connected && now-screenStartedAt>=1000) {
-    showConnected();
-    screenStartedAt=now;
   }
   handleTouch();
 }

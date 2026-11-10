@@ -459,19 +459,73 @@ static void drawNavigation(uint8_t active) {
 
 static void updateGpsTelemetry();
 
+
+static void drawEarthArtwork(int cx,int cy,int r) {
+  // Layered shaded globe, limb glow and simplified continental silhouettes.
+  tft.fillCircle(cx+3,cy+4,r+4,0x0000);
+  tft.drawCircle(cx,cy,r+4,0x07FF);
+  for(int k=r;k>0;--k) {
+    uint16_t c = k>r*3/4 ? 0x0010 : (k>r/2 ? 0x0016 : (k>r/4 ? 0x021B : 0x043F));
+    tft.drawCircle(cx,cy,k,c);
+  }
+  // Ocean highlight and curved latitude/longitude traces.
+  tft.drawEllipse(cx,cy,r-7,r/3,0x04BF);
+  tft.drawEllipse(cx,cy,r/2,r-8,0x039F);
+  tft.drawFastHLine(cx-r+8,cy,r*2-16,0x035F);
+  // Stylized continents, intentionally subdued beneath telemetry.
+  tft.fillTriangle(cx-25,cy-24,cx-5,cy-31,cx-8,cy-8,0x36A6);
+  tft.fillTriangle(cx-25,cy-24,cx-8,cy-8,cx-20,cy+1,0x36A6);
+  tft.fillTriangle(cx-8,cy-8,cx+1,cy+4,cx-11,cy+25,0x2E85);
+  tft.fillTriangle(cx+9,cy-24,cx+30,cy-16,cx+21,cy-2,0x36A6);
+  tft.fillTriangle(cx+9,cy-24,cx+21,cy-2,cx+5,cy+4,0x36A6);
+  tft.fillTriangle(cx+5,cy+4,cx+21,cy-2,cx+15,cy+18,0x2E85);
+  // Atmospheric rim and orbit.
+  for(int i=0;i<72;i++) {
+    float a=i*0.0872665f;
+    int px=cx+(int)((r+2)*cosf(a)), py=cy+(int)((r+2)*sinf(a));
+    tft.drawPixel(px,py,(i%3)?0x05BF:TFT_CYAN);
+  }
+  int ox=cx, oy=cy;
+  for(int i=0;i<=72;i++) {
+    float a=i*0.0872665f;
+    int px=cx+(int)((r+15)*cosf(a)), py=cy+(int)((r/2+9)*sinf(a));
+    if(i) tft.drawLine(ox,oy,px,py,0x4D7F);
+    ox=px;oy=py;
+  }
+  tft.fillCircle(cx+r+12,cy-5,3,TFT_YELLOW);
+  tft.fillCircle(cx+r+12,cy-5,1,TFT_WHITE);
+}
+static void drawSatelliteArtwork(int cx,int cy,int scale) {
+  tft.fillRect(cx-23*scale,cy-8*scale,14*scale,16*scale,0x035F);
+  tft.drawRect(cx-23*scale,cy-8*scale,14*scale,16*scale,TFT_CYAN);
+  for(int i=1;i<4;i++) tft.drawFastVLine(cx-23*scale+i*3*scale,cy-7*scale,14*scale,0x07FF);
+  tft.fillRect(cx+9*scale,cy-8*scale,14*scale,16*scale,0x035F);
+  tft.drawRect(cx+9*scale,cy-8*scale,14*scale,16*scale,TFT_CYAN);
+  for(int i=1;i<4;i++) tft.drawFastVLine(cx+9*scale+i*3*scale,cy-7*scale,14*scale,0x07FF);
+  tft.fillRoundRect(cx-8*scale,cy-6*scale,16*scale,12*scale,3*scale,0xBDF7);
+  tft.drawRoundRect(cx-8*scale,cy-6*scale,16*scale,12*scale,3*scale,TFT_WHITE);
+  tft.drawLine(cx,cy-6*scale,cx+4*scale,cy-14*scale,TFT_WHITE);
+  tft.fillCircle(cx+4*scale,cy-15*scale,2*scale,TFT_YELLOW);
+}
+static void drawDialNeedle(int cx,int cy,int length,float degrees,uint16_t color) {
+  const float a=(degrees-90.0f)*0.0174532925f;
+  int ex=cx+(int)(length*cosf(a)), ey=cy+(int)(length*sinf(a));
+  tft.drawLine(cx+1,cy+2,ex+1,ey+2,0x0000);
+  tft.drawLine(cx,cy,ex,ey,color);
+  tft.fillCircle(cx,cy,5,0xBDF7);
+  tft.drawCircle(cx,cy,5,TFT_WHITE);
+}
+
 static void drawGpsPanel() {
-  // Real Earth/ISS artwork is a fixed JPEG layer; live telemetry is painted
-  // separately so one-second GPS updates never redraw the large image.
   tft.fillRoundRect(8,88,304,109,9,0x0C63);
-  tft.fillRoundRect(14,94,112,90,7,0x0010);
-  drawUiImage(14,94,ui_earth_jpg,sizeof(ui_earth_jpg));
-  tft.drawRoundRect(14,94,112,90,7,TFT_CYAN);
-  tft.fillRoundRect(19,99,51,14,5,0x0010);
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_CYAN,0x0010);
-  tft.drawString("ISS / EARTH",44,106,1);
-  tft.fillRoundRect(132,94,173,90,7,0x0862);
-  tft.drawRoundRect(132,94,173,90,7,0x3151);
-  drawSectionLabel("GPS TELEMETRY",140,100,156);
+  tft.drawRoundRect(8,88,304,109,9,0x3151);
+  tft.fillRoundRect(13,93,137,99,7,0x0010);
+  drawEarthArtwork(78,143,37);
+  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,0x0010);
+  tft.drawString("LIVE ORBIT",18,98,1);
+  tft.fillRoundRect(156,93,150,99,7,0x0862);
+  tft.drawRoundRect(156,93,150,99,7,0x3151);
+  drawSectionLabel("GPS TELEMETRY",164,99,133);
   updateGpsTelemetry();
   tft.fillRect(8,199,304,1,0x2A69);
 }
@@ -527,30 +581,54 @@ static void satelliteRow(int y,const char* name,const char* type,bool selected) 
 static void showSatelliteScreen() {
   screen=Screen::Satellite;header("SATELLITES","OBJECT CATALOG  /  TRACKING TARGETS");
   tft.fillRoundRect(8,88,304,55,9,0x123B);tft.drawRoundRect(8,88,304,55,9,TFT_CYAN);
-  tft.fillRoundRect(12,91,64,49,6,0x0010);
-  drawUiImage(12,91,ui_iss_jpg,sizeof(ui_iss_jpg));
-  tft.drawRoundRect(12,91,64,49,6,TFT_CYAN);
+  tft.fillRoundRect(13,93,62,45,6,0x0010);
+  drawSatelliteArtwork(44,116,1);
   tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x123B);tft.drawString("ISS  /  ZARYA",84,96,2);
   tft.setTextColor(TFT_CYAN,0x123B);tft.drawString("INTERNATIONAL SPACE STATION",84,119,1);
   tft.fillRoundRect(245,96,57,15,6,0x0320);tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_GREEN,0x0320);tft.drawString("TOP 01",273,104,1);
-  satelliteRow(148,"NOAA-18","WEATHER  /  ORBIT NOT LOADED",false);
-  satelliteRow(182,"NOAA-19","WEATHER  /  ORBIT NOT LOADED",false);
+  tft.setTextColor(TFT_GREEN,0x0320);tft.drawString("PRIORITY",273,104,1);
+  satelliteRow(148,"NOAA-18","WEATHER SATELLITE  /  TLE PENDING",false);
+  satelliteRow(182,"NOAA-19","WEATHER SATELLITE  /  TLE PENDING",false);
   drawNavigation(1);
 }
-
 static void showAntennaScreen() {
   screen=Screen::Antenna;header("ANTENNA","VHF 145 MHz  /  CIRCULAR POLARIZED YAGI");
   tft.fillRoundRect(8,88,147,109,9,0x0C63);tft.drawRoundRect(8,88,147,109,9,0x3151);
   tft.fillRoundRect(163,88,149,109,9,0x0C63);tft.drawRoundRect(163,88,149,109,9,0x3151);
-  drawSectionLabel("AZIMUTH",17,96,128);drawAzimuthDial(81,151,32);
-  drawSectionLabel("ELEVATION",172,96,130);drawElevationArc(173,119,129);
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_CYAN,0x0C63);tft.drawString("--.- deg",238,151,4);
+  drawSectionLabel("AZIMUTH",17,96,128);
+  // Instrument-style compass face with major/minor ticks and cardinal labels.
+  const int cx=81,cy=153,rr=37;
+  tft.fillCircle(cx,cy,rr-2,0x0822);
+  tft.drawCircle(cx,cy,rr,0x07FF);tft.drawCircle(cx,cy,rr-4,0x2A69);
+  for(int a=0;a<360;a+=10) {
+    float rad=(a-90)*0.0174532925f;
+    int r1=rr-5, r2=rr-(a%30==0?13:9);
+    int x1=cx+(int)(r1*cosf(rad)),y1=cy+(int)(r1*sinf(rad));
+    int x2=cx+(int)(r2*cosf(rad)),y2=cy+(int)(r2*sinf(rad));
+    tft.drawLine(x1,y1,x2,y2,a%30==0?TFT_CYAN:0x2A69);
+  }
+  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,0x0822);
+  tft.drawString("N",cx,cy-25,1);tft.drawString("E",cx+25,cy,1);
+  tft.drawString("S",cx,cy+25,1);tft.drawString("W",cx-25,cy,1);
+  drawDialNeedle(cx,cy,17,0x0,TFT_ORANGE);
+  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_CYAN,0x0C63);tft.drawString("--.-°",81,181,2);
+  drawSectionLabel("ELEVATION",172,96,130);
+  // Large altitude arc with degree scale and a neutral, uncommanded pointer.
+  tft.drawArc(237,157,43,35,180,360,TFT_CYAN,0x0C63,true);
+  tft.drawArc(237,157,35,29,180,360,0x2A69,0x0C63,true);
+  for(int a=180;a<=360;a+=15) {
+    float rad=a*0.0174532925f;
+    int x1=237+(int)(38*cosf(rad)),y1=157+(int)(38*sinf(rad));
+    int x2=237+(int)(31*cosf(rad)),y2=157+(int)(31*sinf(rad));
+    tft.drawLine(x1,y1,x2,y2,a%45==0?TFT_CYAN:0x2A69);
+  }
+  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,0x0C63);
+  tft.drawString("--.-°",237,151,2);
+  tft.setTextColor(MUTED,0x0C63);tft.drawString("0       45       90",237,184,1);
   tft.fillRoundRect(8,181,304,18,6,0x4000);tft.drawRoundRect(8,181,304,18,6,TFT_ORANGE);
   tft.setTextColor(TFT_YELLOW,0x4000);tft.drawString("ORBIT NOT LOADED  /  DRIVE LOCKED",160,190,1);
   drawNavigation(2);
 }
-
 static void showSystemScreen() {
   screen=Screen::SystemInfo;header("SYSTEM","DEVICE HEALTH  /  CONFIGURATION");
   const bool wifi=WiFi.status()==WL_CONNECTED;

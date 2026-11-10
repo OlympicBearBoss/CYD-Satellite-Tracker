@@ -429,7 +429,7 @@ static void handleKeyboardTap(uint16_t x,uint16_t y) {
       const int col=(x-246)/24;
       if(col<3 && x<(246+col*24+22)) { Serial.printf("KEYMAP digit=%c mapped=%u,%u raw=%u,%u\\n","456"[col],x,y,rawTouchX,rawTouchY); appendMappedKey("456"[col]); }
     } else if(x>=16 && x<232) {
-      const int col=(x-16)/26;
+      const int col=(x-16)/24;
       if(col<9 && x<16+col*26+22) appendMappedKey((symbolsPage?"-_=+[]{};:":"asdfghjkl")[col]);
     }
     showWifiSetup(); return;

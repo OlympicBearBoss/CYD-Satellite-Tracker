@@ -381,7 +381,8 @@ static void updateTouchCalibration(){
  Serial.printf("Touch calibration %u/4 raw=%u,%u\\n",touchCalStep,rx,ry);++touchCalStep;
  if(touchCalStep<=4){drawCalibrationTarget(touchCalStep-1);return;}
  prefs.putBytes("touchraw",touchCorners,sizeof(touchCorners));prefs.putUChar("touchv",5);
- Serial.printf("Touch corners TL=%u,%u TR=%u,%u BL=%u,%u BR=%u,%u\\n",touchCorners[0],touchCorners[1],touchCorners[2],touchCorners[3],touchCorners[4],touchCorners[5],touchCorners[6],touchCorners[7]);\n touchCalibrated=true;screen=Screen::Init;showInitialization();screenStartedAt=millis();
+ Serial.printf("Touch corners TL=%u,%u TR=%u,%u BL=%u,%u BR=%u,%u\\n",touchCorners[0],touchCorners[1],touchCorners[2],touchCorners[3],touchCorners[4],touchCorners[5],touchCorners[6],touchCorners[7]);
+ touchCalibrated=true;screen=Screen::Init;showInitialization();screenStartedAt=millis();
 }
 static void backspace() {
   String& target=editingPassword?wifiPassword:wifiName;

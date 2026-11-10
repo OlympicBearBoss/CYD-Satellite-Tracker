@@ -102,7 +102,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V43 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V45 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -191,6 +191,23 @@ static void drawField(int y,const char* label,const String& value,bool selected,
   tft.setTextDatum(ML_DATUM);
   tft.setTextColor(TFT_WHITE,selected?0x123B:PANEL);
   tft.drawString(shown,13,y+13,2);
+}
+
+static bool readStableTouch(uint16_t &rawX,uint16_t &rawY,uint16_t &screenX,uint16_t &screenY) {
+  // Sample three independent controller bursts while the finger is still down.
+  // Each burst is already median-filtered; median the mapped coordinates again
+  // to reject occasional XPT2046 spikes near adjacent keyboard hit zones.
+  uint16_t xs[3],ys[3],rx[3],ry[3];
+  for(uint8_t i=0;i<3;++i) {
+    if(!readXpt2046(rx[i],ry[i])) return false;
+    if(!mapRawTouch(rx[i],ry[i],xs[i],ys[i])) return false;
+    if(i<2) delay(2);
+  }
+  rawX=median3(rx[0],rx[1],rx[2]);
+  rawY=median3(ry[0],ry[1],ry[2]);
+  screenX=median3(xs[0],xs[1],xs[2]);
+  screenY=median3(ys[0],ys[1],ys[2]);
+  return true;
 }
 
 static void beginWiFi();
@@ -503,14 +520,11 @@ static void handleTouch(){
  // Always poll release first. This prevents a stale pressed-state from
  // blocking every subsequent key after a screen redraw.
  uint16_t rx=0,ry=0,x=0,y=0;
- if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
- if(touchWasDown||millis()-lastTouchAt<2)return;
+ if(digitalRead(TOUCH_IRQ_PIN)!=LOW){touchWasDown=false;return;}
+ if(touchWasDown||millis()-lastTouchAt<35)return;
+ if(!readStableTouch(rx,ry,x,y))return;
  touchWasDown=true;lastTouchAt=millis();
- if(!mapRawTouch(rx,ry,x,y)){
-   Serial.printf("Touch map failed raw=%u,%u\\n",rx,ry);
-   return;
- }
- Serial.printf("Touch raw=%u,%u mapped=%u,%u screen=%u\\n",rx,ry,x,y,(unsigned)screen);
+ Serial.printf("Touch stable raw=%u,%u mapped=%u,%u screen=%u\\n",rx,ry,x,y,(unsigned)screen);
  if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
  else if((screen==Screen::Dashboard||screen==Screen::Satellite||screen==Screen::SystemInfo)&&y>=204) {
    if(x<106) showDashboard();

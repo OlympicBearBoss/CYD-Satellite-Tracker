@@ -9,6 +9,10 @@ static uint8_t pageIndex = 0;
 static const uint16_t pageColors[] = { TFT_BLACK, TFT_NAVY, TFT_DARKGREEN, TFT_MAROON };
 static const char* pageNames[] = { "BLACK GRID", "BLUE GRID", "GREEN GRID", "RED GRID" };
 
+static int16_t scaleCoord(int16_t value, int16_t extent) {
+  return (int32_t)value * (extent - 1) / 200;
+}
+
 void drawGridTest() {
   const uint16_t bg = pageColors[pageIndex];
   tft.fillScreen(bg);
@@ -17,13 +21,16 @@ void drawGridTest() {
   const uint16_t grid = TFT_DARKGREY;
 
   tft.drawRect(0, 0, w, h, TFT_WHITE);
-  // Horizontal zoom: 0..200 uses the full width; 25% larger spacing than v21.
-  // The rightmost grid line lands exactly on the display edge.
+  // Both 0..200 axes are mapped over the complete active display area.
+  // Rotation 3 selects the 320x240 landscape geometry so the right edge is used.
   for (int16_t value = 0; value <= 200; value += 50) {
-    const int16_t x = (int32_t)value * (w - 1) / 200;
+    const int16_t x = scaleCoord(value, w);
     tft.drawFastVLine(x, 0, h, grid);
   }
-  for (int16_t y = 0; y < h; y += 40) tft.drawFastHLine(0, y, w, grid);
+  for (int16_t value = 0; value <= 200; value += 50) {
+    const int16_t y = scaleCoord(value, h);
+    tft.drawFastHLine(0, y, w, grid);
+  }
 
   const int16_t m = 14;
   tft.fillRect(2, 2, m, m, TFT_RED);
@@ -40,18 +47,20 @@ void drawGridTest() {
     const int16_t labelX = (x < 24) ? 2 : (x > w - 34 ? w - 38 : x - 16);
     tft.drawString(label, labelX, 19, 2);
   }
-  for (int16_t y = 0; y < h; y += 40) {
+  for (int16_t value = 0; value <= 200; value += 50) {
+    const int16_t y = scaleCoord(value, h);
     char label[12];
-    snprintf(label, sizeof(label), "Y:%d", y);
-    tft.drawString(label, 3, y + 3, 2);
+    snprintf(label, sizeof(label), "Y:%d", value);
+    const int16_t labelY = (y > h - 22) ? h - 22 : y + 3;
+    tft.drawString(label, 3, labelY, 2);
   }
 
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE, bg);
   char title[48];
-  snprintf(title, sizeof(title), "CYD V22  %s", pageNames[pageIndex]);
+  snprintf(title, sizeof(title), "CYD V23  %s", pageNames[pageIndex]);
   tft.drawCentreString(title, w / 2, h / 2, 4);
-  Serial.printf("V22 GRID TEST: rotation=2 geometry=%dx%d page=%u (%s)\\n",
+  Serial.printf("V23 GRID TEST: rotation=2 geometry=%dx%d page=%u (%s)\\n",
                 w, h, pageIndex, pageNames[pageIndex]);
 }
 
@@ -61,7 +70,7 @@ void setup() {
   pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
   tft.init();
-  tft.setRotation(2);
+  tft.setRotation(3);
   tft.fillScreen(TFT_BLACK);
   pageIndex = 0;
   drawGridTest();

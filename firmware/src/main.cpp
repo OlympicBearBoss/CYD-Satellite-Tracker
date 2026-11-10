@@ -53,7 +53,7 @@ static uint16_t median3(uint16_t a,uint16_t b,uint16_t c){
 }
 static bool readXpt2046(uint16_t &x,uint16_t &y){
   if(digitalRead(TOUCH_IRQ_PIN)!=LOW)return false;
-  uint16_t xs[3],ys[3];touchSPI.beginTransaction(SPISettings(2500000,MSBFIRST,SPI_MODE0));
+  uint16_t xs[3],ys[3];touchSPI.beginTransaction(SPISettings(3000000,MSBFIRST,SPI_MODE0));
   digitalWrite(TOUCH_CS,LOW);
   for(int i=0;i<3;i++){xs[i]=readXptChannel(0xD0);ys[i]=readXptChannel(0x90);}
   digitalWrite(TOUCH_CS,HIGH);touchSPI.endTransaction();
@@ -163,13 +163,12 @@ static void drawField(int y,const char* label,const String& value,bool selected,
 static void beginWiFi();
 static void backspace();
 
-static void drawKey(int x,int y,int w,int h,const char* label, uint16_t fill=0xFFFF) {
-  const uint16_t ink=(fill==0xFFFF||fill==0xFFE0||fill==0x07E0||fill==0x07FF)?TFT_BLACK:TFT_WHITE;
-  const uint16_t edge=(ink==TFT_BLACK)?0x001F:TFT_WHITE;
-  tft.fillRoundRect(x,y,w,h,3,fill);
-  tft.drawRoundRect(x,y,w,h,3,edge);
+static void drawKey(int x,int y,int w,int h,const char* label, uint16_t fill=0x0000) {
+  (void)fill;
+  tft.fillRoundRect(x,y,w,h,3,TFT_BLACK);
+  tft.drawRoundRect(x,y,w,h,3,TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(ink,fill);
+  tft.setTextColor(TFT_WHITE,TFT_BLACK);
   tft.drawString(label,x+w/2,y+h/2,2);
 }
 static void drawLetterRow(const char* keys,int y,int x,int keyW,int gap) {
@@ -202,16 +201,16 @@ static void showWifiSetup() {
   }
   const char* nums[3]={"123","456","789"};
   for(int r=0;r<3;++r) for(int c=0;c<3;++c) {
-    char k[2]={nums[r][c],0}; drawKey(246+c*24,108+r*25,22,22,k,0xFFE0);
+    char k[2]={nums[r][c],0}; drawKey(246+c*24,108+r*25,22,22,k,0x0000);
   }
-  drawKey(270,183,22,19,"0",0xFFE0);
-  drawKey(5,184,40,19,russianLayout?"RU":"EN",0x05A0);
-  drawKey(48,184,43,19,"SHIFT",0x03BF);
-  drawKey(94,184,62,19,"SPACE",0x03BF);
-  drawKey(159,184,39,19,symbolsPage?"ABC":"SYM",0x03BF);
-  drawKey(201,184,42,19,"DEL",0xF800);
+  drawKey(270,183,22,19,"0",0x0000);
+  drawKey(5,184,40,19,russianLayout?"RU":"EN",0x0000);
+  drawKey(48,184,43,19,"SHIFT",0x0000);
+  drawKey(94,184,62,19,"SPACE",0x0000);
+  drawKey(159,184,39,19,symbolsPage?"ABC":"SYM",0x0000);
+  drawKey(201,184,42,19,"DEL",0x0000);
   drawButton(5,209,310,27,"CONNECT",0x07FF);
-  tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_CYAN,BG);
+  tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_WHITE,BG);
   tft.drawString(passwordVisible?"HIDE":"SHOW",315,91,1);
 }
 static void appendKeyUtf8(const char* value) {
@@ -358,7 +357,7 @@ static void handleTouch(){
  // blocking every subsequent key after a screen redraw.
  uint16_t rx=0,ry=0,x=0,y=0;
  if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
- if(touchWasDown||millis()-lastTouchAt<35)return;
+ if(touchWasDown||millis()-lastTouchAt<20)return;
  touchWasDown=true;lastTouchAt=millis();
  if(!mapRawTouch(rx,ry,x,y)){
    Serial.printf("Touch map failed raw=%u,%u\\n",rx,ry);

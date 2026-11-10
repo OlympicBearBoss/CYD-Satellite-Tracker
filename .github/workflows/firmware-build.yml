@@ -1,4 +1,4 @@
-name: CYD firmware build
+name: CYD firmware build # V34 final calibration fix
 
 on:
   push:

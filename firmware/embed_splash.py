@@ -10,6 +10,8 @@ if not source.exists():
     raise RuntimeError(f"Missing JPEG splash asset: {source}")
 
 with Image.open(source) as image:
+    if image.format != "JPEG":
+        raise RuntimeError(f"Splash must be JPEG, got {image.format}")
     if image.size != (320, 240):
         raise RuntimeError(f"Splash must be 320x240, got {image.size}")
     image.verify()
@@ -23,16 +25,10 @@ for offset in range(0, len(data), 16):
     chunk = data[offset:offset + 16]
     lines.append("  " + ", ".join(f"0x{byte:02X}" for byte in chunk) + ",")
 header = (
-    "#pragma once
-#include <Arduino.h>
-"
-    "static const uint8_t splash_jpg[] PROGMEM = {
-"
-    + "
-".join(lines)
-    + "
-};
-"
+    "#pragma once\n#include <Arduino.h>\n"
+    "static const uint8_t splash_jpg[] PROGMEM = {\n"
+    + "\n".join(lines)
+    + "\n};\n"
 )
 target.write_text(header, encoding="utf-8")
 print(f"Embedded splash JPEG: {len(data)} bytes -> {target}")

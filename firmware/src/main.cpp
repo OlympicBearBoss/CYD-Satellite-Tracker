@@ -29,6 +29,7 @@ static uint32_t screenStartedAt = 0;
 static uint32_t wifiAttemptAt = 0;
 static uint32_t lastTouchAt = 0;
 static bool wifiScreenDrawn = false;
+static bool keyboardNeedsRedraw = true;
 static bool gpsSeen = false;
 static bool touchCalibrated = false;
 static uint16_t rawTouchX = 0, rawTouchY = 0;
@@ -56,7 +57,7 @@ static uint16_t median3(uint16_t a,uint16_t b,uint16_t c){
 }
 static bool readXpt2046(uint16_t &x,uint16_t &y){
   if(digitalRead(TOUCH_IRQ_PIN)!=LOW)return false;
-  uint16_t xs[3],ys[3];touchSPI.beginTransaction(SPISettings(6000000,MSBFIRST,SPI_MODE0));
+  uint16_t xs[3],ys[3];touchSPI.beginTransaction(SPISettings(8000000,MSBFIRST,SPI_MODE0));
   digitalWrite(TOUCH_CS,LOW);
   for(int i=0;i<3;i++){xs[i]=readXptChannel(0xD0);ys[i]=readXptChannel(0x90);}
   digitalWrite(TOUCH_CS,HIGH);touchSPI.endTransaction();
@@ -97,7 +98,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V39 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V41 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -114,7 +115,6 @@ static void drawSatellite(int16_t cx, int16_t cy) {
 
 static bool splashOutput(int16_t x,int16_t y,uint16_t w,uint16_t h,uint16_t* bitmap){
   if(y>=tft.height()) return false;
-  for(uint32_t i=0;i<(uint32_t)w*h;i++) bitmap[i]=~bitmap[i]; // RGB565 negative correction for the splash image
   tft.pushImage(x,y,w,h,bitmap);
   return true;
 }
@@ -208,8 +208,6 @@ static void showWifiSetup() {
     tft.fillRect(0,0,tft.width(),27,PANEL);
     tft.setTextDatum(TL_DATUM);
     tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("WI-FI SETUP",7,5,2);
-  } else {
-    tft.fillRect(0,104,tft.width(),136,BG);
   }
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(russianLayout?"RU":"EN",275,6,2);
@@ -218,26 +216,30 @@ static void showWifiSetup() {
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(setupMessage.length()?TFT_YELLOW:MUTED,BG);
   tft.drawString(setupMessage.length()?setupMessage.c_str():"Select field, then enter characters",7,98,1);
-  if(!symbolsPage) {
-    drawLetterRow("qwertyuiop",108,5,21,1);
-    drawLetterRow("asdfghjkl",133,16,22,2);
-    drawLetterRow("zxcvbnm",158,40,22,3);
-  } else {
-    drawLetterRow("!@#$%^&*()",108,5,21,1);
-    drawLetterRow("-_=+[]{};:",133,16,22,2);
-    drawLetterRow(".,?/'\\\\|~",158,40,22,3);
+  if(firstDraw || keyboardNeedsRedraw) {
+    if(!symbolsPage) {
+      drawLetterRow("qwertyuiop",108,5,21,1);
+      drawLetterRow("asdfghjkl",133,16,22,2);
+      drawLetterRow("zxcvbnm",158,40,22,3);
+    } else {
+      drawLetterRow("!@#$%^&*()",108,5,21,1);
+      drawLetterRow("-_=+[]{};:",133,16,22,2);
+      drawLetterRow(".,?/'\\\\|~",158,40,22,3);
+    }
+    const char* nums[3]={"123","456","789"};
+    for(int r=0;r<3;++r) for(int col=0;col<3;++col) {
+      char k[2]={nums[r][col],0}; drawKey(246+col*24,108+r*25,22,22,k,0x0000);
+    }
+    drawKey(270,183,22,19,"0",0x0000);
+    drawKey(5,184,40,19,russianLayout?"RU":"EN",0x0000);
+    drawKey(48,184,43,19,"SHIFT",0x0000);
+    drawKey(94,184,62,19,"SPACE",0x0000);
+    drawKey(159,184,39,19,symbolsPage?"ABC":"SYM",0x0000);
+    drawKey(201,184,42,19,"DEL",0x0000);
+    drawButton(5,209,190,27,"CONNECT",0x07FF);
+  
+    keyboardNeedsRedraw=false;
   }
-  const char* nums[3]={"123","456","789"};
-  for(int r=0;r<3;++r) for(int col=0;col<3;++col) {
-    char k[2]={nums[r][col],0}; drawKey(246+col*24,108+r*25,22,22,k,0x0000);
-  }
-  drawKey(270,183,22,19,"0",0x0000);
-  drawKey(5,184,40,19,russianLayout?"RU":"EN",0x0000);
-  drawKey(48,184,43,19,"SHIFT",0x0000);
-  drawKey(94,184,62,19,"SPACE",0x0000);
-  drawKey(159,184,39,19,symbolsPage?"ABC":"SYM",0x0000);
-  drawKey(201,184,42,19,"DEL",0x0000);
-  drawButton(5,209,190,27,"CONNECT",0x07FF);
   tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_WHITE,BG);
   tft.drawString(passwordVisible?"HIDE":"SHOW",315,91,1);
   wifiScreenDrawn=true;
@@ -292,10 +294,10 @@ static void handleKeyboardTap(uint16_t x,uint16_t y) {
     showWifiSetup(); return;
   }
   if(y>=183 && y<=205) {
-    if(x<46) russianLayout=!russianLayout;
-    else if(x<93) shiftKey=!shiftKey;
+    if(x<46) { russianLayout=!russianLayout; keyboardNeedsRedraw=true; }
+    else if(x<93) { shiftKey=!shiftKey; keyboardNeedsRedraw=true; }
     else if(x<158) appendKeyUtf8(" ");
-    else if(x<200) symbolsPage=!symbolsPage;
+    else if(x<200) { symbolsPage=!symbolsPage; keyboardNeedsRedraw=true; }
     else if(x<244) backspace();
     else if(x>=270&&x<=294) appendMappedKey('0');
     showWifiSetup();
@@ -396,7 +398,7 @@ static void handleTouch(){
  // blocking every subsequent key after a screen redraw.
  uint16_t rx=0,ry=0,x=0,y=0;
  if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
- if(touchWasDown||millis()-lastTouchAt<6)return;
+ if(touchWasDown||millis()-lastTouchAt<2)return;
  touchWasDown=true;lastTouchAt=millis();
  if(!mapRawTouch(rx,ry,x,y)){
    Serial.printf("Touch map failed raw=%u,%u\\n",rx,ry);

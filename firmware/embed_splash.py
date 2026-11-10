@@ -53,5 +53,5 @@ for symbol, filename in ui_assets:
         ui_lines.append("  " + ", ".join(f"0x{byte:02X}" for byte in payload[offset:offset + 16]) + ",")
     ui_lines.append("};")
 ui_header = project / "include" / "ui_assets.h"
-ui_header.write_text("\\n".join(ui_lines) + "\\n", encoding="utf-8")
+ui_header.write_text("\n".join(ui_lines) + "\n", encoding="utf-8")
 print(f"Embedded {len(ui_assets)} UI JPEG assets -> {ui_header}")

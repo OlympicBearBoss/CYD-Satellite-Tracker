@@ -57,11 +57,13 @@ static uint16_t median3(uint16_t a,uint16_t b,uint16_t c){
 }
 static bool readXpt2046(uint16_t &x,uint16_t &y){
   if(digitalRead(TOUCH_IRQ_PIN)!=LOW)return false;
-  uint16_t xs[3],ys[3];touchSPI.beginTransaction(SPISettings(8000000,MSBFIRST,SPI_MODE0));
+  uint16_t xs[5],ys[5];touchSPI.beginTransaction(SPISettings(2000000,MSBFIRST,SPI_MODE0));
   digitalWrite(TOUCH_CS,LOW);
-  for(int i=0;i<3;i++){xs[i]=readXptChannel(0xD0);ys[i]=readXptChannel(0x90);}
+  for(int i=0;i<5;i++){xs[i]=readXptChannel(0xD0);ys[i]=readXptChannel(0x90);}
   digitalWrite(TOUCH_CS,HIGH);touchSPI.endTransaction();
-  x=median3(xs[0],xs[1],xs[2]);y=median3(ys[0],ys[1],ys[2]);return true;
+  // Median-of-five rejects occasional noisy samples without delaying response.
+  for(int i=0;i<5;i++)for(int j=i+1;j<5;j++){if(xs[j]<xs[i]){uint16_t t=xs[i];xs[i]=xs[j];xs[j]=t;}if(ys[j]<ys[i]){uint16_t t=ys[i];ys[i]=ys[j];ys[j]=t;}}
+  x=xs[2];y=ys[2];return true;
 }
 static bool mapRawTouch(uint16_t rx,uint16_t ry,uint16_t &x,uint16_t &y){
   // Four-corner bilinear calibration compensates for panel skew and axis orientation.
@@ -292,43 +294,38 @@ static void appendMappedKey(char c) {
 }
 static void handleKeyboardTap(uint16_t x,uint16_t y) {
   flashKeyboardKey(x,y);
-
-  // CONNECT is deliberately limited to the left side. The DEL key is on
-  // the right and must never start a connection, even with small Y drift.
   if(y>=209 && y<=239 && x>=5 && x<=195) { setupMessage=""; beginWiFi(); return; }
-  // Generous, non-overlapping hit zones include the field captions as well as
-  // the value boxes. This makes SSID/password selection easier on the small panel.
   if(y>=FIELD_HIT_TOP && y<65) {
     if(editingPassword) { editingPassword=false; showWifiSetup(); }
     return;
   }
   if(y>=65 && y<=FIELD_HIT_BOTTOM) {
     if(x>270 && y>=82) passwordVisible=!passwordVisible;
-    else if(!editingPassword) { editingPassword=true; }
+    else if(!editingPassword) editingPassword=true;
     showWifiSetup(); return;
   }
   if(y>=108 && y<=130) {
-    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3) appendMappedKey("123"[c]); }
-    else { int i=(x-5)/22; if(i>=0&&i<10) appendMappedKey((symbolsPage?"!@#$%^&*()":"qwertyuiop")[i]); }
+    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3&&x<246+c*24+22) appendMappedKey("123"[c]); }
+    else { int c=(x-5)/22; if(c>=0&&c<10&&x<5+c*22+21) appendMappedKey((symbolsPage?"!@#$%^&*()":"qwertyuiop")[c]); }
     showWifiSetup(); return;
   }
   if(y>=133 && y<=155) {
-    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3) appendMappedKey("456"[c]); }
-    else { int i=(x-16)/24; if(i>=0&&i<9) appendMappedKey((symbolsPage?"-_=+[]{};:":"asdfghjkl")[i]); }
+    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3&&x<246+c*24+22) appendMappedKey("456"[c]); }
+    else { int c=(x-16)/24; if(c>=0&&c<9&&x<16+c*24+22) appendMappedKey((symbolsPage?"-_=+[]{};:":"asdfghjkl")[c]); }
     showWifiSetup(); return;
   }
   if(y>=158 && y<=180) {
-    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3) appendMappedKey("789"[c]); }
-    else { int i=(x-40)/25; if(i>=0&&i<7) appendMappedKey((symbolsPage?".,?/'\\|~":"zxcvbnm")[i]); }
+    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3&&x<246+c*24+22) appendMappedKey("789"[c]); }
+    else { int c=(x-40)/25; if(c>=0&&c<7&&x<40+c*25+22) appendMappedKey((symbolsPage?".,?/'\\\\|~":"zxcvbnm")[c]); }
     showWifiSetup(); return;
   }
   if(y>=183 && y<=205) {
-    if(x<46) { russianLayout=!russianLayout; keyboardNeedsRedraw=true; }
-    else if(x<93) { shiftKey=!shiftKey; keyboardNeedsRedraw=true; }
-    else if(x<158) appendKeyUtf8(" ");
-    else if(x<200) { symbolsPage=!symbolsPage; keyboardNeedsRedraw=true; }
-    else if(x<244) backspace();
-    else if(x>=270&&x<=294) appendMappedKey('0');
+    if(x>=5&&x<45) { russianLayout=!russianLayout; keyboardNeedsRedraw=true; }
+    else if(x>=48&&x<91) { shiftKey=!shiftKey; keyboardNeedsRedraw=true; }
+    else if(x>=94&&x<156) appendKeyUtf8(" ");
+    else if(x>=159&&x<198) { symbolsPage=!symbolsPage; keyboardNeedsRedraw=true; }
+    else if(x>=201&&x<243) backspace();
+    else if(x>=270&&x<292) appendMappedKey('0');
     showWifiSetup();
   }
 }

@@ -1,4 +1,4 @@
-name: CYD firmware build # V47 touch and keyboard correction
+name: CYD firmware build # V48 satellite antenna system screens
 
 on:
   push:
@@ -54,7 +54,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.10.47"
+          FW_VERSION="v2026.11.10.48"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 

@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
-#include <TJpg_Decoder.h>
-#include "splash_jpg.h"
+#include <SPI.h>
 #include <WiFi.h>
 #include <Preferences.h>
 #include <TinyGPSPlus.h>
@@ -10,6 +9,7 @@
 #include "WifiConfig.h"
 
 TFT_eSPI tft;
+SPIClass touchSPI(VSPI);
 TinyGPSPlus gps;
 Preferences prefs;
 
@@ -42,15 +42,34 @@ static constexpr uint16_t PANEL = 0x3186;
 static constexpr uint16_t BLUE = 0x001F;
 static constexpr uint16_t MUTED = 0xFFFF;
 static uint16_t touchCal[5];
-
-static bool jpgOutput(int16_t x,int16_t y,uint16_t w,uint16_t h,uint16_t* bitmap) {
-  if(y>=tft.height()) return false;
-  tft.pushImage(x,y,w,h,bitmap);
-  return true;
+static constexpr int TOUCH_CLK_PIN=25, TOUCH_MISO_PIN=39, TOUCH_MOSI_PIN=32, TOUCH_IRQ_PIN=36;
+static bool touchWasDown=false; static uint8_t touchCalStep=0; static uint16_t touchCorners[8]={0};
+static constexpr int16_t calX[4]={18,302,18,302}, calY[4]={18,18,222,222};
+static uint16_t readXptChannel(uint8_t command){touchSPI.transfer(command);return (touchSPI.transfer16(0)>>3)&0x0FFF;}
+static bool readXpt2046(uint16_t &x,uint16_t &y){
+  if(digitalRead(TOUCH_IRQ_PIN)!=LOW)return false;
+  uint32_t sx=0,sy=0;touchSPI.beginTransaction(SPISettings(2000000,MSBFIRST,SPI_MODE0));
+  digitalWrite(TOUCH_CS,LOW);for(int i=0;i<5;i++){sx+=readXptChannel(0xD0);sy+=readXptChannel(0x90);}
+  digitalWrite(TOUCH_CS,HIGH);touchSPI.endTransaction();x=sx/5;y=sy/5;return true;
+}
+static bool mapRawTouch(uint16_t rx,uint16_t ry,uint16_t &x,uint16_t &y){
+  float ax=(float)touchCorners[2]-touchCorners[0],ay=(float)touchCorners[3]-touchCorners[1];
+  float bx=(float)touchCorners[4]-touchCorners[0],by=(float)touchCorners[5]-touchCorners[1];
+  float det=ax*by-ay*bx;if(fabsf(det)<1000)return false;
+  float dx=(float)rx-touchCorners[0],dy=(float)ry-touchCorners[1];
+  x=constrain((int)(((dx*by-dy*bx)/det)*319.0f+0.5f),0,319);
+  y=constrain((int)(((ax*dy-ay*dx)/det)*239.0f+0.5f),0,239);return true;
+}
+static void drawCalibrationTarget(uint8_t n){
+  tft.fillScreen(TFT_BLACK);tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,TFT_BLACK);
+  tft.drawString("TOUCH CALIBRATION",8,8,2);char msg[32];snprintf(msg,sizeof(msg),"Tap target %u of 4",n+1);
+  tft.setTextColor(TFT_WHITE,TFT_BLACK);tft.drawString(msg,8,31,2);int x=calX[n],y=calY[n];
+  tft.drawCircle(x,y,14,TFT_WHITE);tft.drawCircle(x,y,5,TFT_YELLOW);
+  tft.drawFastHLine(x-20,y,40,TFT_CYAN);tft.drawFastVLine(x,y-20,40,TFT_CYAN);
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V33 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V34 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -65,20 +84,19 @@ static void drawSatellite(int16_t cx, int16_t cy) {
   tft.fillCircle(cx + 5, cy - 16, 2, TFT_YELLOW);
 }
 
-static void showSplash() {
-  tft.fillScreen(BG);
-  TJpgDec.setJpgScale(1);
-  TJpgDec.setSwapBytes(true);
-  TJpgDec.setCallback(jpgOutput);
-  const JRESULT result=TJpgDec.drawJpg(0,0,splash_jpg,sizeof(splash_jpg));
-  if(result!=JDR_OK) {
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_WHITE,BG);
-    tft.drawString("CYD satellite tracker",tft.width()/2,tft.height()/2,2);
-    tft.drawString("by Olympic Bear",tft.width()/2,tft.height()/2+24,2);
-    Serial.printf("JPEG splash decode error: %d\\n",(int)result);
-  }
-  printGeometry("JPEG SPLASH V33");
+static void showSplash(){
+ tft.fillScreen(0x0008);for(int i=0;i<46;i++)tft.drawPixel((i*47+19)%320,(i*29+13)%240,(i%3)?0x39E7:TFT_CYAN);
+ tft.drawEllipse(160,106,105,53,0x04FF);tft.drawEllipse(160,106,101,49,0x0210);
+ tft.fillCircle(119,66,25,TFT_WHITE);tft.fillCircle(201,66,25,TFT_WHITE);
+ tft.fillCircle(119,66,13,0x7BEF);tft.fillCircle(201,66,13,0x7BEF);tft.fillCircle(160,108,57,TFT_WHITE);
+ tft.fillCircle(139,99,6,TFT_BLACK);tft.fillCircle(181,99,6,TFT_BLACK);tft.fillEllipse(160,123,22,15,0xD69A);
+ tft.fillTriangle(153,117,167,117,160,126,TFT_BLACK);tft.drawLine(160,126,160,137,TFT_BLACK);
+ tft.drawLine(160,137,150,142,TFT_BLACK);tft.drawLine(160,137,170,142,TFT_BLACK);
+ tft.fillRoundRect(248,54,18,13,3,TFT_WHITE);tft.fillRect(237,51,9,19,TFT_BLUE);tft.drawRect(237,51,9,19,TFT_CYAN);
+ tft.fillRect(268,51,9,19,TFT_BLUE);tft.drawRect(268,51,9,19,TFT_CYAN);tft.drawLine(257,54,262,44,TFT_WHITE);
+ tft.fillCircle(263,42,2,TFT_YELLOW);tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,0x0008);
+ tft.drawString("CYD SATELLITE TRACKER",160,190,4);tft.setTextColor(TFT_CYAN,0x0008);
+ tft.drawString("by Olympic Bear",160,219,2);printGeometry("NATIVE VECTOR SPLASH V34");
 }
 static void header(const char* title, const char* subtitle) {
   tft.fillScreen(BG);
@@ -288,7 +306,6 @@ static void beginWiFi() {
   Serial.printf("Wi-Fi: connecting to saved network '%s'\n",wifiName.c_str());
 }
 
-static void calibrateTouchIfNeeded();
 
 static void showTouchDiagnostic() {
   screen=Screen::TouchTest;
@@ -306,69 +323,44 @@ static void showTouchDiagnostic() {
   rawTouchDetected=false;
 }
 
-static void updateTouchDiagnostic() {
-  uint16_t x=0,y=0;
-  if(tft.getTouchRaw(&x,&y)) {
-    rawTouchX=x; rawTouchY=y; rawTouchDetected=true;
-    Serial.printf("XPT2046 raw touch: X=%u Y=%u\\n",x,y);
-    tft.fillRect(55,108,165,48,TFT_BLACK);
-    tft.setTextColor(TFT_GREEN,TFT_BLACK);
-    tft.drawNumber(rawTouchX,55,108,2); tft.drawNumber(rawTouchY,55,141,2);
-    delay(250);
-    calibrateTouchIfNeeded();
-    screen=Screen::Init;
-    showInitialization();
-    screenStartedAt=millis();
-  }
+static void updateTouchDiagnostic(){
+ uint16_t rx=0,ry=0;if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
+ if(touchWasDown||millis()-lastTouchAt<300)return;touchWasDown=true;lastTouchAt=millis();
+ rawTouchX=rx;rawTouchY=ry;rawTouchDetected=true;Serial.printf("XPT2046 VSPI raw %u,%u\\n",rx,ry);
+ touchCalStep=0;drawCalibrationTarget(0);
 }
-static void calibrateTouchIfNeeded() {
-  if(prefs.getUChar("touchv",0)==4 && prefs.getBytesLength("touchcal")==sizeof(touchCal)) {
-    prefs.getBytes("touchcal",touchCal,sizeof(touchCal));
-    tft.setTouch(touchCal);
-    touchCalibrated=true;
-    return;
-  }
-  header("TOUCH SETUP","Touch the calibration targets");
-  tft.calibrateTouch(touchCal,TFT_MAGENTA,TFT_BLACK,15);
-  prefs.putBytes("touchcal",touchCal,sizeof(touchCal));
-  prefs.putUChar("touchv",4);
-  tft.setTouch(touchCal);
-  touchCalibrated=true;
-  showInitialization();
+static void updateTouchCalibration(){
+ uint16_t rx=0,ry=0;if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
+ if(touchWasDown||millis()-lastTouchAt<300)return;touchWasDown=true;lastTouchAt=millis();
+ touchCorners[touchCalStep*2]=rx;touchCorners[touchCalStep*2+1]=ry;
+ Serial.printf("Touch calibration %u/4 %u,%u\\n",touchCalStep+1,rx,ry);++touchCalStep;
+ if(touchCalStep<4){drawCalibrationTarget(touchCalStep);return;}
+ prefs.putBytes("touchraw",touchCorners,sizeof(touchCorners));prefs.putUChar("touchv",5);
+ touchCalibrated=true;screen=Screen::Init;showInitialization();screenStartedAt=millis();
 }
-
 static void backspace() {
   String& target=editingPassword?wifiPassword:wifiName;
   if(target.length()) target.remove(target.length()-1);
 }
 
-static void handleTouch() {
-  if(!touchCalibrated || millis()-lastTouchAt<180) return;
-  uint16_t x,y;
-  if(!tft.getTouch(&x,&y,TOUCH_THRESHOLD)) return;
-  lastTouchAt=millis();
-  Serial.printf("XPT2046 calibrated touch: X=%u Y=%u screen=%u\\n",x,y,(unsigned)screen);
-  if(screen==Screen::WifiSetup) handleKeyboardTap(x,y);
-  else if(screen==Screen::Connected && y>=200) {
-    WiFi.disconnect();
-    setupMessage="";
-    editingPassword=false;
-    showWifiSetup();
-  } else if(screen==Screen::Failed && y>=190) {
-    setupMessage="Check password, then connect again";
-    showWifiSetup();
-  }
+static void handleTouch(){
+ if(!touchCalibrated||screen==Screen::TouchTest||millis()-lastTouchAt<180)return;
+ uint16_t rx=0,ry=0,x=0,y=0;if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
+ if(touchWasDown)return;touchWasDown=true;lastTouchAt=millis();if(!mapRawTouch(rx,ry,x,y))return;
+ Serial.printf("Touch raw=%u,%u mapped=%u,%u\\n",rx,ry,x,y);
+ if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
+ else if(screen==Screen::Connected&&y>=200){WiFi.disconnect();setupMessage="";editingPassword=false;showWifiSetup();}
+ else if(screen==Screen::Failed&&y>=190){setupMessage="Check password, then connect again";showWifiSetup();}
 }
-
 void setup() {
   Serial.begin(115200);
   delay(150);
   pinMode(Pins::TFT_BACKLIGHT,OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT,HIGH);
   tft.init();
-  // XPT2046 shares the display SPI bus; keep its chip-select inactive until sampled.
-  pinMode(TOUCH_CS, OUTPUT);
-  digitalWrite(TOUCH_CS, HIGH);
+  pinMode(TOUCH_CS,OUTPUT);digitalWrite(TOUCH_CS,HIGH);
+  pinMode(TOUCH_IRQ_PIN,INPUT);
+  touchSPI.begin(TOUCH_CLK_PIN,TOUCH_MISO_PIN,TOUCH_MOSI_PIN,TOUCH_CS);
   tft.setRotation(DISPLAY_ROTATION);
   tft.fillScreen(TFT_BLACK);
   Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1);
@@ -393,7 +385,7 @@ void loop() {
     showTouchDiagnostic();
     screenStartedAt=now;
   } else if(screen==Screen::TouchTest) {
-    updateTouchDiagnostic();
+    if(touchCalStep>0&&!touchCalibrated)updateTouchCalibration();else updateTouchDiagnostic();
   } else if(screen==Screen::Init && now-screenStartedAt>=INIT_MS) {
     if(wifiName.length()) beginWiFi();
     else { setupMessage="Enter your router details"; showWifiSetup(); }

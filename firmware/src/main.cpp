@@ -41,7 +41,7 @@ static constexpr uint16_t MUTED = 0xFFFF;
 static uint16_t touchCal[5];
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V30 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V32 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -57,28 +57,54 @@ static void drawSatellite(int16_t cx, int16_t cy) {
 }
 
 static void showSplash() {
-  const int16_t w = tft.width(), h = tft.height();
+  const int16_t w=tft.width(), h=tft.height();
   tft.fillScreen(BG);
-  const int16_t sx[] = {12,34,61,87,111,146,174,203,229,257,291,307,43,132,238,279};
-  const int16_t sy[] = {18,51,29,76,14,42,17,64,31,19,54,91,113,96,120,147};
-  for (uint8_t i=0; i<16; ++i)
-    if (sx[i]<w && sy[i]<h) tft.fillCircle(sx[i],sy[i],(i%4==0)?2:1,TFT_WHITE);
-  tft.drawEllipse(w/2,h/2+15,104,43,0x1C6B);
-  tft.drawEllipse(w/2,h/2+15,108,47,0x123B);
-  const int16_t ex=w/2, ey=h/2+23;
-  tft.fillCircle(ex,ey,48,0x0878);
-  tft.drawCircle(ex,ey,49,TFT_CYAN);
-  tft.fillCircle(ex-13,ey-12,19,0x168B);
-  tft.fillCircle(ex+17,ey+9,15,0x168B);
-  tft.fillCircle(ex-2,ey+25,9,0x168B);
-  tft.fillCircle(ex+3,ey-2,42,0x0969);
-  drawSatellite(ex+84,ey-28);
+
+  // Deep-space background and subtle stars.
+  const int16_t sx[]={12,34,61,87,111,146,174,203,229,257,291,307,43,132,238,279};
+  const int16_t sy[]={18,51,29,76,14,42,17,64,31,19,54,91,113,96,120,147};
+  for(uint8_t i=0;i<16;++i)
+    if(sx[i]<w && sy[i]<h) tft.fillCircle(sx[i],sy[i],(i%4==0)?2:1,TFT_WHITE);
+
+  // Bear-head emblem: layered silhouette, ears and muzzle.
+  const int16_t bx=82, by=108;
+  tft.drawEllipse(bx,by,70,78,0x123B);
+  tft.drawEllipse(bx,by,66,74,TFT_CYAN);
+  tft.drawEllipse(bx,by,61,69,0x041F);
+  tft.fillCircle(bx-31,by-38,19,0x7BE0);
+  tft.fillCircle(bx+31,by-38,19,0x7BE0);
+  tft.fillCircle(bx-31,by-38,10,0x39A6);
+  tft.fillCircle(bx+31,by-38,10,0x39A6);
+  tft.fillEllipse(bx,by-5,43,53,0x9A60);
+  tft.fillEllipse(bx,by+1,35,44,0xCBA4);
+  tft.fillEllipse(bx,by+22,27,19,0xE6D1);
+  tft.fillCircle(bx-14,by-10,4,TFT_BLACK);
+  tft.fillCircle(bx+14,by-10,4,TFT_BLACK);
+  tft.fillCircle(bx-13,by-11,1,TFT_WHITE);
+  tft.fillCircle(bx+15,by-11,1,TFT_WHITE);
+  tft.fillRoundRect(bx-10,by+8,20,12,5,TFT_BLACK);
+  tft.fillTriangle(bx-8,by+8,bx+8,by+8,bx,by+15,0x2104);
+  tft.drawFastHLine(bx-13,by+34,26,0x7BEF);
+
+  // Orbit and satellite motif.
+  tft.drawEllipse(bx,by,74,84,0x03FF);
+  tft.drawLine(143,53,174,24,0x03FF);
+  drawSatellite(175,25);
+  tft.drawArc(175,25,18,14,205,335,TFT_CYAN, BG);
+
+  // Right-side title, sized for the 320x240 landscape display.
   tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_CYAN,BG); tft.drawString("CYD",w/2,24,4);
-  tft.setTextColor(TFT_WHITE,BG); tft.drawString("SATELLITE TRACKER",w/2,49,2);
-  tft.setTextColor(0x9CCD,BG); tft.drawString("AUTOMATIC ANTENNA POINTING",w/2,h-18,1);
-  tft.drawFastHLine(24,h-34,w-48,0x1C6B);
-  printGeometry("SPLASH");
+  tft.setTextColor(TFT_WHITE,BG);
+  tft.drawString("CYD",235,73,4);
+  tft.setTextColor(TFT_CYAN,BG);
+  tft.drawString("satellite",235,111,2);
+  tft.drawString("tracker",235,132,2);
+  tft.drawFastHLine(165,151,140,0x03FF);
+  tft.setTextColor(TFT_WHITE,BG);
+  tft.drawString("by Olympic Bear",235,169,2);
+  tft.setTextColor(0x9CCD,BG);
+  tft.drawString("SPACE  /  TRACK  /  CONNECT",235,204,1);
+  printGeometry("SPLASH V32");
 }
 
 static void header(const char* title, const char* subtitle) {

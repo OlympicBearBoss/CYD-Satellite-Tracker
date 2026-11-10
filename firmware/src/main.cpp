@@ -120,8 +120,12 @@ static void showNoCredentials() {
 static void showConnected() {
   header("CONNECTED","CYD is on your local network");
   statusRow(112,"WI-FI","CONNECTED",TFT_GREEN);
-  statusRow(145,"SIGNAL",String(WiFi.RSSI())+" dBm",TFT_CYAN);
-  statusRow(178,"IP ADDRESS",WiFi.localIP().toString(),TFT_GREEN);
+  char signalText[20];
+  char ipText[20];
+  snprintf(signalText,sizeof(signalText),"%d dBm",WiFi.RSSI());
+  WiFi.localIP().toString().toCharArray(ipText,sizeof(ipText));
+  statusRow(145,"SIGNAL",signalText,TFT_CYAN);
+  statusRow(178,"IP ADDRESS",ipText,TFT_GREEN);
   statusRow(211,"GPS",gpsSeen?"DATA RECEIVED":"SEARCHING",gpsSeen?TFT_GREEN:TFT_YELLOW);
 }
 

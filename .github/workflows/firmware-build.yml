@@ -1,4 +1,4 @@
-name: CYD firmware build # V50 instrument UI redesign and display stability
+name: CYD firmware build # V52 polished Space Dark UI
 
 on:
   push:
@@ -54,7 +54,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.10.51"
+          FW_VERSION="v2026.11.10.52"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 
@@ -109,7 +109,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CYD-Satellite-Tracker-firmware-v2026.11.10.51
+          name: CYD-Satellite-Tracker-firmware-v2026.11.10.52
           path: release/
           if-no-files-found: error
           retention-days: 30

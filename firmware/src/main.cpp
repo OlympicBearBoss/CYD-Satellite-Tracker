@@ -78,7 +78,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V37 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V38 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -101,7 +101,7 @@ static bool splashOutput(int16_t x,int16_t y,uint16_t w,uint16_t h,uint16_t* bit
 static void showSplash(){
   tft.fillScreen(TFT_BLACK);
   TJpgDec.setJpgScale(1);
-  TJpgDec.setSwapBytes(true);
+  TJpgDec.setSwapBytes(false);
   TJpgDec.setCallback(splashOutput);
   TJpgDec.drawJpg(0,0,splash_jpg,sizeof(splash_jpg));
   printGeometry("JPEG SPLASH VARIANT 4");
@@ -211,7 +211,7 @@ static void showWifiSetup() {
   drawKey(94,184,62,19,"SPACE",0x0000);
   drawKey(159,184,39,19,symbolsPage?"ABC":"SYM",0x0000);
   drawKey(201,184,42,19,"DEL",0x0000);
-  drawButton(5,209,310,27,"CONNECT",0x07FF);
+  drawButton(5,209,190,27,"CONNECT",0x07FF);
   tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_WHITE,BG);
   tft.drawString(passwordVisible?"HIDE":"SHOW",315,91,1);
 }
@@ -234,7 +234,9 @@ static void appendMappedKey(char c) {
   char value[2]={c,0}; appendKeyUtf8(value);
 }
 static void handleKeyboardTap(uint16_t x,uint16_t y) {
-  if(y>=209 && x>=5 && x<=315) { setupMessage=""; beginWiFi(); return; }
+  // CONNECT is deliberately limited to the left side. The DEL key is on
+  // the right and must never start a connection, even with small Y drift.
+  if(y>=209 && y<=239 && x>=5 && x<=195) { setupMessage=""; beginWiFi(); return; }
   // Generous, non-overlapping hit zones include the field captions as well as
   // the value boxes. This makes SSID/password selection easier on the small panel.
   if(y>=FIELD_HIT_TOP && y<65) {

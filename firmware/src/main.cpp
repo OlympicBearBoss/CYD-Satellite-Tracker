@@ -44,10 +44,11 @@ static String wifiName;
 static String wifiPassword;
 static String setupMessage;
 
-static constexpr uint16_t BG = 0x0000;
-static constexpr uint16_t PANEL = 0x2104;
-static constexpr uint16_t BLUE = 0x001F;
-static constexpr uint16_t MUTED = 0xFFFF;
+// Space Dark palette: deep navy background, layered blue panels and cyan telemetry.
+static constexpr uint16_t BG = 0x0841;
+static constexpr uint16_t PANEL = 0x10A3;
+static constexpr uint16_t BLUE = 0x03B9;
+static constexpr uint16_t MUTED = 0x9CF3;
 static uint16_t touchCal[5];
 static constexpr int TOUCH_CLK_PIN=25, TOUCH_MISO_PIN=39, TOUCH_MOSI_PIN=32, TOUCH_IRQ_PIN=36;
 static bool touchWasDown=false; static uint8_t touchCalStep=0; static uint16_t touchCorners[8]={0};
@@ -118,6 +119,11 @@ static void drawSatellite(int16_t cx, int16_t cy) {
 
 static bool splashOutput(int16_t x,int16_t y,uint16_t w,uint16_t h,uint16_t* bitmap){
   if(y>=tft.height()) return false;
+  // The selected JPEG is encoded with negative colors for this panel pipeline.
+  // Complement RGB565 channels per pixel; do not invert the LCD controller,
+  // because that would also invert every subsequent screen.
+  const uint32_t pixels=(uint32_t)w*(uint32_t)h;
+  for(uint32_t i=0;i<pixels;++i) bitmap[i]=(uint16_t)~bitmap[i];
   tft.pushImage(x,y,w,h,bitmap);
   return true;
 }
@@ -132,14 +138,16 @@ static void showSplash(){
 
 static void header(const char* title, const char* subtitle) {
   tft.fillScreen(BG);
-  tft.fillRect(0,0,tft.width(),42,PANEL);
+  tft.fillRect(0,0,tft.width(),34,PANEL);
+  tft.fillRect(0,33,tft.width(),2,TFT_CYAN);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TFT_CYAN,PANEL);
-  tft.drawString("CYD  /  SATELLITE TRACKER",10,7,2);
+  tft.drawString("CYD  /  SATELLITE TRACKER",10,5,2);
+  tft.fillCircle(302,16,4,WiFi.status()==WL_CONNECTED?TFT_GREEN:TFT_ORANGE);
   tft.setTextColor(TFT_WHITE,BG);
-  tft.drawString(title,12,55,4);
+  tft.drawString(title,12,43,4);
   tft.setTextColor(MUTED,BG);
-  tft.drawString(subtitle,13,87,2);
+  tft.drawString(subtitle,13,77,2);
 }
 
 static void statusRow(int y, const char* label, const char* value, uint16_t color) {
@@ -351,34 +359,39 @@ static void drawNavigation(uint8_t active) {
 }
 
 static void drawGpsPanel() {
-  tft.fillRect(7,104,306,99,BG);
+  tft.fillRoundRect(8,101,304,99,9,PANEL);
+  tft.drawRoundRect(8,101,304,99,9,0x2A69);
   const bool fix=gps.location.isValid() && gps.location.age()<10000;
+  tft.fillCircle(22,116,4,fix?TFT_GREEN:TFT_YELLOW);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,PANEL);
+  tft.drawString(fix?"GPS FIX":"SEARCHING",32,109,1);
   char line[48];
   if(fix) {
     snprintf(line,sizeof(line),"LAT  %.5f",gps.location.lat());
-    tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_GREEN,BG);
-    tft.drawString(line,12,108,2);
+    tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_WHITE,PANEL);
+    tft.drawString(line,18,128,2);
     snprintf(line,sizeof(line),"LON  %.5f",gps.location.lng());
-    tft.setTextColor(TFT_CYAN,BG); tft.drawString(line,12,132,2);
+    tft.setTextColor(TFT_CYAN,PANEL); tft.drawString(line,18,151,2);
     const uint32_t sats=gps.satellites.isValid()?gps.satellites.value():0;
     const double alt=gps.altitude.isValid()?gps.altitude.meters():0.0;
     snprintf(line,sizeof(line),"SAT %lu   ALT %.1f m",(unsigned long)sats,alt);
-    tft.setTextColor(TFT_WHITE,BG); tft.drawString(line,12,157,2);
+    tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(line,18,175,2);
   } else {
-    tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_YELLOW,BG);
-    tft.drawString("WAITING FOR GPS FIX",12,112,2);
+    tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_YELLOW,PANEL);
+    tft.drawString("WAITING FOR GPS FIX",18,132,2);
     const uint32_t sats=gps.satellites.isValid()?gps.satellites.value():0;
     snprintf(line,sizeof(line),"SATELLITES: %lu",(unsigned long)sats);
-    tft.setTextColor(TFT_WHITE,BG); tft.drawString(line,12,143,2);
-    tft.setTextColor(MUTED,BG); tft.drawString("Check antenna and GPS wiring",12,170,1);
+    tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(line,18,157,2);
+    tft.setTextColor(MUTED,PANEL); tft.drawString("Check antenna and GPS wiring",18,179,1);
   }
   if(gps.time.isValid()) {
     snprintf(line,sizeof(line),"UTC %02u:%02u:%02u",gps.time.hour(),gps.time.minute(),gps.time.second());
   } else {
     snprintf(line,sizeof(line),"UTC --:--:--");
   }
-  tft.setTextDatum(TR_DATUM); tft.setTextColor(MUTED,BG);
-  tft.drawString(line,307,190,1);
+  tft.setTextDatum(TR_DATUM); tft.setTextColor(MUTED,PANEL);
+  tft.drawString(line,300,187,1);
 }
 
 static void showDashboard() {
@@ -392,11 +405,13 @@ static void showDashboard() {
 static void showSatelliteScreen() {
   screen=Screen::Satellite;
   header("SATELLITE","Target selection / tracking");
-  tft.fillRoundRect(10,108,300,88,6,PANEL);
+  tft.fillRoundRect(10,105,300,94,8,PANEL);
+  tft.drawRoundRect(10,105,300,94,8,0x2A69);
+  drawSatellite(267,139);
   tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("ISS  /  ZARYA",20,117,4);
-  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString("ORBIT DATA: NOT LOADED",20,153,2);
-  tft.setTextColor(TFT_YELLOW,PANEL); tft.drawString("MOTORS: LOCKED",20,177,2);
+  tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("ISS  /  ZARYA",20,116,4);
+  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString("ORBIT DATA: NOT LOADED",20,154,2);
+  tft.setTextColor(TFT_YELLOW,PANEL); tft.drawString("MOTORS: LOCKED",20,178,2);
   drawNavigation(1);
 }
 

@@ -102,7 +102,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V45 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V46 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -376,44 +376,61 @@ static void drawNavigation(uint8_t active) {
 }
 
 static void drawGpsPanel() {
-  tft.fillRoundRect(8,101,304,99,9,PANEL);
-  tft.drawRoundRect(8,101,304,99,9,0x2A69);
+  // Compact two-card dashboard sized for the CYD's 320x240 landscape display.
+  tft.fillRoundRect(8,101,151,96,8,PANEL);
+  tft.drawRoundRect(8,101,151,96,8,0x2A69);
+  tft.fillRoundRect(165,101,147,96,8,PANEL);
+  tft.drawRoundRect(165,101,147,96,8,0x2A69);
+
   const bool fix=gps.location.isValid() && gps.location.age()<10000;
-  tft.fillCircle(22,116,4,fix?TFT_GREEN:TFT_YELLOW);
+  tft.fillCircle(19,114,4,fix?TFT_GREEN:TFT_YELLOW);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,PANEL);
-  tft.drawString(fix?"GPS FIX":"SEARCHING",32,109,1);
-  char line[48];
+  tft.drawString(fix?"GPS FIX":"GPS SEARCH",28,107,1);
+
+  char line[40];
   if(fix) {
-    snprintf(line,sizeof(line),"LAT  %.5f",gps.location.lat());
-    tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_WHITE,PANEL);
-    tft.drawString(line,18,128,2);
-    snprintf(line,sizeof(line),"LON  %.5f",gps.location.lng());
-    tft.setTextColor(TFT_CYAN,PANEL); tft.drawString(line,18,151,2);
-    const uint32_t sats=gps.satellites.isValid()?gps.satellites.value():0;
-    const double alt=gps.altitude.isValid()?gps.altitude.meters():0.0;
-    snprintf(line,sizeof(line),"SAT %lu   ALT %.1f m",(unsigned long)sats,alt);
-    tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(line,18,175,2);
+    snprintf(line,sizeof(line),"LAT %.4f",gps.location.lat());
+    tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(line,16,128,2);
+    snprintf(line,sizeof(line),"LON %.4f",gps.location.lng());
+    tft.setTextColor(TFT_CYAN,PANEL); tft.drawString(line,16,150,2);
   } else {
-    tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_YELLOW,PANEL);
-    tft.drawString("WAITING FOR GPS FIX",18,132,2);
-    const uint32_t sats=gps.satellites.isValid()?gps.satellites.value():0;
-    snprintf(line,sizeof(line),"SATELLITES: %lu",(unsigned long)sats);
-    tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(line,18,157,2);
-    tft.setTextColor(MUTED,PANEL); tft.drawString("Check antenna and GPS wiring",18,179,1);
+    tft.setTextColor(TFT_WHITE,PANEL); tft.drawString("WAITING FOR FIX",16,132,1);
+    tft.setTextColor(MUTED,PANEL); tft.drawString("Check GPS antenna",16,151,1);
   }
-  if(gps.time.isValid()) {
-    snprintf(line,sizeof(line),"UTC %02u:%02u:%02u",gps.time.hour(),gps.time.minute(),gps.time.second());
-  } else {
-    snprintf(line,sizeof(line),"UTC --:--:--");
-  }
-  tft.setTextDatum(TR_DATUM); tft.setTextColor(MUTED,PANEL);
-  tft.drawString(line,300,187,1);
+  const uint32_t sats=gps.satellites.isValid()?gps.satellites.value():0;
+  const double alt=gps.altitude.isValid()?gps.altitude.meters():0.0;
+  snprintf(line,sizeof(line),"SAT %lu  ALT %.0fm",(unsigned long)sats,alt);
+  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(line,16,178,1);
+
+  tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("ISS / ZARYA",174,108,2);
+  tft.setTextColor(TFT_YELLOW,PANEL); tft.drawString("ORBIT: WAITING",174,132,1);
+  tft.setTextColor(MUTED,PANEL); tft.drawString("AZ  --   EL  --",174,149,1);
+  tft.setTextColor(TFT_ORANGE,PANEL); tft.drawString("MOTORS LOCKED",174,177,1);
+
+  // Decorative radar target only; no false live bearing is displayed.
+  const int16_t cx=282,cy=151;
+  tft.drawCircle(cx,cy,27,0x2A69);
+  tft.drawCircle(cx,cy,17,0x2A69);
+  tft.drawFastHLine(cx-27,cy,54,0x2A69);
+  tft.drawFastVLine(cx,cy-27,54,0x2A69);
+  tft.fillCircle(cx+9,cy-8,3,TFT_RED);
+  tft.drawCircle(cx,cy,3,TFT_CYAN);
+
+  tft.fillRect(8,199,304,1,0x2A69);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(WiFi.status()==WL_CONNECTED?TFT_GREEN:TFT_ORANGE,BG);
+  tft.drawString(WiFi.status()==WL_CONNECTED?"WI-FI CONNECTED":"WI-FI OFFLINE",10,198,1);
+  tft.setTextDatum(TR_DATUM);
+  tft.setTextColor(MUTED,BG);
+  if(gps.time.isValid()) snprintf(line,sizeof(line),"UTC %02u:%02u:%02u",gps.time.hour(),gps.time.minute(),gps.time.second());
+  else snprintf(line,sizeof(line),"UTC --:--:--");
+  tft.drawString(line,309,198,1);
 }
 
 static void showDashboard() {
   screen=Screen::Dashboard;
-  header("GPS / TRACKER","Live receiver status");
+  header("DASHBOARD","GPS / SATELLITE TRACKER");
   drawGpsPanel();
   drawNavigation(0);
   lastDashboardRefreshAt=millis();

@@ -22,7 +22,7 @@ void drawGridTest() {
 
   tft.drawRect(0, 0, w, h, TFT_WHITE);
   // Both 0..200 axes are mapped over the complete active display area.
-  // Rotation 3 selects the 320x240 landscape geometry so the right edge is used.
+  // Keep the previously confirmed orientation (rotation 2); scale both axes to the full active bounds.
   for (int16_t value = 0; value <= 200; value += 50) {
     const int16_t x = scaleCoord(value, w);
     tft.drawFastVLine(x, 0, h, grid);
@@ -70,7 +70,7 @@ void setup() {
   pinMode(Pins::TFT_BACKLIGHT, OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT, HIGH);
   tft.init();
-  tft.setRotation(3);
+  tft.setRotation(2);
   tft.fillScreen(TFT_BLACK);
   pageIndex = 0;
   drawGridTest();

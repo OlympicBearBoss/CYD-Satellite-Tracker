@@ -152,7 +152,13 @@ static void drawKeyRow(const char* keys,int y,int x,int keyW,int gap) {
 
 static void showWifiSetup() {
   screen=Screen::WifiSetup;
-  header("WI-FI SETUP","Tap a field, then enter network details");
+  tft.fillScreen(BG);
+  tft.fillRect(0,0,tft.width(),42,PANEL);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(TFT_CYAN,PANEL);
+  tft.drawString("WI-FI SETUP",8,7,2);
+  tft.setTextColor(MUTED,PANEL);
+  tft.drawString("Enter network details",8,26,1);
   drawField(62,"NETWORK NAME (SSID)",wifiName,!editingPassword,false);
   drawField(105,"PASSWORD",wifiPassword,editingPassword,true);
   tft.setTextDatum(TL_DATUM);
@@ -176,7 +182,9 @@ static void showWifiSetup() {
   drawButton(8,279,224,33,"CONNECT",BLUE);
   tft.setTextDatum(MR_DATUM);
   tft.setTextColor(MUTED,BG);
-  tft.drawString(passwordVisible?"HIDE":"SHOW",231,99,1);
+  tft.setTextDatum(MR_DATUM);
+  tft.setTextColor(TFT_CYAN,0x123B);
+  tft.drawString(passwordVisible?"HIDE":"SHOW",228,119,1);
 }
 
 static void showConnecting() {
@@ -283,7 +291,7 @@ static void handleKeyboardTap(uint16_t x,uint16_t y) {
   }
   if(y>=186 && y<=211) {
     const char* keys=symbolsPage?"@#$%&*-+()":"asdfghjkl";
-    int count=9, x0=symbolsPage?4:14, kw=symbolsPage?22:23, gap=symbolsPage?1:2;
+    int count=symbolsPage?10:9, x0=symbolsPage?4:14, kw=symbolsPage?22:23, gap=symbolsPage?1:2;
     int index=(x-x0)/(kw+gap);
     if(index>=0 && index<count && (x-x0)%(kw+gap)<kw) {
       char c=keys[index];
@@ -367,6 +375,7 @@ void loop() {
   } else if(screen==Screen::Connecting) {
     if(WiFi.status()==WL_CONNECTED) {
       screen=Screen::Connected;
+      screenStartedAt=now;
       showConnected();
       Serial.printf("Wi-Fi connected. IP=%s\n",WiFi.localIP().toString().c_str());
     } else if(now-wifiAttemptAt>=WIFI_TIMEOUT_MS) {

@@ -252,21 +252,19 @@ static void showConnecting() {
 
 static void showConnected() {
   header("CONNECTED","CYD is on your local network");
-  statusRow(112,"WI-FI","CONNECTED",TFT_GREEN);
+  statusRow(108,"WI-FI","CONNECTED",TFT_GREEN);
   char signalText[20], ipText[20];
   snprintf(signalText,sizeof(signalText),"%d dBm",WiFi.RSSI());
   WiFi.localIP().toString().toCharArray(ipText,sizeof(ipText));
-  statusRow(145,"SIGNAL",signalText,TFT_CYAN);
-  statusRow(178,"IP ADDRESS",ipText,TFT_GREEN);
-  statusRow(211,"GPS",gpsSeen?"DATA RECEIVED":"SEARCHING",gpsSeen?TFT_GREEN:TFT_YELLOW);
-  drawButton(18,260,204,38,"CHANGE WI-FI",BLUE);
+  statusRow(140,"SIGNAL",signalText,TFT_CYAN);
+  statusRow(172,"IP ADDRESS",ipText,TFT_GREEN);
+  drawButton(58,204,204,30,"CHANGE WI-FI",BLUE);
 }
-
 static void showFailed() {
   header("CONNECTION FAILED","Check the network name and password");
   statusRow(120,"NETWORK",wifiName.c_str(),TFT_YELLOW);
   statusRow(155,"STATUS","NOT CONNECTED",TFT_ORANGE);
-  drawButton(12,215,216,38,"EDIT WI-FI",BLUE);
+  drawButton(52,195,216,32,"EDIT WI-FI",BLUE);
 }
 
 static void saveCredentials() {
@@ -320,6 +318,7 @@ static void updateTouchDiagnostic() {
     delay(250);
     calibrateTouchIfNeeded();
     screen=Screen::Init;
+    showInitialization();
     screenStartedAt=millis();
   }
 }
@@ -350,12 +349,12 @@ static void handleTouch() {
   if(!tft.getTouch(&x,&y,TOUCH_THRESHOLD)) return;
   lastTouchAt=millis();
   if(screen==Screen::WifiSetup) handleKeyboardTap(x,y);
-  else if(screen==Screen::Connected && y>=250) {
+  else if(screen==Screen::Connected && y>=200) {
     WiFi.disconnect();
     setupMessage="";
     editingPassword=false;
     showWifiSetup();
-  } else if(screen==Screen::Failed && y>=205) {
+  } else if(screen==Screen::Failed && y>=190) {
     setupMessage="Check password, then connect again";
     showWifiSetup();
   }

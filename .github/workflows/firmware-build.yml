@@ -1,4 +1,4 @@
-name: CYD firmware build # V38 black keyboard and faster touch
+name: CYD firmware build # V38 black keyboard and faster touch — rebuild
 
 on:
   push:

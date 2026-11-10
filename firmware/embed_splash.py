@@ -1,5 +1,5 @@
 Import("env")
-from pathlib import Path
+from pathlib import Path\nfrom PIL import Image
 
 project = Path(env.subst("$PROJECT_DIR"))
 source = project / "assets" / "splash.jpg"
@@ -8,7 +8,7 @@ target = project / "include" / "splash_jpg.h"
 if not source.exists():
     raise RuntimeError(f"Missing JPEG splash asset: {source}")
 
-data = source.read_bytes()
+with Image.open(source) as image:\n    if image.size != (320, 240):\n        raise RuntimeError(f"Splash must be 320x240, got {image.size}")\n    image.verify()\n\ndata = source.read_bytes()
 if not data.startswith(bytes((0xFF, 0xD8))) or not data.endswith(bytes((0xFF, 0xD9))):
     raise RuntimeError("Splash asset is not a valid JPEG stream")
 

@@ -242,6 +242,8 @@ static void beginWiFi() {
   Serial.printf("Wi-Fi: connecting to saved network '%s'\n",wifiName.c_str());
 }
 
+static void calibrateTouchIfNeeded();
+
 static void showTouchDiagnostic() {
   screen=Screen::TouchTest;
   tft.fillScreen(TFT_BLACK);

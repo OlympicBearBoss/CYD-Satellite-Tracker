@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <TJpg_Decoder.h>
 #include "splash_jpg.h"
+#include "ui_assets.h"
 #include "BoardConfig.h"
 #include "WifiConfig.h"
 
@@ -142,7 +143,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V51 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V53 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -159,13 +160,21 @@ static void drawSatellite(int16_t cx, int16_t cy) {
 
 static bool splashOutput(int16_t x,int16_t y,uint16_t w,uint16_t h,uint16_t* bitmap){
   if(y>=tft.height()) return false;
-  // The selected JPEG is encoded with negative colors for this panel pipeline.
-  // Complement RGB565 channels per pixel; do not invert the LCD controller,
-  // because that would also invert every subsequent screen.
   const uint32_t pixels=(uint32_t)w*(uint32_t)h;
   for(uint32_t i=0;i<pixels;++i) bitmap[i]=(uint16_t)~bitmap[i];
   tft.pushImage(x,y,w,h,bitmap);
   return true;
+}
+static bool uiImageOutput(int16_t x,int16_t y,uint16_t w,uint16_t h,uint16_t* bitmap){
+  if(x>=tft.width() || y>=tft.height()) return false;
+  tft.pushImage(x,y,w,h,bitmap);
+  return true;
+}
+static void drawUiImage(int16_t x,int16_t y,const uint8_t* data,uint32_t length){
+  TJpgDec.setJpgScale(1);
+  TJpgDec.setSwapBytes(true);
+  TJpgDec.setCallback(uiImageOutput);
+  TJpgDec.drawJpg(x,y,data,length);
 }
 static void showSplash(){
   tft.fillScreen(TFT_BLACK);
@@ -451,32 +460,43 @@ static void drawNavigation(uint8_t active) {
 static void updateGpsTelemetry();
 
 static void drawGpsPanel() {
-  tft.fillRoundRect(8,88,304,109,9,0x0C63);tft.drawRoundRect(8,88,304,109,9,0x2A69);
-  tft.fillRoundRect(14,94,111,97,7,0x0862);tft.drawRoundRect(14,94,111,97,7,0x3151);
-  drawSectionLabel("GPS / COMPASS",21,100,96);drawAzimuthDial(69,151,28);
-  tft.fillRoundRect(132,94,173,97,7,0x0862);tft.drawRoundRect(132,94,173,97,7,0x3151);
-  drawSectionLabel("TRACKING TARGET",140,100,156);
-  drawSatellite(157,132);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x0862);tft.drawString("ISS  /  ZARYA",183,119,2);
-  tft.setTextColor(TFT_CYAN,0x0862);tft.drawString("SPACE STATION",183,137,1);
-  tft.setTextColor(TFT_YELLOW,0x0862);tft.drawString("ORBIT DATA PENDING",142,153,1);
-  tft.fillRoundRect(141,171,155,13,5,0x4000);tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_YELLOW,0x4000);tft.drawString("ROTATOR STANDBY",218,178,1);
-  tft.fillRect(8,199,304,1,0x2A69);updateGpsTelemetry();
+  // Real Earth/ISS artwork is a fixed JPEG layer; live telemetry is painted
+  // separately so one-second GPS updates never redraw the large image.
+  tft.fillRoundRect(8,88,304,109,9,0x0C63);
+  tft.fillRoundRect(14,94,112,90,7,0x0010);
+  drawUiImage(14,94,ui_earth_jpg,sizeof(ui_earth_jpg));
+  tft.drawRoundRect(14,94,112,90,7,TFT_CYAN);
+  tft.fillRoundRect(19,99,51,14,5,0x0010);
+  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_CYAN,0x0010);
+  tft.drawString("ISS / EARTH",44,106,1);
+  tft.fillRoundRect(132,94,173,90,7,0x0862);
+  tft.drawRoundRect(132,94,173,90,7,0x3151);
+  drawSectionLabel("GPS TELEMETRY",140,100,156);
+  updateGpsTelemetry();
+  tft.fillRect(8,199,304,1,0x2A69);
 }
 static void updateGpsTelemetry() {
-  // Partial value-window updates only. Backlight is not modulated by this firmware.
   const bool fix=gps.location.isValid() && gps.location.age()<10000;
-  tft.fillRect(22,130,98,15,0x0862); tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,0x0862); tft.drawString(fix?"3D FIX":"SEARCHING",24,132,1);
-  tft.fillRect(22,166,98,16,0x0862); char line[40];
+  char line[40];
+  tft.fillRect(139,117,159,64,0x0862);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,0x0862);
+  tft.drawString(fix?"3D POSITION FIX":"SEARCHING FOR GPS",141,119,1);
   snprintf(line,sizeof(line),"SAT %lu",(unsigned long)(gps.satellites.isValid()?gps.satellites.value():0));
-  tft.setTextColor(TFT_WHITE,0x0862); tft.drawString(line,24,168,1);
-  tft.fillRect(9,200,302,7,BG); tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(TFT_WHITE,0x0862);tft.drawString(line,141,135,1);
+  if(gps.location.isValid()) {
+    snprintf(line,sizeof(line),"LAT %.3f",gps.location.lat());
+    tft.setTextColor(TFT_CYAN,0x0862);tft.drawString(line,141,150,1);
+    snprintf(line,sizeof(line),"LON %.3f",gps.location.lng());
+    tft.drawString(line,141,164,1);
+  } else {
+    tft.setTextColor(MUTED,0x0862);tft.drawString("LAT --.---",141,150,1);tft.drawString("LON --.---",141,164,1);
+  }
+  tft.fillRect(9,200,302,7,BG);tft.setTextDatum(TL_DATUM);
   tft.setTextColor(WiFi.status()==WL_CONNECTED?TFT_GREEN:TFT_ORANGE,BG);
   tft.drawString(WiFi.status()==WL_CONNECTED?"WI-FI LINK OK":"WI-FI OFFLINE",10,199,1);
-  tft.setTextDatum(TR_DATUM); tft.setTextColor(MUTED,BG);
-  if(gps.time.isValid()) snprintf(line,sizeof(line),"UTC %02u:%02u:%02u",gps.time.hour(),gps.time.minute(),gps.time.second());
+  tft.setTextDatum(TR_DATUM);tft.setTextColor(MUTED,BG);
+  if(gps.time.isValid())snprintf(line,sizeof(line),"UTC %02u:%02u:%02u",gps.time.hour(),gps.time.minute(),gps.time.second());
   else snprintf(line,sizeof(line),"UTC --:--:--");
   tft.drawString(line,309,199,1);
 }
@@ -507,9 +527,11 @@ static void satelliteRow(int y,const char* name,const char* type,bool selected) 
 static void showSatelliteScreen() {
   screen=Screen::Satellite;header("SATELLITES","OBJECT CATALOG  /  TRACKING TARGETS");
   tft.fillRoundRect(8,88,304,55,9,0x123B);tft.drawRoundRect(8,88,304,55,9,TFT_CYAN);
-  tft.fillCircle(38,115,19,0x0862);tft.drawCircle(38,115,19,0x2A69);drawSatellite(38,115);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x123B);tft.drawString("ISS  /  ZARYA",70,96,2);
-  tft.setTextColor(TFT_CYAN,0x123B);tft.drawString("INTERNATIONAL SPACE STATION",70,119,1);
+  tft.fillRoundRect(12,91,64,49,6,0x0010);
+  drawUiImage(12,91,ui_iss_jpg,sizeof(ui_iss_jpg));
+  tft.drawRoundRect(12,91,64,49,6,TFT_CYAN);
+  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x123B);tft.drawString("ISS  /  ZARYA",84,96,2);
+  tft.setTextColor(TFT_CYAN,0x123B);tft.drawString("INTERNATIONAL SPACE STATION",84,119,1);
   tft.fillRoundRect(245,96,57,15,6,0x0320);tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_GREEN,0x0320);tft.drawString("TOP 01",273,104,1);
   satelliteRow(148,"NOAA-18","WEATHER  /  ORBIT NOT LOADED",false);

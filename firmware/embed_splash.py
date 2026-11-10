@@ -32,3 +32,26 @@ header = (
 )
 target.write_text(header, encoding="utf-8")
 print(f"Embedded splash JPEG: {len(data)} bytes -> {target}")
+
+# Additional photographic UI layers are embedded into flash as JPEG byte arrays.
+ui_assets = [
+    ("ui_earth_jpg", "earth_mini.jpg"),
+    ("ui_iss_jpg", "iss_mini.jpg"),
+]
+ui_lines = ["#pragma once", "#include <Arduino.h>"]
+for symbol, filename in ui_assets:
+    asset = project / "assets" / filename
+    with Image.open(asset) as image:
+        if image.format != "JPEG":
+            raise RuntimeError(f"{filename} must be JPEG")
+        image.verify()
+    payload = asset.read_bytes()
+    if not payload.startswith(bytes((0xFF, 0xD8))) or not payload.endswith(bytes((0xFF, 0xD9))):
+        raise RuntimeError(f"{filename} is not a valid JPEG stream")
+    ui_lines.append(f"static const uint8_t {symbol}[] PROGMEM = {{")
+    for offset in range(0, len(payload), 16):
+        ui_lines.append("  " + ", ".join(f"0x{byte:02X}" for byte in payload[offset:offset + 16]) + ",")
+    ui_lines.append("};")
+ui_header = project / "include" / "ui_assets.h"
+ui_header.write_text("\\n".join(ui_lines) + "\\n", encoding="utf-8")
+print(f"Embedded {len(ui_assets)} UI JPEG assets -> {ui_header}")

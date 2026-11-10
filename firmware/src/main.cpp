@@ -224,7 +224,6 @@ static void handleKeyboardTap(uint16_t x,uint16_t y) {
   }
   if(y>=158 && y<=180) {
     if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3) appendMappedKey("789"[c]); }
-    else if(x>=207) backspace();
     else { int i=(x-40)/25; if(i>=0&&i<7) appendMappedKey((symbolsPage?".,?/'\\|~":"zxcvbnm")[i]); }
     showWifiSetup(); return;
   }

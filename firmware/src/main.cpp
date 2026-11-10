@@ -367,10 +367,18 @@ static void backspace() {
 }
 
 static void handleTouch(){
- if(!touchCalibrated||screen==Screen::TouchTest||millis()-lastTouchAt<180)return;
- uint16_t rx=0,ry=0,x=0,y=0;if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
- if(touchWasDown)return;touchWasDown=true;lastTouchAt=millis();if(!mapRawTouch(rx,ry,x,y))return;
- Serial.printf("Touch raw=%u,%u mapped=%u,%u\\n",rx,ry,x,y);
+ if(!touchCalibrated||screen==Screen::TouchTest)return;
+ // Always poll release first. This prevents a stale pressed-state from
+ // blocking every subsequent key after a screen redraw.
+ uint16_t rx=0,ry=0,x=0,y=0;
+ if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
+ if(touchWasDown||millis()-lastTouchAt<120)return;
+ touchWasDown=true;lastTouchAt=millis();
+ if(!mapRawTouch(rx,ry,x,y)){
+   Serial.printf("Touch map failed raw=%u,%u\\n",rx,ry);
+   return;
+ }
+ Serial.printf("Touch raw=%u,%u mapped=%u,%u screen=%u\\n",rx,ry,x,y,(unsigned)screen);
  if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
  else if(screen==Screen::Connected&&y>=200){WiFi.disconnect();setupMessage="";editingPassword=false;showWifiSetup();}
  else if(screen==Screen::Failed&&y>=190){setupMessage="Check password, then connect again";showWifiSetup();}

@@ -327,7 +327,7 @@ static void updateTouchDiagnostic(){
  uint16_t rx=0,ry=0;if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
  if(touchWasDown||millis()-lastTouchAt<300)return;touchWasDown=true;lastTouchAt=millis();
  rawTouchX=rx;rawTouchY=ry;rawTouchDetected=true;Serial.printf("XPT2046 VSPI raw %u,%u\\n",rx,ry);
- touchCalStep=0;drawCalibrationTarget(0);
+ touchCorners[0]=rx;touchCorners[1]=ry;touchCalStep=1;drawCalibrationTarget(1);
 }
 static void updateTouchCalibration(){
  uint16_t rx=0,ry=0;if(!readXpt2046(rx,ry)){touchWasDown=false;return;}

@@ -90,7 +90,6 @@ static void showSplash() {
   tft.drawEllipse(bx,by,74,84,0x03FF);
   tft.drawLine(143,53,174,24,0x03FF);
   drawSatellite(175,25);
-  tft.drawArc(175,25,18,14,205,335,TFT_CYAN, BG);
 
   // Right-side title, sized for the 320x240 landscape display.
   tft.setTextDatum(MC_DATUM);

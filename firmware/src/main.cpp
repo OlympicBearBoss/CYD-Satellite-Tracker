@@ -113,11 +113,32 @@ static bool loadTouchCalibration() {
 }
 
 static void drawCalibrationTarget(uint8_t n){
-  tft.fillScreen(TFT_BLACK);tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,TFT_BLACK);
-  tft.drawString("TOUCH CALIBRATION",8,8,2);char msg[32];snprintf(msg,sizeof(msg),"Tap target %u of 4",n+1);
-  tft.setTextColor(TFT_WHITE,TFT_BLACK);tft.drawString(msg,8,31,2);int x=calX[n],y=calY[n];
-  tft.drawCircle(x,y,14,TFT_WHITE);tft.drawCircle(x,y,5,TFT_YELLOW);
+  // Calibration keeps the exact four raw sampling coordinates, but now uses
+  // the same Space Dark visual language as the rest of the interface.
+  tft.fillScreen(BG);
+  for(int i=0;i<18;i++){int sx=(i*47+19)%320, sy=(i*31+13)%240;tft.drawPixel(sx,sy,0x19A5);}
+  tft.fillRect(0,0,320,35,0x0862); tft.fillRect(0,35,320,2,TFT_CYAN);
+  tft.fillCircle(15,17,6,TFT_CYAN); tft.fillCircle(15,17,2,TFT_WHITE);
+  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x0862);
+  tft.drawString("TOUCH SETUP",28,8,2);
+  tft.setTextDatum(TR_DATUM);tft.setTextColor(MUTED,0x0862);
+  tft.drawString("XPT2046",309,11,1);
+  tft.drawRoundRect(54,78,212,88,12,0x2A69);
+  tft.fillRoundRect(59,83,202,78,9,0x1028);
+  char msg[32];snprintf(msg,sizeof(msg),"POINT %u / 4",n+1);
+  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_CYAN,0x1028);
+  tft.drawString(msg,160,103,2);
+  tft.setTextColor(TFT_WHITE,0x1028);tft.drawString("Touch the target",160,128,2);
+  tft.setTextColor(MUTED,0x1028);tft.drawString("Keep finger steady",160,148,1);
+  tft.drawRoundRect(65,187,190,9,4,0x2A69);
+  tft.fillRoundRect(67,189,(uint16_t)(186*(n+1)/4),5,2,TFT_CYAN);
+  tft.setTextDatum(BC_DATUM);tft.setTextColor(MUTED,BG);
+  tft.drawString("4-CORNER PRECISION CALIBRATION",160,222,1);
+  int x=calX[n],y=calY[n];
+  tft.drawCircle(x,y,14,TFT_WHITE);tft.drawCircle(x,y,9,TFT_CYAN);
+  tft.fillCircle(x,y,3,TFT_YELLOW);
   tft.drawFastHLine(x-20,y,40,TFT_CYAN);tft.drawFastVLine(x,y-20,40,TFT_CYAN);
+  tft.drawCircle(x,y,19,0x2A69);
 }
 
 static void printGeometry(const char* stage) {
@@ -157,13 +178,20 @@ static void showSplash(){
 
 static void header(const char* title, const char* subtitle) {
   tft.fillScreen(BG);
-  tft.fillRect(0,0,320,31,0x0862); tft.fillRect(0,31,320,2,TFT_CYAN);
-  tft.fillCircle(15,15,7,0x03B9); tft.fillCircle(15,15,3,TFT_WHITE);
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_WHITE,0x0862); tft.drawString("CYD",28,5,2);
-  tft.setTextColor(MUTED,0x0862); tft.drawString("SATELLITE TRACKER",62,7,1);
-  tft.fillCircle(301,15,4,WiFi.status()==WL_CONNECTED?TFT_GREEN:TFT_ORANGE);
-  tft.setTextColor(TFT_WHITE,BG); tft.drawString(title,11,39,4);
-  tft.setTextColor(MUTED,BG); tft.drawString(subtitle,13,73,1);
+  // Restrained starfield and layered top chrome; no full-screen animation.
+  for(int i=0;i<22;i++){int sx=(i*53+17)%320,sy=(i*29+9)%238;tft.drawPixel(sx,sy,(i%3)?0x19A5:0x2A69);}
+  tft.fillRect(0,0,320,30,0x0862);
+  tft.fillRect(0,29,320,1,0x2A69);tft.fillRect(0,30,320,2,TFT_CYAN);
+  tft.fillCircle(16,15,8,0x03B9);tft.fillCircle(16,15,4,TFT_WHITE);
+  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x0862);tft.drawString("CYD",30,5,2);
+  tft.setTextColor(MUTED,0x0862);tft.drawString("SATELLITE TRACKER",64,9,1);
+  tft.fillRoundRect(275,7,35,16,7,WiFi.status()==WL_CONNECTED?0x0320:0x4000);
+  tft.fillCircle(283,15,3,WiFi.status()==WL_CONNECTED?TFT_GREEN:TFT_ORANGE);
+  tft.setTextDatum(MR_DATUM);tft.setTextColor(TFT_WHITE,WiFi.status()==WL_CONNECTED?0x0320:0x4000);
+  tft.drawString(WiFi.status()==WL_CONNECTED?"LINK":"OFF",306,15,1);
+  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,BG);tft.drawString(title,11,38,4);
+  tft.setTextColor(MUTED,BG);tft.drawString(subtitle,13,73,1);
+  tft.drawFastHLine(10,83,300,0x2A69);
 }
 static void drawSectionLabel(const char* label,int x,int y,int w) {
   tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_CYAN,PANEL); tft.drawString(label,x,y,1);
@@ -218,18 +246,16 @@ static void drawButton(int x,int y,int w,int h,const char* label,uint16_t color)
 
 static void drawField(int y,const char* label,const String& value,bool selected,bool mask) {
   tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(selected?TFT_CYAN:MUTED,BG);
-  tft.drawString(label,8,y-13,1);
-  tft.fillRoundRect(7,y,306,25,4,selected?0x123B:PANEL);
-  tft.drawRoundRect(7,y,306,25,4,selected?TFT_CYAN:0x3151);
+  tft.setTextColor(selected?TFT_CYAN:MUTED,BG);tft.drawString(label,10,y-12,1);
+  const uint16_t fill=selected?0x123B:0x0C63;
+  tft.fillRoundRect(7,y,306,25,5,fill);
+  tft.drawRoundRect(7,y,306,25,5,selected?TFT_CYAN:0x3151);
+  tft.fillRoundRect(11,y+5,3,15,1,selected?TFT_CYAN:0x3151);
   String shown;
-  if(mask && !passwordVisible) {
-    for(size_t i=0;i<value.length();++i) shown += '*';
-  } else shown=value;
+  if(mask && !passwordVisible) {for(size_t i=0;i<value.length();++i) shown += '*';}
+  else shown=value;
   if(shown.length()>36) shown="..."+shown.substring(shown.length()-33);
-  tft.setTextDatum(ML_DATUM);
-  tft.setTextColor(TFT_WHITE,selected?0x123B:PANEL);
-  tft.drawString(shown,13,y+13,2);
+  tft.setTextDatum(ML_DATUM);tft.setTextColor(TFT_WHITE,fill);tft.drawString(shown,19,y+13,2);
 }
 
 static bool readStableTouch(uint16_t &rawX,uint16_t &rawY,uint16_t &screenX,uint16_t &screenY) {
@@ -253,8 +279,11 @@ static void beginWiFi();
 static void backspace();
 
 static void drawKey(int x,int y,int w,int h,const char* label, uint16_t fill=0x0000) {
+  const uint16_t edge=(fill==KEY_NUM)?0x2F9F:0x3A77;
+  tft.fillRoundRect(x,y+2,w,h,4,0x0000);
   tft.fillRoundRect(x,y,w,h,4,fill);
-  tft.drawRoundRect(x,y,w,h,4,KEY_EDGE);
+  tft.drawRoundRect(x,y,w,h,4,edge);
+  tft.drawFastHLine(x+4,y+1,w-8,fill==KEY_NUM?0x5DFF:0x2E9F);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(fill==0x07FF?TFT_BLACK:TFT_WHITE,fill);
   tft.drawString(label,x+w/2,y+h/2,2);
@@ -300,17 +329,21 @@ static void showWifiSetup() {
   screen=Screen::WifiSetup;
   if(firstDraw) {
     tft.fillScreen(BG);
-    tft.fillRect(0,0,tft.width(),27,PANEL);
+    for(int i=0;i<12;i++){int sx=(i*59+23)%320,sy=(i*37+7)%100;tft.drawPixel(sx,sy,0x19A5);}
+    tft.fillRect(0,0,320,27,0x0862);tft.fillRect(0,27,320,2,TFT_CYAN);
+    tft.fillCircle(14,13,5,TFT_CYAN);tft.fillCircle(14,13,2,TFT_WHITE);
     tft.setTextDatum(TL_DATUM);
-    tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("WI-FI SETUP",7,5,2);
+    tft.setTextColor(TFT_WHITE,0x0862);tft.drawString("NETWORK CONFIG",26,5,2);
+    tft.setTextDatum(TR_DATUM);tft.setTextColor(MUTED,0x0862);tft.drawString("SPACE DARK",263,8,1);
   }
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(russianLayout?"RU":"EN",275,6,2);
   drawField(37,"NETWORK / SSID",wifiName,!editingPassword,false);
   drawField(68,"PASSWORD",wifiPassword,editingPassword,true);
+  tft.fillRoundRect(7,96,306,10,4,0x1028);
   tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(setupMessage.length()?TFT_YELLOW:MUTED,BG);
-  tft.drawString(setupMessage.length()?setupMessage.c_str():"Select field, then enter characters",7,98,1);
+  tft.setTextColor(setupMessage.length()?TFT_YELLOW:MUTED,0x1028);
+  tft.drawString(setupMessage.length()?setupMessage.c_str():"SELECT A FIELD  /  TYPE YOUR WI-FI DETAILS",12,97,1);
   if(firstDraw || keyboardNeedsRedraw) {
     if(!symbolsPage) {
       drawLetterRow("qwertyuiop",108,5,21,1);
@@ -418,17 +451,18 @@ static void drawNavigation(uint8_t active) {
 static void updateGpsTelemetry();
 
 static void drawGpsPanel() {
-  tft.fillRoundRect(8,88,304,109,8,PANEL); tft.drawRoundRect(8,88,304,109,8,0x2A69);
-  tft.fillRoundRect(15,95,112,95,6,0x0862); tft.drawRoundRect(15,95,112,95,6,0x2A69);
-  drawSectionLabel("GPS FIX",23,101,96); drawAzimuthDial(71,151,27);
-  tft.fillRoundRect(134,95,170,95,6,0x0862); tft.drawRoundRect(134,95,170,95,6,0x2A69);
-  drawSectionLabel("ACTIVE TARGET",143,101,151);
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_WHITE,0x0862); tft.drawString("ISS  /  ZARYA",143,119,2);
-  tft.setTextColor(TFT_YELLOW,0x0862); tft.drawString("ORBIT DATA PENDING",143,140,1);
-  tft.setTextColor(MUTED,0x0862); tft.drawString("AZ  --.-     EL  --.-",143,156,1);
-  tft.fillRoundRect(143,171,151,13,4,0x4000); tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_YELLOW,0x4000); tft.drawString("ROTATOR LOCKED",218,178,1);
-  tft.fillRect(8,199,304,1,0x2A69); updateGpsTelemetry();
+  tft.fillRoundRect(8,88,304,109,9,0x0C63);tft.drawRoundRect(8,88,304,109,9,0x2A69);
+  tft.fillRoundRect(14,94,111,97,7,0x0862);tft.drawRoundRect(14,94,111,97,7,0x3151);
+  drawSectionLabel("GPS / COMPASS",21,100,96);drawAzimuthDial(69,151,28);
+  tft.fillRoundRect(132,94,173,97,7,0x0862);tft.drawRoundRect(132,94,173,97,7,0x3151);
+  drawSectionLabel("TRACKING TARGET",140,100,156);
+  drawSatellite(157,132);
+  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x0862);tft.drawString("ISS  /  ZARYA",183,119,2);
+  tft.setTextColor(TFT_CYAN,0x0862);tft.drawString("SPACE STATION",183,137,1);
+  tft.setTextColor(TFT_YELLOW,0x0862);tft.drawString("ORBIT DATA PENDING",142,153,1);
+  tft.fillRoundRect(141,171,155,13,5,0x4000);tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_YELLOW,0x4000);tft.drawString("ROTATOR STANDBY",218,178,1);
+  tft.fillRect(8,199,304,1,0x2A69);updateGpsTelemetry();
 }
 static void updateGpsTelemetry() {
   // Partial value-window updates only. Backlight is not modulated by this firmware.
@@ -471,47 +505,46 @@ static void satelliteRow(int y,const char* name,const char* type,bool selected) 
 }
 
 static void showSatelliteScreen() {
-  screen=Screen::Satellite; header("SATELLITES","TARGET CATALOG  /  SELECT A TRACKING OBJECT");
-  tft.fillRoundRect(9,88,302,54,8,0x123B); tft.drawRoundRect(9,88,302,54,8,TFT_CYAN);
-  drawSatellite(38,115); tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_WHITE,0x123B);
-  tft.drawString("ISS  /  ZARYA",75,96,2); tft.setTextColor(TFT_CYAN,0x123B);
-  tft.drawString("INTERNATIONAL SPACE STATION",75,119,1);
-  tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_GREEN,0x123B); tft.drawString("PRIORITY 01",300,101,1);
-  satelliteRow(140,"NOAA-18","WEATHER SATELLITE  /  ORBIT NOT LOADED",false);
-  satelliteRow(174,"NOAA-19","WEATHER SATELLITE  /  ORBIT NOT LOADED",false);
+  screen=Screen::Satellite;header("SATELLITES","OBJECT CATALOG  /  TRACKING TARGETS");
+  tft.fillRoundRect(8,88,304,55,9,0x123B);tft.drawRoundRect(8,88,304,55,9,TFT_CYAN);
+  tft.fillCircle(38,115,19,0x0862);tft.drawCircle(38,115,19,0x2A69);drawSatellite(38,115);
+  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x123B);tft.drawString("ISS  /  ZARYA",70,96,2);
+  tft.setTextColor(TFT_CYAN,0x123B);tft.drawString("INTERNATIONAL SPACE STATION",70,119,1);
+  tft.fillRoundRect(245,96,57,15,6,0x0320);tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_GREEN,0x0320);tft.drawString("TOP 01",273,104,1);
+  satelliteRow(148,"NOAA-18","WEATHER  /  ORBIT NOT LOADED",false);
+  satelliteRow(182,"NOAA-19","WEATHER  /  ORBIT NOT LOADED",false);
   drawNavigation(1);
 }
 
 static void showAntennaScreen() {
-  screen=Screen::Antenna; header("ANTENNA","VHF 145 MHz  /  CIRCULAR YAGI");
-  tft.fillRoundRect(8,88,146,109,8,PANEL); tft.drawRoundRect(8,88,146,109,8,0x2A69);
-  tft.fillRoundRect(162,88,150,109,8,PANEL); tft.drawRoundRect(162,88,150,109,8,0x2A69);
-  drawSectionLabel("AZIMUTH",17,96,126); drawAzimuthDial(81,151,31);
-  drawSectionLabel("ELEVATION",171,96,130); drawElevationArc(172,119,130);
-  tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("--.- deg",237,151,4);
-  tft.fillRoundRect(8,181,304,18,5,0x4000); tft.drawRoundRect(8,181,304,18,5,TFT_ORANGE);
-  tft.setTextColor(TFT_YELLOW,0x4000); tft.drawString("NO ORBIT DATA  /  MOTORS LOCKED",160,190,1);
+  screen=Screen::Antenna;header("ANTENNA","VHF 145 MHz  /  CIRCULAR POLARIZED YAGI");
+  tft.fillRoundRect(8,88,147,109,9,0x0C63);tft.drawRoundRect(8,88,147,109,9,0x3151);
+  tft.fillRoundRect(163,88,149,109,9,0x0C63);tft.drawRoundRect(163,88,149,109,9,0x3151);
+  drawSectionLabel("AZIMUTH",17,96,128);drawAzimuthDial(81,151,32);
+  drawSectionLabel("ELEVATION",172,96,130);drawElevationArc(173,119,129);
+  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_CYAN,0x0C63);tft.drawString("--.- deg",238,151,4);
+  tft.fillRoundRect(8,181,304,18,6,0x4000);tft.drawRoundRect(8,181,304,18,6,TFT_ORANGE);
+  tft.setTextColor(TFT_YELLOW,0x4000);tft.drawString("ORBIT NOT LOADED  /  DRIVE LOCKED",160,190,1);
   drawNavigation(2);
 }
 
 static void showSystemScreen() {
-  screen=Screen::SystemInfo; header("SYSTEM","DEVICE STATUS  /  CONFIGURATION");
+  screen=Screen::SystemInfo;header("SYSTEM","DEVICE HEALTH  /  CONFIGURATION");
   const bool wifi=WiFi.status()==WL_CONNECTED;
   const bool fix=gps.location.isValid() && gps.location.age()<10000;
-  tft.fillRoundRect(8,88,148,52,7,PANEL); tft.drawRoundRect(8,88,148,52,7,0x2A69);
-  tft.fillRoundRect(164,88,148,52,7,PANEL); tft.drawRoundRect(164,88,148,52,7,0x2A69);
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(MUTED,PANEL);
-  tft.drawString("WI-FI NETWORK",17,95,1); tft.drawString("GPS RECEIVER",173,95,1);
-  tft.setTextColor(wifi?TFT_GREEN:TFT_ORANGE,PANEL);
-  tft.drawString(wifi?"CONNECTED":"DISCONNECTED",17,112,2);
-  tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,PANEL);
-  tft.drawString(fix?"POSITION FIX":"SEARCHING",173,112,2);
-  tft.setTextColor(MUTED,BG); tft.setTextDatum(TL_DATUM);
-  String ip=wifi?WiFi.localIP().toString():String("IP: --");
-  tft.drawString(ip.c_str(),17,127,1);
-  tft.drawString(wifiName.length()?wifiName.c_str():"NO SAVED NETWORK",173,127,1);
-  drawButton(9,151,147,42,"CALIBRATE TOUCH",0x035F);
-  drawButton(164,151,147,42,"CHANGE WI-FI",0x03B9);
+  tft.fillRoundRect(8,88,148,54,8,0x0C63);tft.drawRoundRect(8,88,148,54,8,0x3151);
+  tft.fillRoundRect(164,88,148,54,8,0x0C63);tft.drawRoundRect(164,88,148,54,8,0x3151);
+  tft.setTextDatum(TL_DATUM);tft.setTextColor(MUTED,0x0C63);
+  tft.drawString("WI-FI LINK",17,95,1);tft.drawString("GPS RECEIVER",173,95,1);
+  tft.setTextColor(wifi?TFT_GREEN:TFT_ORANGE,0x0C63);tft.drawString(wifi?"CONNECTED":"OFFLINE",17,111,2);
+  tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,0x0C63);tft.drawString(fix?"3D POSITION":"SEARCHING",173,111,2);
+  tft.setTextColor(MUTED,0x0C63);tft.drawString(wifi?WiFi.localIP().toString().c_str():"IP  --",17,129,1);
+  String net=wifiName.length()?wifiName:"NO SAVED NETWORK";if(net.length()>19)net=net.substring(0,19)+"...";
+  tft.drawString(net.c_str(),173,129,1);
+  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,BG);tft.drawString("QUICK SETTINGS",10,146,1);
+  drawButton(9,159,147,37,"TOUCH CALIBRATE",0x035F);
+  drawButton(164,159,147,37,"CHANGE WI-FI",0x03B9);
   drawNavigation(3);
 }
 

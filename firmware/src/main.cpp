@@ -50,7 +50,7 @@ static bool jpgOutput(int16_t x,int16_t y,uint16_t w,uint16_t h,uint16_t* bitmap
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V32 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V33 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -134,6 +134,9 @@ static void drawField(int y,const char* label,const String& value,bool selected,
   tft.setTextColor(TFT_WHITE,selected?0x123B:PANEL);
   tft.drawString(shown,13,y+13,2);
 }
+
+static void beginWiFi();
+static void backspace();
 
 static void drawKey(int x,int y,int w,int h,const char* label, uint16_t fill=0x001F) {
   tft.fillRoundRect(x,y,w,h,3,fill);

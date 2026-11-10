@@ -379,6 +379,8 @@ static void drawNavigation(uint8_t active) {
   drawButton(241,207,76,29,"SYSTEM",active==3?activeColor:idleColor);
 }
 
+static void updateGpsTelemetry();
+
 static void drawGpsPanel() {
   // Draw the dashboard frame and all static graphics only once on page entry.
   tft.fillRoundRect(8,101,151,96,8,PANEL);

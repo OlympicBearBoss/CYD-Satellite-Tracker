@@ -17,13 +17,15 @@ static constexpr uint32_t INIT_MS = 3500;
 static constexpr uint32_t WIFI_TIMEOUT_MS = 20000;
 static constexpr uint16_t TOUCH_THRESHOLD = 500;
 
-enum class Screen : uint8_t { Splash, Init, WifiSetup, Connecting, Connected, Failed };
+enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Failed };
 static Screen screen = Screen::Splash;
 static uint32_t screenStartedAt = 0;
 static uint32_t wifiAttemptAt = 0;
 static uint32_t lastTouchAt = 0;
 static bool gpsSeen = false;
 static bool touchCalibrated = false;
+static uint16_t rawTouchX = 0, rawTouchY = 0;
+static bool rawTouchDetected = false;
 static bool symbolsPage = false;
 static bool shiftKey = false;
 static bool passwordVisible = false;
@@ -32,10 +34,10 @@ static String wifiName;
 static String wifiPassword;
 static String setupMessage;
 
-static constexpr uint16_t BG = 0x020A;
-static constexpr uint16_t PANEL = 0x0A19;
-static constexpr uint16_t BLUE = 0x168B;
-static constexpr uint16_t MUTED = 0x7897;
+static constexpr uint16_t BG = 0x0000;
+static constexpr uint16_t PANEL = 0x3186;
+static constexpr uint16_t BLUE = 0x001F;
+static constexpr uint16_t MUTED = 0xFFFF;
 static uint16_t touchCal[5];
 
 static void printGeometry(const char* stage) {
@@ -135,10 +137,10 @@ static void drawField(int y,const char* label,const String& value,bool selected,
 }
 
 static void drawKey(int x,int y,int w,int h,const char* label) {
-  tft.fillRoundRect(x,y,w,h,3,0x1930);
-  tft.drawRoundRect(x,y,w,h,3,0x4160);
+  tft.fillRoundRect(x,y,w,h,3,0x001F);
+  tft.drawRoundRect(x,y,w,h,3,TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_WHITE,0x1930);
+  tft.setTextColor(TFT_WHITE,0x001F);
   tft.drawString(label,x+w/2,y+h/2,2);
 }
 
@@ -240,8 +242,38 @@ static void beginWiFi() {
   Serial.printf("Wi-Fi: connecting to saved network '%s'\n",wifiName.c_str());
 }
 
+static void showTouchDiagnostic() {
+  screen=Screen::TouchTest;
+  tft.fillScreen(TFT_BLACK);
+  tft.fillRect(0,0,tft.width(),42,0x3186);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(TFT_YELLOW,0x3186); tft.drawString("TOUCH TEST / XPT2046",8,7,2);
+  tft.setTextColor(TFT_WHITE,0x3186); tft.drawString("Touch the screen",8,26,1);
+  tft.setTextColor(TFT_WHITE,TFT_BLACK);
+  tft.drawString("Raw touch controller check",12,68,2);
+  tft.drawString("X:",18,112,2); tft.drawString("Y:",18,145,2);
+  tft.drawRoundRect(10,190,220,54,6,TFT_CYAN);
+  tft.setTextColor(TFT_YELLOW,TFT_BLACK); tft.drawString("Touch anywhere to start",16,207,2);
+  tft.setTextColor(TFT_WHITE,TFT_BLACK); tft.drawString("calibration",16,229,2);
+  rawTouchDetected=false;
+}
+
+static void updateTouchDiagnostic() {
+  uint16_t x=0,y=0;
+  if(tft.getTouchRaw(&x,&y)) {
+    rawTouchX=x; rawTouchY=y; rawTouchDetected=true;
+    Serial.printf("XPT2046 raw touch: X=%u Y=%u\\n",x,y);
+    tft.fillRect(55,108,165,48,TFT_BLACK);
+    tft.setTextColor(TFT_GREEN,TFT_BLACK);
+    tft.drawNumber(rawTouchX,55,108,2); tft.drawNumber(rawTouchY,55,141,2);
+    delay(250);
+    calibrateTouchIfNeeded();
+    screen=Screen::Init;
+    screenStartedAt=millis();
+  }
+}
 static void calibrateTouchIfNeeded() {
-  if(prefs.getBytesLength("touchcal")==sizeof(touchCal)) {
+  if(prefs.getUChar("touchv",0)==2 && prefs.getBytesLength("touchcal")==sizeof(touchCal)) {
     prefs.getBytes("touchcal",touchCal,sizeof(touchCal));
     tft.setTouch(touchCal);
     touchCalibrated=true;
@@ -250,6 +282,7 @@ static void calibrateTouchIfNeeded() {
   header("TOUCH SETUP","Touch the calibration targets");
   tft.calibrateTouch(touchCal,TFT_MAGENTA,TFT_BLACK,15);
   prefs.putBytes("touchcal",touchCal,sizeof(touchCal));
+  prefs.putUChar("touchv",2);
   tft.setTouch(touchCal);
   touchCalibrated=true;
   showInitialization();
@@ -365,10 +398,10 @@ void loop() {
   }
   const uint32_t now=millis();
   if(screen==Screen::Splash && now-screenStartedAt>=SPLASH_MS) {
-    showInitialization();
-    calibrateTouchIfNeeded();
-    screen=Screen::Init;
-    screenStartedAt=millis();
+    showTouchDiagnostic();
+    screenStartedAt=now;
+  } else if(screen==Screen::TouchTest) {
+    updateTouchDiagnostic();
   } else if(screen==Screen::Init && now-screenStartedAt>=INIT_MS) {
     if(wifiName.length()) beginWiFi();
     else { setupMessage="Enter your router details"; showWifiSetup(); }

@@ -38,7 +38,7 @@ static String wifiPassword;
 static String setupMessage;
 
 static constexpr uint16_t BG = 0x0000;
-static constexpr uint16_t PANEL = 0x3186;
+static constexpr uint16_t PANEL = 0x2104;
 static constexpr uint16_t BLUE = 0x001F;
 static constexpr uint16_t MUTED = 0xFFFF;
 static uint16_t touchCal[5];
@@ -85,18 +85,41 @@ static void drawSatellite(int16_t cx, int16_t cy) {
 }
 
 static void showSplash(){
- tft.fillScreen(0x0008);for(int i=0;i<46;i++)tft.drawPixel((i*47+19)%320,(i*29+13)%240,(i%3)?0x39E7:TFT_CYAN);
- tft.drawEllipse(160,106,105,53,0x04FF);tft.drawEllipse(160,106,101,49,0x0210);
- tft.fillCircle(119,66,25,TFT_WHITE);tft.fillCircle(201,66,25,TFT_WHITE);
- tft.fillCircle(119,66,13,0x7BEF);tft.fillCircle(201,66,13,0x7BEF);tft.fillCircle(160,108,57,TFT_WHITE);
- tft.fillCircle(139,99,6,TFT_BLACK);tft.fillCircle(181,99,6,TFT_BLACK);tft.fillEllipse(160,123,22,15,0xD69A);
- tft.fillTriangle(153,117,167,117,160,126,TFT_BLACK);tft.drawLine(160,126,160,137,TFT_BLACK);
- tft.drawLine(160,137,150,142,TFT_BLACK);tft.drawLine(160,137,170,142,TFT_BLACK);
- tft.fillRoundRect(248,54,18,13,3,TFT_WHITE);tft.fillRect(237,51,9,19,TFT_BLUE);tft.drawRect(237,51,9,19,TFT_CYAN);
- tft.fillRect(268,51,9,19,TFT_BLUE);tft.drawRect(268,51,9,19,TFT_CYAN);tft.drawLine(257,54,262,44,TFT_WHITE);
- tft.fillCircle(263,42,2,TFT_YELLOW);tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,0x0008);
- tft.drawString("CYD SATELLITE TRACKER",160,190,4);tft.setTextColor(TFT_CYAN,0x0008);
- tft.drawString("by Olympic Bear",160,219,2);printGeometry("NATIVE VECTOR SPLASH V34");
+  // Variant 4: compact bear emblem on the left, orbital satellite/Earth motif,
+  // and project title on the right inside a high-tech blue frame (320x240).
+  const uint16_t navy=0x0008, deep=0x0012, cyan=0x07FF, ice=0xDFFF, steel=0x7BEF;
+  tft.fillScreen(navy);
+  for(int i=0;i<54;i++) tft.drawPixel((i*47+19)%320,(i*29+13)%240,(i%3)?0x39E7:cyan);
+  tft.drawRoundRect(5,5,310,230,12,0x035F);
+  tft.drawRoundRect(9,9,302,222,9,0x021F);
+  tft.drawFastHLine(20,18,72,cyan); tft.drawFastHLine(228,222,72,cyan);
+  // Orbit and small Earth behind the emblem.
+  tft.drawEllipse(91,112,70,48,0x04FF); tft.drawEllipse(91,112,66,44,0x021F);
+  tft.fillCircle(91,112,34,0x0217); tft.drawCircle(91,112,34,0x07FF);
+  tft.fillCircle(78,101,8,0x05A0); tft.fillCircle(101,121,10,0x05A0);
+  tft.drawArc(91,112,28,25,205,330,ice,navy);
+  // Bear-head emblem: rounded ears, face, muzzle and clear dark features.
+  tft.fillCircle(48,66,17,ice); tft.fillCircle(119,66,17,ice);
+  tft.fillCircle(48,66,8,steel); tft.fillCircle(119,66,8,steel);
+  tft.fillRoundRect(35,59,98,105,34,ice);
+  tft.fillEllipse(84,130,29,20,0xBDF7);
+  tft.fillCircle(68,111,4,TFT_BLACK); tft.fillCircle(101,111,4,TFT_BLACK);
+  tft.fillEllipse(84,132,9,6,TFT_BLACK);
+  tft.drawLine(84,138,84,145,TFT_BLACK); tft.drawLine(84,145,77,149,TFT_BLACK);
+  tft.drawLine(84,145,91,149,TFT_BLACK);
+  // Satellite on the orbital path.
+  tft.fillRoundRect(145,47,16,12,3,ice);
+  tft.fillRect(132,44,11,18,0x045F); tft.drawRect(132,44,11,18,cyan);
+  tft.fillRect(163,44,11,18,0x045F); tft.drawRect(163,44,11,18,cyan);
+  tft.drawLine(153,47,159,37,ice); tft.fillCircle(160,35,3,TFT_YELLOW);
+  // Title block at right.
+  tft.setTextDatum(TL_DATUM); tft.setTextColor(ice,navy);
+  tft.drawString("CYD",190,70,4); tft.drawString("SATELLITE",190,108,2);
+  tft.drawString("TRACKER",190,128,4);
+  tft.drawFastHLine(190,166,105,cyan);
+  tft.setTextColor(cyan,navy); tft.drawString("by Olympic Bear",190,178,2);
+  tft.setTextColor(steel,navy); tft.drawString("VHF 145 MHz  /  ESP32",190,202,1);
+  printGeometry("BEAR EMBLEM SPLASH VARIANT 4");
 }
 static void header(const char* title, const char* subtitle) {
   tft.fillScreen(BG);
@@ -167,7 +190,7 @@ static void drawLetterRow(const char* keys,int y,int x,int keyW,int gap) {
   for(int i=0;keys[i];++i) {
     char label[2]={keys[i],0};
     if(shiftKey && !symbolsPage && label[0]>='a' && label[0]<='z') label[0]=toupper(label[0]);
-    drawKey(x+i*(keyW+gap),y,keyW,22,label);
+    drawKey(x+i*(keyW+gap),y,keyW,22,label,0x035F);
   }
 }
 static void showWifiSetup() {
@@ -193,15 +216,15 @@ static void showWifiSetup() {
   }
   const char* nums[3]={"123","456","789"};
   for(int r=0;r<3;++r) for(int c=0;c<3;++c) {
-    char k[2]={nums[r][c],0}; drawKey(246+c*24,108+r*25,22,22,k,0x041F);
+    char k[2]={nums[r][c],0}; drawKey(246+c*24,108+r*25,22,22,k,0x05BF);
   }
   drawKey(270,183,22,19,"0",0x041F);
-  drawKey(5,184,40,19,russianLayout?"RU":"EN",0x03EF);
-  drawKey(48,184,43,19,"SHIFT",0x001F);
-  drawKey(94,184,62,19,"SPACE",0x001F);
-  drawKey(159,184,39,19,symbolsPage?"ABC":"SYM",0x001F);
-  drawKey(201,184,42,19,"DEL",0x7800);
-  drawButton(5,209,310,27,"CONNECT",BLUE);
+  drawKey(5,184,40,19,russianLayout?"RU":"EN",0x05A0);
+  drawKey(48,184,43,19,"SHIFT",0x03BF);
+  drawKey(94,184,62,19,"SPACE",0x03BF);
+  drawKey(159,184,39,19,symbolsPage?"ABC":"SYM",0x03BF);
+  drawKey(201,184,42,19,"DEL",0xF800);
+  drawButton(5,209,310,27,"CONNECT",0x001F);
   tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_CYAN,BG);
   tft.drawString(passwordVisible?"HIDE":"SHOW",315,91,1);
 }

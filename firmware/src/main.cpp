@@ -186,19 +186,47 @@ static void beginWiFi();
 static void backspace();
 
 static void drawKey(int x,int y,int w,int h,const char* label, uint16_t fill=0x0000) {
-  (void)fill;
-  tft.fillRoundRect(x,y,w,h,3,TFT_BLACK);
+  tft.fillRoundRect(x,y,w,h,3,fill);
   tft.drawRoundRect(x,y,w,h,3,TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_WHITE,TFT_BLACK);
+  tft.setTextColor(fill==0x07FF?TFT_BLACK:TFT_WHITE,fill);
   tft.drawString(label,x+w/2,y+h/2,2);
 }
 static void drawLetterRow(const char* keys,int y,int x,int keyW,int gap) {
   for(int i=0;keys[i];++i) {
     char label[2]={keys[i],0};
     if(shiftKey && !symbolsPage && label[0]>='a' && label[0]<='z') label[0]=toupper(label[0]);
-    drawKey(x+i*(keyW+gap),y,keyW,22,label,0xFFFF);
+    drawKey(x+i*(keyW+gap),y,keyW,22,label,0x0000);
   }
+}
+static void flashKeyboardKey(uint16_t x,uint16_t y) {
+  int kx=-1,ky=0,kw=0,kh=22; char label[8]={0};
+  if(y>=108&&y<=130) {
+    ky=108;
+    if(x>=246) { int c=(x-246)/24; if(c>2)return; kx=246+c*24;kw=22;label[0]="123"[c]; }
+    else { int c=(x-5)/22;if(c<0||c>=10)return;kx=5+c*22;kw=21;label[0]=(symbolsPage?"!@#$%^&*()":"qwertyuiop")[c]; }
+  } else if(y>=133&&y<=155) {
+    ky=133;
+    if(x>=246) { int c=(x-246)/24;if(c>2)return;kx=246+c*24;kw=22;label[0]="456"[c]; }
+    else { int c=(x-16)/24;if(c<0||c>=9)return;kx=16+c*24;kw=22;label[0]=(symbolsPage?"-_=+[]{};:":"asdfghjkl")[c]; }
+  } else if(y>=158&&y<=180) {
+    ky=158;
+    if(x>=246) { int c=(x-246)/24;if(c>2)return;kx=246+c*24;kw=22;label[0]="789"[c]; }
+    else { int c=(x-40)/25;if(c<0||c>=7)return;kx=40+c*25;kw=22;label[0]=(symbolsPage?".,?/'\\\\|~":"zxcvbnm")[c]; }
+  } else if(y>=183&&y<=205) {
+    ky=184;kh=19;
+    if(x>=5&&x<45){kx=5;kw=40;strcpy(label,russianLayout?"RU":"EN");}
+    else if(x>=48&&x<91){kx=48;kw=43;strcpy(label,"SHIFT");}
+    else if(x>=94&&x<156){kx=94;kw=62;strcpy(label,"SPACE");}
+    else if(x>=159&&x<198){kx=159;kw=39;strcpy(label,symbolsPage?"ABC":"SYM");}
+    else if(x>=201&&x<243){kx=201;kw=42;strcpy(label,"DEL");}
+    else if(x>=270&&x<292){kx=270;kw=22;strcpy(label,"0");}
+    else return;
+  } else return;
+  if(x<kx||x>=kx+kw)return;
+  drawKey(kx,ky,kw,kh,label,0x07FF);
+  delay(45);
+  drawKey(kx,ky,kw,kh,label,0x0000);
 }
 static void showWifiSetup() {
   const bool firstDraw = (screen != Screen::WifiSetup) || !wifiScreenDrawn;
@@ -263,6 +291,7 @@ static void appendMappedKey(char c) {
   char value[2]={c,0}; appendKeyUtf8(value);
 }
 static void handleKeyboardTap(uint16_t x,uint16_t y) {
+  flashKeyboardKey(x,y);
 
   // CONNECT is deliberately limited to the left side. The DEL key is on
   // the right and must never start a connection, even with small Y drift.

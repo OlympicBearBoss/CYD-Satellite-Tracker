@@ -1,7 +1,11 @@
 #pragma once
 
-// Wi-Fi router credentials (station mode).
-// Enter your local Wi-Fi network name and password here before building.
-// Keep this file private if you publish your repository.
-static const char WIFI_SSID[] = "";
-static const char WIFI_PASSWORD[] = "";
+// Optional private credentials file. Copy WifiConfig.local.example.h to
+// WifiConfig.local.h and enter your router credentials there.
+// WifiConfig.local.h is excluded from Git to protect your password.
+#if __has_include("WifiConfig.local.h")
+  #include "WifiConfig.local.h"
+#else
+  static const char WIFI_SSID[] = "";
+  static const char WIFI_PASSWORD[] = "";
+#endif

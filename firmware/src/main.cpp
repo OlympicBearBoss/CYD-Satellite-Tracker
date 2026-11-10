@@ -17,9 +17,10 @@ void drawGridTest() {
   const uint16_t grid = TFT_DARKGREY;
 
   tft.drawRect(0, 0, w, h, TFT_WHITE);
-  // Horizontal test scale: 0..250 mapped across the full physical display width.
-  for (int16_t value = 0; value <= 250; value += 50) {
-    const int16_t x = (int32_t)value * (w - 1) / 250;
+  // Horizontal zoom: 0..200 uses the full width; 25% larger spacing than v21.
+  // The rightmost grid line lands exactly on the display edge.
+  for (int16_t value = 0; value <= 200; value += 50) {
+    const int16_t x = (int32_t)value * (w - 1) / 200;
     tft.drawFastVLine(x, 0, h, grid);
   }
   for (int16_t y = 0; y < h; y += 40) tft.drawFastHLine(0, y, w, grid);
@@ -32,8 +33,8 @@ void drawGridTest() {
 
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TFT_WHITE, bg);
-  for (int16_t value = 0; value <= 250; value += 50) {
-    const int16_t x = (int32_t)value * (w - 1) / 250;
+  for (int16_t value = 0; value <= 200; value += 50) {
+    const int16_t x = (int32_t)value * (w - 1) / 200;
     char label[12];
     snprintf(label, sizeof(label), "X:%d", value);
     const int16_t labelX = (x < 24) ? 2 : (x > w - 34 ? w - 38 : x - 16);
@@ -48,9 +49,9 @@ void drawGridTest() {
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE, bg);
   char title[48];
-  snprintf(title, sizeof(title), "CYD V21  %s", pageNames[pageIndex]);
+  snprintf(title, sizeof(title), "CYD V22  %s", pageNames[pageIndex]);
   tft.drawCentreString(title, w / 2, h / 2, 4);
-  Serial.printf("V21 GRID TEST: rotation=2 geometry=%dx%d page=%u (%s)\\n",
+  Serial.printf("V22 GRID TEST: rotation=2 geometry=%dx%d page=%u (%s)\\n",
                 w, h, pageIndex, pageNames[pageIndex]);
 }
 

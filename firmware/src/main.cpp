@@ -15,7 +15,7 @@ static constexpr uint8_t DISPLAY_ROTATION = 1;
 static constexpr uint32_t SPLASH_MS = 6000;
 static constexpr uint32_t INIT_MS = 3500;
 static constexpr uint32_t WIFI_TIMEOUT_MS = 20000;
-static constexpr uint16_t TOUCH_THRESHOLD = 500;
+static constexpr uint16_t TOUCH_THRESHOLD = 350;
 
 enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Failed };
 static Screen screen = Screen::Splash;
@@ -27,6 +27,7 @@ static bool touchCalibrated = false;
 static uint16_t rawTouchX = 0, rawTouchY = 0;
 static bool rawTouchDetected = false;
 static bool symbolsPage = false;
+static bool russianLayout = false;
 static bool shiftKey = false;
 static bool passwordVisible = false;
 static bool editingPassword = false;
@@ -149,71 +150,118 @@ static void drawField(int y,const char* label,const String& value,bool selected,
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(selected?TFT_CYAN:MUTED,BG);
   tft.drawString(label,8,y-13,1);
-  tft.fillRoundRect(7,y,226,27,4,selected?0x123B:PANEL);
-  tft.drawRoundRect(7,y,226,27,4,selected?TFT_CYAN:0x3151);
+  tft.fillRoundRect(7,y,306,25,4,selected?0x123B:PANEL);
+  tft.drawRoundRect(7,y,306,25,4,selected?TFT_CYAN:0x3151);
   String shown;
   if(mask && !passwordVisible) {
     for(size_t i=0;i<value.length();++i) shown += '*';
   } else shown=value;
-  if(shown.length()>24) shown="..."+shown.substring(shown.length()-21);
+  if(shown.length()>36) shown="..."+shown.substring(shown.length()-33);
   tft.setTextDatum(ML_DATUM);
   tft.setTextColor(TFT_WHITE,selected?0x123B:PANEL);
-  tft.drawString(shown,13,y+14,2);
+  tft.drawString(shown,13,y+13,2);
 }
 
-static void drawKey(int x,int y,int w,int h,const char* label) {
-  tft.fillRoundRect(x,y,w,h,3,0x001F);
+static void drawKey(int x,int y,int w,int h,const char* label, uint16_t fill=0x001F) {
+  tft.fillRoundRect(x,y,w,h,3,fill);
   tft.drawRoundRect(x,y,w,h,3,TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_WHITE,0x001F);
+  tft.setTextColor(TFT_WHITE,fill);
   tft.drawString(label,x+w/2,y+h/2,2);
 }
-
-static void drawKeyRow(const char* keys,int y,int x,int keyW,int gap) {
+static void drawLetterRow(const char* keys,int y,int x,int keyW,int gap) {
   for(int i=0;keys[i];++i) {
     char label[2]={keys[i],0};
     if(shiftKey && !symbolsPage && label[0]>='a' && label[0]<='z') label[0]=toupper(label[0]);
-    drawKey(x+i*(keyW+gap),y,keyW,25,label);
+    drawKey(x+i*(keyW+gap),y,keyW,22,label);
   }
 }
-
 static void showWifiSetup() {
   screen=Screen::WifiSetup;
   tft.fillScreen(BG);
-  tft.fillRect(0,0,tft.width(),42,PANEL);
+  tft.fillRect(0,0,tft.width(),27,PANEL);
   tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_CYAN,PANEL);
-  tft.drawString("WI-FI SETUP",8,7,2);
-  tft.setTextColor(MUTED,PANEL);
-  tft.drawString("Enter network details",8,26,1);
-  drawField(62,"NETWORK NAME (SSID)",wifiName,!editingPassword,false);
-  drawField(105,"PASSWORD",wifiPassword,editingPassword,true);
+  tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("WI-FI SETUP",7,5,2);
+  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(russianLayout?"RU":"EN",275,6,2);
+  drawField(37,"NETWORK / SSID",wifiName,!editingPassword,false);
+  drawField(68,"PASSWORD",wifiPassword,editingPassword,true);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(setupMessage.length()?TFT_YELLOW:MUTED,BG);
-  tft.drawString(setupMessage.length()?setupMessage.c_str():"Credentials are stored on this device",8,137,1);
-
+  tft.drawString(setupMessage.length()?setupMessage.c_str():"Select field, then enter characters",7,98,1);
   if(!symbolsPage) {
-    drawKeyRow("qwertyuiop",157,4,22,1);
-    drawKeyRow("asdfghjkl",186,14,23,2);
-    drawKeyRow("zxcvbnm",215,7,25,3);
+    drawLetterRow("qwertyuiop",108,5,21,1);
+    drawLetterRow("asdfghjkl",133,16,22,2);
+    drawLetterRow("zxcvbnm",158,40,22,3);
   } else {
-    drawKeyRow("1234567890",157,4,22,1);
-    drawKeyRow("@#$%&*-+()",186,4,22,1);
-    drawKeyRow("!?.,_:;/'",215,8,23,2);
+    drawLetterRow("!@#$%^&*()",108,5,21,1);
+    drawLetterRow("-_=+[]{};:",133,16,22,2);
+    drawLetterRow(".,?/'\\|~",158,40,22,3);
   }
-  drawKey(207,215,29,25,"<");
-  drawKey(4,246,42,25,shiftKey?"SHIFT*":"SHIFT");
-  drawKey(49,246,87,25,"SPACE");
-  drawKey(139,246,48,25,symbolsPage?"ABC":"123");
-  drawKey(190,246,46,25,"CLEAR");
-  drawButton(8,279,224,33,"CONNECT",BLUE);
-  tft.setTextDatum(MR_DATUM);
-  tft.setTextColor(MUTED,BG);
-  tft.setTextDatum(MR_DATUM);
-  tft.setTextColor(TFT_CYAN,0x123B);
-  tft.drawString(passwordVisible?"HIDE":"SHOW",228,119,1);
+  const char* nums[3]={"123","456","789"};
+  for(int r=0;r<3;++r) for(int c=0;c<3;++c) {
+    char k[2]={nums[r][c],0}; drawKey(246+c*24,108+r*25,22,22,k,0x041F);
+  }
+  drawKey(270,183,22,19,"0",0x041F);
+  drawKey(5,184,40,19,russianLayout?"RU":"EN",0x03EF);
+  drawKey(48,184,43,19,"SHIFT",0x001F);
+  drawKey(94,184,62,19,"SPACE",0x001F);
+  drawKey(159,184,39,19,symbolsPage?"ABC":"SYM",0x001F);
+  drawKey(201,184,42,19,"DEL",0x7800);
+  drawButton(5,209,310,27,"CONNECT",BLUE);
+  tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_CYAN,BG);
+  tft.drawString(passwordVisible?"HIDE":"SHOW",315,91,1);
 }
-
+static void appendKeyUtf8(const char* value) {
+  String& target=editingPassword?wifiPassword:wifiName;
+  const size_t maxLen=editingPassword?63:32;
+  if(target.length()+strlen(value)<=maxLen) target += value;
+}
+static void appendMappedKey(char c) {
+  if(!russianLayout || symbolsPage) {
+    if(shiftKey && c>='a' && c<='z') c=toupper(c);
+    char value[2]={c,0}; appendKeyUtf8(value); return;
+  }
+  const char* en="qwertyuiopasdfghjklzxcvbnm";
+  const char* ru[]={"й","ц","у","к","е","н","г","ш","щ","з","ф","ы","в","а","п","р","о","л","д","я","ч","с","м","и","т","ь"};
+  const char* upper[]={"Й","Ц","У","К","Е","Н","Г","Ш","Щ","З","Ф","Ы","В","А","П","Р","О","Л","Д","Я","Ч","С","М","И","Т","Ь"};
+  for(size_t i=0;i<strlen(en);++i) if(en[i]==c) {
+    appendKeyUtf8(shiftKey?upper[i]:ru[i]); return;
+  }
+  char value[2]={c,0}; appendKeyUtf8(value);
+}
+static void handleKeyboardTap(uint16_t x,uint16_t y) {
+  if(y>=209 && x>=5 && x<=315) { setupMessage=""; beginWiFi(); return; }
+  if(y>=37 && y<=63) { editingPassword=false; showWifiSetup(); return; }
+  if(y>=68 && y<=94) {
+    if(x>270) passwordVisible=!passwordVisible; else editingPassword=true;
+    showWifiSetup(); return;
+  }
+  if(y>=108 && y<=130) {
+    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3) appendMappedKey("123"[c]); }
+    else { int i=(x-5)/22; if(i>=0&&i<10) appendMappedKey((symbolsPage?"!@#$%^&*()":"qwertyuiop")[i]); }
+    showWifiSetup(); return;
+  }
+  if(y>=133 && y<=155) {
+    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3) appendMappedKey("456"[c]); }
+    else { int i=(x-16)/24; if(i>=0&&i<9) appendMappedKey((symbolsPage?"-_=+[]{};:":"asdfghjkl")[i]); }
+    showWifiSetup(); return;
+  }
+  if(y>=158 && y<=180) {
+    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3) appendMappedKey("789"[c]); }
+    else if(x>=207) backspace();
+    else { int i=(x-40)/25; if(i>=0&&i<7) appendMappedKey((symbolsPage?".,?/'\\|~":"zxcvbnm")[i]); }
+    showWifiSetup(); return;
+  }
+  if(y>=183 && y<=205) {
+    if(x<46) russianLayout=!russianLayout;
+    else if(x<93) shiftKey=!shiftKey;
+    else if(x<158) appendKeyUtf8(" ");
+    else if(x<200) symbolsPage=!symbolsPage;
+    else if(x<244) backspace();
+    else if(x>=270&&x<=294) appendMappedKey('0');
+    showWifiSetup();
+  }
+}
 static void showConnecting() {
   header("WI-FI CONNECTION","Connecting to the selected network");
   String shortName=wifiName;

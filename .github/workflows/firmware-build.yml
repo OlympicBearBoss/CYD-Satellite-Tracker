@@ -24,7 +24,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install PlatformIO
-        run: pip install --upgrade platformio
+        run: pip install --upgrade platformio pillow
 
       - name: Prepare HTTPS trust roots
         run: |

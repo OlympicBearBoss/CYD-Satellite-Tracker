@@ -8,3 +8,6 @@ build/
 *.elf
 *.bin
 *.map
+
+# Local device credentials
+firmware/include/WifiConfig.local.h

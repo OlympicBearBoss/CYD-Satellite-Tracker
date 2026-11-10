@@ -62,12 +62,30 @@ static bool readXpt2046(uint16_t &x,uint16_t &y){
   x=median3(xs[0],xs[1],xs[2]);y=median3(ys[0],ys[1],ys[2]);return true;
 }
 static bool mapRawTouch(uint16_t rx,uint16_t ry,uint16_t &x,uint16_t &y){
-  float ax=(float)touchCorners[2]-touchCorners[0],ay=(float)touchCorners[3]-touchCorners[1];
-  float bx=(float)touchCorners[4]-touchCorners[0],by=(float)touchCorners[5]-touchCorners[1];
-  float det=ax*by-ay*bx;if(fabsf(det)<1000)return false;
-  float dx=(float)rx-touchCorners[0],dy=(float)ry-touchCorners[1];
-  x=constrain((int)(((dx*by-dy*bx)/det)*319.0f+0.5f),0,319);
-  y=constrain((int)(((ax*dy-ay*dx)/det)*239.0f+0.5f),0,239);return true;
+  // Four-corner bilinear calibration compensates for panel skew and axis orientation.
+  const float x00=touchCorners[0], y00=touchCorners[1];
+  const float x10=touchCorners[2], y10=touchCorners[3];
+  const float x01=touchCorners[4], y01=touchCorners[5];
+  const float x11=touchCorners[6], y11=touchCorners[7];
+  const float ax=x10-x00, ay=y10-y00, bx=x01-x00, by=y01-y00;
+  const float cx=x11-x10-x01+x00, cy=y11-y10-y01+y00;
+  const float det=ax*by-ay*bx;
+  if(fabsf(det)<1000.0f) return false;
+  const float dx=rx-x00, dy=ry-y00;
+  float u=(dx*by-dy*bx)/det, v=(ax*dy-ay*dx)/det;
+  for(uint8_t i=0;i<8;i++){
+    const float fx=x00+ax*u+bx*v+cx*u*v-rx;
+    const float fy=y00+ay*u+by*v+cy*u*v-ry;
+    const float j00=ax+cx*v, j01=bx+cx*u, j10=ay+cy*v, j11=by+cy*u;
+    const float jd=j00*j11-j01*j10;
+    if(fabsf(jd)<1.0f) break;
+    const float du=(fx*j11-fy*j01)/jd, dv=(j00*fy-j10*fx)/jd;
+    u-=du; v-=dv;
+    if(fabsf(du)+fabsf(dv)<0.0001f) break;
+  }
+  x=constrain((int)(18.0f+u*284.0f+0.5f),0,319);
+  y=constrain((int)(18.0f+v*204.0f+0.5f),0,239);
+  return true;
 }
 static void drawCalibrationTarget(uint8_t n){
   tft.fillScreen(TFT_BLACK);tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,TFT_BLACK);
@@ -78,7 +96,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V38 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V39 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -101,7 +119,7 @@ static bool splashOutput(int16_t x,int16_t y,uint16_t w,uint16_t h,uint16_t* bit
 static void showSplash(){
   tft.fillScreen(TFT_BLACK);
   TJpgDec.setJpgScale(1);
-  TJpgDec.setSwapBytes(false);
+  TJpgDec.setSwapBytes(true);
   TJpgDec.setCallback(splashOutput);
   TJpgDec.drawJpg(0,0,splash_jpg,sizeof(splash_jpg));
   printGeometry("JPEG SPLASH VARIANT 4");
@@ -233,7 +251,16 @@ static void appendMappedKey(char c) {
   }
   char value[2]={c,0}; appendKeyUtf8(value);
 }
+static void flashKeyboardKey(uint16_t x,uint16_t y){
+  int kx=-1,ky=-1,kw=0,kh=0;
+  if(y>=108&&y<=130){ky=108;kh=22;if(x>=246){int c=(x-246)/24;if(c>=0&&c<3){kx=246+c*24;kw=22;}}else{int i=(x-5)/22;if(i>=0&&i<10){kx=5+i*22;kw=21;}}}
+  else if(y>=133&&y<=155){ky=133;kh=22;if(x>=246){int c=(x-246)/24;if(c>=0&&c<3){kx=246+c*24;kw=22;}}else{int i=(x-16)/24;if(i>=0&&i<9){kx=16+i*24;kw=22;}}}
+  else if(y>=158&&y<=180){ky=158;kh=22;if(x>=246){int c=(x-246)/24;if(c>=0&&c<3){kx=246+c*24;kw=22;}}else{int i=(x-40)/25;if(i>=0&&i<7){kx=40+i*25;kw=22;}}}
+  else if(y>=183&&y<=205){ky=184;kh=19;if(x<46){kx=5;kw=40;}else if(x<93){kx=48;kw=43;}else if(x<158){kx=94;kw=62;}else if(x<200){kx=159;kw=39;}else if(x<244){kx=201;kw=42;}else if(x>=270&&x<=294){kx=270;kw=22;}}
+  if(kx>=0){tft.fillRoundRect(kx,ky,kw,kh,3,TFT_CYAN);tft.drawRoundRect(kx,ky,kw,kh,3,TFT_WHITE);delay(75);}
+}
 static void handleKeyboardTap(uint16_t x,uint16_t y) {
+  flashKeyboardKey(x,y);
   // CONNECT is deliberately limited to the left side. The DEL key is on
   // the right and must never start a connection, even with small Y drift.
   if(y>=209 && y<=239 && x>=5 && x<=195) { setupMessage=""; beginWiFi(); return; }
@@ -351,10 +378,10 @@ static void updateTouchCalibration(){
  uint16_t rx=0,ry=0;if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
  if(touchWasDown||millis()-lastTouchAt<45)return;touchWasDown=true;lastTouchAt=millis();
  touchCorners[(touchCalStep-1)*2]=rx;touchCorners[(touchCalStep-1)*2+1]=ry;
- Serial.printf("Touch calibration %u/4 %u,%u\\n",touchCalStep,rx,ry);++touchCalStep;
+ Serial.printf("Touch calibration %u/4 raw=%u,%u\\n",touchCalStep,rx,ry);++touchCalStep;
  if(touchCalStep<=4){drawCalibrationTarget(touchCalStep-1);return;}
  prefs.putBytes("touchraw",touchCorners,sizeof(touchCorners));prefs.putUChar("touchv",5);
- touchCalibrated=true;screen=Screen::Init;showInitialization();screenStartedAt=millis();
+ Serial.printf("Touch corners TL=%u,%u TR=%u,%u BL=%u,%u BR=%u,%u\\n",touchCorners[0],touchCorners[1],touchCorners[2],touchCorners[3],touchCorners[4],touchCorners[5],touchCorners[6],touchCorners[7]);\n touchCalibrated=true;screen=Screen::Init;showInitialization();screenStartedAt=millis();
 }
 static void backspace() {
   String& target=editingPassword?wifiPassword:wifiName;
@@ -384,6 +411,7 @@ void setup() {
   pinMode(Pins::TFT_BACKLIGHT,OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT,HIGH);
   tft.init();
+  tft.invertDisplay(false);
   pinMode(TOUCH_CS,OUTPUT);digitalWrite(TOUCH_CS,HIGH);
   pinMode(TOUCH_IRQ_PIN,INPUT);
   touchSPI.begin(TOUCH_CLK_PIN,TOUCH_MISO_PIN,TOUCH_MOSI_PIN,TOUCH_CS);

@@ -23,11 +23,12 @@ static constexpr uint16_t TOUCH_THRESHOLD = 250;
 static constexpr uint16_t FIELD_HIT_TOP = 24;
 static constexpr uint16_t FIELD_HIT_BOTTOM = 99;
 
-enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Failed };
+enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, SystemInfo, Failed };
 static Screen screen = Screen::Splash;
 static uint32_t screenStartedAt = 0;
 static uint32_t wifiAttemptAt = 0;
 static uint32_t lastTouchAt = 0;
+static uint32_t lastDashboardRefreshAt = 0;
 static bool wifiScreenDrawn = false;
 static bool keyboardNeedsRedraw = true;
 static bool gpsSeen = false;
@@ -100,7 +101,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V41 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V43 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -341,15 +342,79 @@ static void showConnecting() {
   tft.drawString("Please wait",tft.width()/2,tft.height()-7,1);
 }
 
+static void drawNavigation(uint8_t active) {
+  const uint16_t activeColor=0x07FF;
+  const uint16_t idleColor=0x001F;
+  drawButton(5,207,98,29,"GPS",active==0?activeColor:idleColor);
+  drawButton(111,207,98,29,"SAT",active==1?activeColor:idleColor);
+  drawButton(217,207,98,29,"SYSTEM",active==2?activeColor:idleColor);
+}
+
+static void drawGpsPanel() {
+  tft.fillRect(7,104,306,99,BG);
+  const bool fix=gps.location.isValid() && gps.location.age()<10000;
+  char line[48];
+  if(fix) {
+    snprintf(line,sizeof(line),"LAT  %.5f",gps.location.lat());
+    tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_GREEN,BG);
+    tft.drawString(line,12,108,2);
+    snprintf(line,sizeof(line),"LON  %.5f",gps.location.lng());
+    tft.setTextColor(TFT_CYAN,BG); tft.drawString(line,12,132,2);
+    const uint32_t sats=gps.satellites.isValid()?gps.satellites.value():0;
+    const double alt=gps.altitude.isValid()?gps.altitude.meters():0.0;
+    snprintf(line,sizeof(line),"SAT %lu   ALT %.1f m",(unsigned long)sats,alt);
+    tft.setTextColor(TFT_WHITE,BG); tft.drawString(line,12,157,2);
+  } else {
+    tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_YELLOW,BG);
+    tft.drawString("WAITING FOR GPS FIX",12,112,2);
+    const uint32_t sats=gps.satellites.isValid()?gps.satellites.value():0;
+    snprintf(line,sizeof(line),"SATELLITES: %lu",(unsigned long)sats);
+    tft.setTextColor(TFT_WHITE,BG); tft.drawString(line,12,143,2);
+    tft.setTextColor(MUTED,BG); tft.drawString("Check antenna and GPS wiring",12,170,1);
+  }
+  if(gps.time.isValid()) {
+    snprintf(line,sizeof(line),"UTC %02u:%02u:%02u",gps.time.hour(),gps.time.minute(),gps.time.second());
+  } else {
+    snprintf(line,sizeof(line),"UTC --:--:--");
+  }
+  tft.setTextDatum(TR_DATUM); tft.setTextColor(MUTED,BG);
+  tft.drawString(line,307,190,1);
+}
+
+static void showDashboard() {
+  screen=Screen::Dashboard;
+  header("GPS / TRACKER","Live receiver status");
+  drawGpsPanel();
+  drawNavigation(0);
+  lastDashboardRefreshAt=millis();
+}
+
+static void showSatelliteScreen() {
+  screen=Screen::Satellite;
+  header("SATELLITE","Target selection / tracking");
+  tft.fillRoundRect(10,108,300,88,6,PANEL);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("ISS  /  ZARYA",20,117,4);
+  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString("ORBIT DATA: NOT LOADED",20,153,2);
+  tft.setTextColor(TFT_YELLOW,PANEL); tft.drawString("MOTORS: LOCKED",20,177,2);
+  drawNavigation(1);
+}
+
+static void showSystemScreen() {
+  screen=Screen::SystemInfo;
+  header("SYSTEM STATUS","Controller and network");
+  char value[32];
+  statusRow(107,"WI-FI",WiFi.status()==WL_CONNECTED?"CONNECTED":"OFFLINE",
+            WiFi.status()==WL_CONNECTED?TFT_GREEN:TFT_ORANGE);
+  snprintf(value,sizeof(value),"%d dBm",WiFi.status()==WL_CONNECTED?WiFi.RSSI():0);
+  statusRow(139,"SIGNAL",value,TFT_CYAN);
+  String ip=WiFi.status()==WL_CONNECTED?WiFi.localIP().toString():String("--");
+  statusRow(171,"IP ADDRESS",ip.c_str(),TFT_WHITE);
+  drawNavigation(2);
+}
+
 static void showConnected() {
-  header("CONNECTED","CYD is on your local network");
-  statusRow(108,"WI-FI","CONNECTED",TFT_GREEN);
-  char signalText[20], ipText[20];
-  snprintf(signalText,sizeof(signalText),"%d dBm",WiFi.RSSI());
-  WiFi.localIP().toString().toCharArray(ipText,sizeof(ipText));
-  statusRow(140,"SIGNAL",signalText,TFT_CYAN);
-  statusRow(172,"IP ADDRESS",ipText,TFT_GREEN);
-  drawButton(58,204,204,30,"CHANGE WI-FI",BLUE);
+  showDashboard();
 }
 static void showFailed() {
   header("CONNECTION FAILED","Check the network name and password");
@@ -432,6 +497,11 @@ static void handleTouch(){
  }
  Serial.printf("Touch raw=%u,%u mapped=%u,%u screen=%u\\n",rx,ry,x,y,(unsigned)screen);
  if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
+ else if((screen==Screen::Dashboard||screen==Screen::Satellite||screen==Screen::SystemInfo)&&y>=204) {
+   if(x<106) showDashboard();
+   else if(x<214) showSatelliteScreen();
+   else showSystemScreen();
+ }
  else if(screen==Screen::Connected&&y>=200){WiFi.disconnect();setupMessage="";editingPassword=false;showWifiSetup();}
  else if(screen==Screen::Failed&&y>=190){setupMessage="Check password, then connect again";showWifiSetup();}
 }
@@ -465,6 +535,10 @@ void loop() {
     if(gps.encode(Serial2.read()) && gps.location.isValid()) gpsSeen=true;
   }
   const uint32_t now=millis();
+  if(screen==Screen::Dashboard && now-lastDashboardRefreshAt>=1000) {
+    drawGpsPanel();
+    lastDashboardRefreshAt=now;
+  }
   if(screen==Screen::Splash && now-screenStartedAt>=SPLASH_MS) {
     showTouchDiagnostic();
     screenStartedAt=now;

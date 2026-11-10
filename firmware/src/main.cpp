@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
+#include <TJpg_Decoder.h>
+#include "splash_jpg.h"
 #include <WiFi.h>
 #include <Preferences.h>
 #include <TinyGPSPlus.h>
@@ -41,6 +43,12 @@ static constexpr uint16_t BLUE = 0x001F;
 static constexpr uint16_t MUTED = 0xFFFF;
 static uint16_t touchCal[5];
 
+static bool jpgOutput(int16_t x,int16_t y,uint16_t w,uint16_t h,uint16_t* bitmap) {
+  if(y>=tft.height()) return false;
+  tft.pushImage(x,y,w,h,bitmap);
+  return true;
+}
+
 static void printGeometry(const char* stage) {
   Serial.printf("CYD V32 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
@@ -58,55 +66,20 @@ static void drawSatellite(int16_t cx, int16_t cy) {
 }
 
 static void showSplash() {
-  const int16_t w=tft.width(), h=tft.height();
   tft.fillScreen(BG);
-
-  // Deep-space background and subtle stars.
-  const int16_t sx[]={12,34,61,87,111,146,174,203,229,257,291,307,43,132,238,279};
-  const int16_t sy[]={18,51,29,76,14,42,17,64,31,19,54,91,113,96,120,147};
-  for(uint8_t i=0;i<16;++i)
-    if(sx[i]<w && sy[i]<h) tft.fillCircle(sx[i],sy[i],(i%4==0)?2:1,TFT_WHITE);
-
-  // Bear-head emblem: layered silhouette, ears and muzzle.
-  const int16_t bx=82, by=108;
-  tft.drawEllipse(bx,by,70,78,0x123B);
-  tft.drawEllipse(bx,by,66,74,TFT_CYAN);
-  tft.drawEllipse(bx,by,61,69,0x041F);
-  tft.fillCircle(bx-31,by-38,19,0x7BE0);
-  tft.fillCircle(bx+31,by-38,19,0x7BE0);
-  tft.fillCircle(bx-31,by-38,10,0x39A6);
-  tft.fillCircle(bx+31,by-38,10,0x39A6);
-  tft.fillEllipse(bx,by-5,43,53,0x9A60);
-  tft.fillEllipse(bx,by+1,35,44,0xCBA4);
-  tft.fillEllipse(bx,by+22,27,19,0xE6D1);
-  tft.fillCircle(bx-14,by-10,4,TFT_BLACK);
-  tft.fillCircle(bx+14,by-10,4,TFT_BLACK);
-  tft.fillCircle(bx-13,by-11,1,TFT_WHITE);
-  tft.fillCircle(bx+15,by-11,1,TFT_WHITE);
-  tft.fillRoundRect(bx-10,by+8,20,12,5,TFT_BLACK);
-  tft.fillTriangle(bx-8,by+8,bx+8,by+8,bx,by+15,0x2104);
-  tft.drawFastHLine(bx-13,by+34,26,0x7BEF);
-
-  // Orbit and satellite motif.
-  tft.drawEllipse(bx,by,74,84,0x03FF);
-  tft.drawLine(143,53,174,24,0x03FF);
-  drawSatellite(175,25);
-
-  // Right-side title, sized for the 320x240 landscape display.
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_WHITE,BG);
-  tft.drawString("CYD",235,73,4);
-  tft.setTextColor(TFT_CYAN,BG);
-  tft.drawString("satellite",235,111,2);
-  tft.drawString("tracker",235,132,2);
-  tft.drawFastHLine(165,151,140,0x03FF);
-  tft.setTextColor(TFT_WHITE,BG);
-  tft.drawString("by Olympic Bear",235,169,2);
-  tft.setTextColor(0x9CCD,BG);
-  tft.drawString("SPACE  /  TRACK  /  CONNECT",235,204,1);
-  printGeometry("SPLASH V32");
+  TJpgDec.setJpgScale(1);
+  TJpgDec.setSwapBytes(true);
+  TJpgDec.setCallback(jpgOutput);
+  const JRESULT result=TJpgDec.drawJpg(0,0,splash_jpg,sizeof(splash_jpg));
+  if(result!=JDR_OK) {
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TFT_WHITE,BG);
+    tft.drawString("CYD satellite tracker",tft.width()/2,tft.height()/2,2);
+    tft.drawString("by Olympic Bear",tft.width()/2,tft.height()/2+24,2);
+    Serial.printf("JPEG splash decode error: %d\\n",(int)result);
+  }
+  printGeometry("JPEG SPLASH V33");
 }
-
 static void header(const char* title, const char* subtitle) {
   tft.fillScreen(BG);
   tft.fillRect(0,0,tft.width(),42,PANEL);
@@ -348,7 +321,7 @@ static void updateTouchDiagnostic() {
   }
 }
 static void calibrateTouchIfNeeded() {
-  if(prefs.getUChar("touchv",0)==2 && prefs.getBytesLength("touchcal")==sizeof(touchCal)) {
+  if(prefs.getUChar("touchv",0)==3 && prefs.getBytesLength("touchcal")==sizeof(touchCal)) {
     prefs.getBytes("touchcal",touchCal,sizeof(touchCal));
     tft.setTouch(touchCal);
     touchCalibrated=true;
@@ -357,76 +330,15 @@ static void calibrateTouchIfNeeded() {
   header("TOUCH SETUP","Touch the calibration targets");
   tft.calibrateTouch(touchCal,TFT_MAGENTA,TFT_BLACK,15);
   prefs.putBytes("touchcal",touchCal,sizeof(touchCal));
-  prefs.putUChar("touchv",2);
+  prefs.putUChar("touchv",3);
   tft.setTouch(touchCal);
   touchCalibrated=true;
   showInitialization();
 }
 
-static void appendKey(char c) {
-  String& target=editingPassword?wifiPassword:wifiName;
-  const size_t maxLen=editingPassword?63:32;
-  if(target.length()<maxLen) target += c;
-}
-
 static void backspace() {
   String& target=editingPassword?wifiPassword:wifiName;
   if(target.length()) target.remove(target.length()-1);
-}
-
-static void handleKeyboardTap(uint16_t x,uint16_t y) {
-  if(y>=279 && y<=315 && x>=8 && x<=232) {
-    setupMessage="";
-    beginWiFi();
-    return;
-  }
-  if(y>=59 && y<=90) { editingPassword=false; showWifiSetup(); return; }
-  if(y>=102 && y<=133) {
-    if(x>190) passwordVisible=!passwordVisible;
-    else editingPassword=true;
-    showWifiSetup(); return;
-  }
-  if(y>=157 && y<=182) {
-    const char* keys=symbolsPage?"1234567890":"qwertyuiop";
-    int x0=symbolsPage?4:4, kw=22, gap=1;
-    int index=(x-x0)/(kw+gap);
-    if(index>=0 && index<10 && (x-x0)%(kw+gap)<kw) {
-      char c=keys[index];
-      if(shiftKey && !symbolsPage) c=toupper(c);
-      appendKey(c); showWifiSetup();
-    }
-    return;
-  }
-  if(y>=186 && y<=211) {
-    const char* keys=symbolsPage?"@#$%&*-+()":"asdfghjkl";
-    int count=symbolsPage?10:9, x0=symbolsPage?4:14, kw=symbolsPage?22:23, gap=symbolsPage?1:2;
-    int index=(x-x0)/(kw+gap);
-    if(index>=0 && index<count && (x-x0)%(kw+gap)<kw) {
-      char c=keys[index];
-      if(shiftKey && !symbolsPage && c>='a' && c<='z') c=toupper(c);
-      appendKey(c); showWifiSetup();
-    }
-    return;
-  }
-  if(y>=215 && y<=240) {
-    if(x>=207) { backspace(); showWifiSetup(); return; }
-    const char* keys=symbolsPage?"!?.,_:;/'":"zxcvbnm";
-    int count=symbolsPage?9:7, x0=symbolsPage?8:7, kw=symbolsPage?23:25, gap=symbolsPage?2:3;
-    int index=(x-x0)/(kw+gap);
-    if(index>=0 && index<count && (x-x0)%(kw+gap)<kw) {
-      char c=keys[index];
-      if(shiftKey && !symbolsPage && c>='a' && c<='z') c=toupper(c);
-      appendKey(c); showWifiSetup();
-    }
-    return;
-  }
-  if(y>=246 && y<=273) {
-    if(x<47) shiftKey=!shiftKey;
-    else if(x<138) appendKey(' ');
-    else if(x<189) symbolsPage=!symbolsPage;
-    else { String& target=editingPassword?wifiPassword:wifiName; target=""; }
-    showWifiSetup();
-  }
 }
 
 static void handleTouch() {

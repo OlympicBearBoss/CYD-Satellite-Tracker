@@ -114,7 +114,8 @@ static void drawSatellite(int16_t cx, int16_t cy) {
 
 static bool splashOutput(int16_t x,int16_t y,uint16_t w,uint16_t h,uint16_t* bitmap){
   if(y>=tft.height()) return false;
-  for(uint32_t i=0;i<(uint32_t)w*h;i++) bitmap[i]=~bitmap[i]; // RGB565 negative correction for the splash image\n  tft.pushImage(x,y,w,h,bitmap);
+  for(uint32_t i=0;i<(uint32_t)w*h;i++) bitmap[i]=~bitmap[i]; // RGB565 negative correction for the splash image
+  tft.pushImage(x,y,w,h,bitmap);
   return true;
 }
 static void showSplash(){
@@ -200,11 +201,17 @@ static void drawLetterRow(const char* keys,int y,int x,int keyW,int gap) {
   }
 }
 static void showWifiSetup() {
+  const bool firstDraw = (screen != Screen::WifiSetup) || !wifiScreenDrawn;
   screen=Screen::WifiSetup;
-  tft.fillScreen(BG);
-  tft.fillRect(0,0,tft.width(),27,PANEL);
+  if(firstDraw) {
+    tft.fillScreen(BG);
+    tft.fillRect(0,0,tft.width(),27,PANEL);
+    tft.setTextDatum(TL_DATUM);
+    tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("WI-FI SETUP",7,5,2);
+  } else {
+    tft.fillRect(0,104,tft.width(),136,BG);
+  }
   tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("WI-FI SETUP",7,5,2);
   tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(russianLayout?"RU":"EN",275,6,2);
   drawField(37,"NETWORK / SSID",wifiName,!editingPassword,false);
   drawField(68,"PASSWORD",wifiPassword,editingPassword,true);
@@ -218,11 +225,11 @@ static void showWifiSetup() {
   } else {
     drawLetterRow("!@#$%^&*()",108,5,21,1);
     drawLetterRow("-_=+[]{};:",133,16,22,2);
-    drawLetterRow(".,?/'\\|~",158,40,22,3);
+    drawLetterRow(".,?/'\\\\|~",158,40,22,3);
   }
   const char* nums[3]={"123","456","789"};
-  for(int r=0;r<3;++r) for(int c=0;c<3;++c) {
-    char k[2]={nums[r][c],0}; drawKey(246+c*24,108+r*25,22,22,k,0x0000);
+  for(int r=0;r<3;++r) for(int col=0;col<3;++col) {
+    char k[2]={nums[r][col],0}; drawKey(246+col*24,108+r*25,22,22,k,0x0000);
   }
   drawKey(270,183,22,19,"0",0x0000);
   drawKey(5,184,40,19,russianLayout?"RU":"EN",0x0000);
@@ -233,6 +240,7 @@ static void showWifiSetup() {
   drawButton(5,209,190,27,"CONNECT",0x07FF);
   tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_WHITE,BG);
   tft.drawString(passwordVisible?"HIDE":"SHOW",315,91,1);
+  wifiScreenDrawn=true;
 }
 static void appendKeyUtf8(const char* value) {
   String& target=editingPassword?wifiPassword:wifiName;
@@ -253,7 +261,7 @@ static void appendMappedKey(char c) {
   char value[2]={c,0}; appendKeyUtf8(value);
 }
 static void handleKeyboardTap(uint16_t x,uint16_t y) {
-  flashKeyboardKey(x,y);
+
   // CONNECT is deliberately limited to the left side. The DEL key is on
   // the right and must never start a connection, even with small Y drift.
   if(y>=209 && y<=239 && x>=5 && x<=195) { setupMessage=""; beginWiFi(); return; }

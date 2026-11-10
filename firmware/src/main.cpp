@@ -380,17 +380,47 @@ static void drawNavigation(uint8_t active) {
 }
 
 static void drawGpsPanel() {
-  // Compact two-card dashboard sized for the CYD's 320x240 landscape display.
+  // Draw the dashboard frame and all static graphics only once on page entry.
   tft.fillRoundRect(8,101,151,96,8,PANEL);
   tft.drawRoundRect(8,101,151,96,8,0x2A69);
   tft.fillRoundRect(165,101,147,96,8,PANEL);
   tft.drawRoundRect(165,101,147,96,8,0x2A69);
 
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(TFT_CYAN,PANEL);
+  tft.drawString("POSITION / GPS",16,106,1);
+  tft.drawFastHLine(16,121,135,0x2A69);
+  tft.setTextColor(TFT_CYAN,PANEL);
+  tft.drawString("TRACKING TARGET",174,106,1);
+  tft.drawFastHLine(174,121,128,0x2A69);
+  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString("ISS / ZARYA",174,128,2);
+  tft.setTextColor(TFT_YELLOW,PANEL); tft.drawString("ORBIT DATA PENDING",174,150,1);
+  tft.setTextColor(MUTED,PANEL); tft.drawString("AZ  --.-   EL  --.-",174,166,1);
+  tft.setTextColor(TFT_ORANGE,PANEL); tft.drawString("MOTORS LOCKED",174,183,1);
+
+  // Decorative radar is static; no live bearing is implied.
+  const int16_t cx=282,cy=151;
+  tft.drawCircle(cx,cy,25,0x2A69);
+  tft.drawCircle(cx,cy,16,0x2A69);
+  tft.drawCircle(cx,cy,7,0x2A69);
+  tft.drawFastHLine(cx-25,cy,50,0x2A69);
+  tft.drawFastVLine(cx,cy-25,50,0x2A69);
+  tft.drawLine(cx-18,cy+18,cx+18,cy-18,0x2A69);
+  tft.fillCircle(cx+9,cy-8,3,TFT_RED);
+  tft.fillCircle(cx,cy,2,TFT_CYAN);
+
+  tft.fillRect(8,199,304,1,0x2A69);
+  updateGpsTelemetry();
+}
+
+static void updateGpsTelemetry() {
+  // Update only changing text fields. Never repaint the cards or radar here.
   const bool fix=gps.location.isValid() && gps.location.age()<10000;
-  tft.fillCircle(19,114,4,fix?TFT_GREEN:TFT_YELLOW);
+  tft.fillRect(15,123,137,54,PANEL);
+  tft.fillCircle(145,112,3,fix?TFT_GREEN:TFT_YELLOW);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,PANEL);
-  tft.drawString(fix?"GPS FIX":"GPS SEARCH",28,107,1);
+  tft.drawString(fix?"FIX":"SEARCH",86,106,1);
 
   char line[40];
   if(fix) {
@@ -405,23 +435,10 @@ static void drawGpsPanel() {
   const uint32_t sats=gps.satellites.isValid()?gps.satellites.value():0;
   const double alt=gps.altitude.isValid()?gps.altitude.meters():0.0;
   snprintf(line,sizeof(line),"SAT %lu  ALT %.0fm",(unsigned long)sats,alt);
+  tft.fillRect(15,176,137,16,PANEL);
   tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(line,16,178,1);
 
-  tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("ISS / ZARYA",174,108,2);
-  tft.setTextColor(TFT_YELLOW,PANEL); tft.drawString("ORBIT: WAITING",174,132,1);
-  tft.setTextColor(MUTED,PANEL); tft.drawString("AZ  --   EL  --",174,149,1);
-  tft.setTextColor(TFT_ORANGE,PANEL); tft.drawString("MOTORS LOCKED",174,177,1);
-
-  // Decorative radar target only; no false live bearing is displayed.
-  const int16_t cx=282,cy=151;
-  tft.drawCircle(cx,cy,27,0x2A69);
-  tft.drawCircle(cx,cy,17,0x2A69);
-  tft.drawFastHLine(cx-27,cy,54,0x2A69);
-  tft.drawFastVLine(cx,cy-27,54,0x2A69);
-  tft.fillCircle(cx+9,cy-8,3,TFT_RED);
-  tft.drawCircle(cx,cy,3,TFT_CYAN);
-
-  tft.fillRect(8,199,304,1,0x2A69);
+  tft.fillRect(9,200,302,7,BG);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(WiFi.status()==WL_CONNECTED?TFT_GREEN:TFT_ORANGE,BG);
   tft.drawString(WiFi.status()==WL_CONNECTED?"WI-FI CONNECTED":"WI-FI OFFLINE",10,198,1);
@@ -431,7 +448,6 @@ static void drawGpsPanel() {
   else snprintf(line,sizeof(line),"UTC --:--:--");
   tft.drawString(line,309,198,1);
 }
-
 static void showDashboard() {
   screen=Screen::Dashboard;
   header("DASHBOARD","GPS / SATELLITE TRACKER");
@@ -624,7 +640,7 @@ void loop() {
   }
   const uint32_t now=millis();
   if(screen==Screen::Dashboard && now-lastDashboardRefreshAt>=1000) {
-    drawGpsPanel();
+    updateGpsTelemetry();
     lastDashboardRefreshAt=now;
   }
   if(screen==Screen::Splash && now-screenStartedAt>=SPLASH_MS) {

@@ -441,17 +441,17 @@ static void showDashboard() {
 
 static void satelliteRow(int y,const char* name,const char* type,bool selected) {
   const uint16_t fill=selected?0x123B:PANEL;
-  tft.fillRoundRect(9,y,302,39,5,fill);
-  tft.drawRoundRect(9,y,302,39,5,selected?TFT_CYAN:0x2A69);
-  tft.fillCircle(22,y+19,4,selected?TFT_GREEN:TFT_CYAN);
+  tft.fillRoundRect(9,y,302,30,5,fill);
+  tft.drawRoundRect(9,y,302,30,5,selected?TFT_CYAN:0x2A69);
+  tft.fillCircle(22,y+15,4,selected?TFT_GREEN:TFT_CYAN);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(selected?TFT_CYAN:TFT_WHITE,fill);
-  tft.drawString(name,34,y+4,2);
+  tft.drawString(name,34,y+2,2);
   tft.setTextColor(MUTED,fill);
-  tft.drawString(type,34,y+22,1);
+  tft.drawString(type,34,y+18,1);
   tft.setTextDatum(MR_DATUM);
   tft.setTextColor(TFT_YELLOW,fill);
-  tft.drawString(selected?"SELECTED":"ORBIT N/A",302,y+19,1);
+  tft.drawString(selected?"SELECTED":"ORBIT N/A",302,y+15,1);
 }
 
 static void showSatelliteScreen() {
@@ -461,8 +461,8 @@ static void showSatelliteScreen() {
   tft.drawString("ISS  /  ZARYA",75,96,2); tft.setTextColor(TFT_CYAN,0x123B);
   tft.drawString("INTERNATIONAL SPACE STATION",75,119,1);
   tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_GREEN,0x123B); tft.drawString("PRIORITY 01",300,101,1);
-  satelliteRow(150,"NOAA-18","WEATHER SATELLITE  /  ORBIT NOT LOADED",false);
-  satelliteRow(190,"NOAA-19","WEATHER SATELLITE  /  ORBIT NOT LOADED",false);
+  satelliteRow(140,"NOAA-18","WEATHER SATELLITE  /  ORBIT NOT LOADED",false);
+  satelliteRow(174,"NOAA-19","WEATHER SATELLITE  /  ORBIT NOT LOADED",false);
   drawNavigation(1);
 }
 

@@ -33,6 +33,7 @@ static bool wifiScreenDrawn = false;
 static bool keyboardNeedsRedraw = true;
 static bool gpsSeen = false;
 static bool touchCalibrated = false;
+static bool calibrationFromSystem = false;
 static uint16_t rawTouchX = 0, rawTouchY = 0;
 static bool rawTouchDetected = false;
 static bool symbolsPage = false;
@@ -96,6 +97,21 @@ static bool mapRawTouch(uint16_t rx,uint16_t ry,uint16_t &x,uint16_t &y){
   y=constrain((int)(18.0f+v*204.0f+0.5f),0,239);
   return true;
 }
+static bool loadTouchCalibration() {
+  if (prefs.getUChar("touchv",0) != 5) return false;
+  if (prefs.getBytesLength("touchraw") != sizeof(touchCorners)) return false;
+  if (prefs.getBytes("touchraw",touchCorners,sizeof(touchCorners)) != sizeof(touchCorners)) return false;
+  for (uint8_t i=0;i<8;i++) if (touchCorners[i] < 100 || touchCorners[i] > 4000) return false;
+  const float ax=(float)touchCorners[2]-touchCorners[0];
+  const float ay=(float)touchCorners[3]-touchCorners[1];
+  const float bx=(float)touchCorners[4]-touchCorners[0];
+  const float by=(float)touchCorners[5]-touchCorners[1];
+  if (fabsf(ax*by-ay*bx) < 1000.0f) return false;
+  touchCalibrated=true;
+  Serial.println("Touch calibration restored from NVS");
+  return true;
+}
+
 static void drawCalibrationTarget(uint8_t n){
   tft.fillScreen(TFT_BLACK);tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,TFT_BLACK);
   tft.drawString("TOUCH CALIBRATION",8,8,2);char msg[32];snprintf(msg,sizeof(msg),"Tap target %u of 4",n+1);
@@ -105,7 +121,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V50 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V51 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -479,18 +495,24 @@ static void showAntennaScreen() {
 }
 
 static void showSystemScreen() {
-  screen=Screen::SystemInfo; header("SYSTEM","LIVE CONTROLLER DIAGNOSTICS");
+  screen=Screen::SystemInfo; header("SYSTEM","DEVICE STATUS  /  CONFIGURATION");
   const bool wifi=WiFi.status()==WL_CONNECTED;
-  tft.fillRoundRect(9,89,147,49,7,PANEL); tft.drawRoundRect(9,89,147,49,7,0x2A69);
-  tft.fillRoundRect(164,89,147,49,7,PANEL); tft.drawRoundRect(164,89,147,49,7,0x2A69);
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(MUTED,PANEL);
-  tft.drawString("WI-FI STATUS",18,96,1); tft.drawString("GPS RECEIVER",173,96,1);
-  tft.setTextColor(wifi?TFT_GREEN:TFT_ORANGE,PANEL); tft.drawString(wifi?"CONNECTED":"OFFLINE",18,113,2);
   const bool fix=gps.location.isValid() && gps.location.age()<10000;
-  tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,PANEL); tft.drawString(fix?"3D FIX":"SEARCHING",173,113,2);
-  String ip=wifi?WiFi.localIP().toString():String("--"); statusRow(145,"IP ADDRESS",ip.c_str(),TFT_WHITE);
-  char value[32]; snprintf(value,sizeof(value),"%d dBm",wifi?WiFi.RSSI():0);
-  statusRow(176,"SIGNAL",wifi?value:"--",TFT_CYAN); drawNavigation(3);
+  tft.fillRoundRect(8,88,148,52,7,PANEL); tft.drawRoundRect(8,88,148,52,7,0x2A69);
+  tft.fillRoundRect(164,88,148,52,7,PANEL); tft.drawRoundRect(164,88,148,52,7,0x2A69);
+  tft.setTextDatum(TL_DATUM); tft.setTextColor(MUTED,PANEL);
+  tft.drawString("WI-FI NETWORK",17,95,1); tft.drawString("GPS RECEIVER",173,95,1);
+  tft.setTextColor(wifi?TFT_GREEN:TFT_ORANGE,PANEL);
+  tft.drawString(wifi?"CONNECTED":"DISCONNECTED",17,112,2);
+  tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,PANEL);
+  tft.drawString(fix?"POSITION FIX":"SEARCHING",173,112,2);
+  tft.setTextColor(MUTED,BG); tft.setTextDatum(TL_DATUM);
+  String ip=wifi?WiFi.localIP().toString():String("IP: --");
+  tft.drawString(ip.c_str(),17,127,1);
+  tft.drawString(wifiName.length()?wifiName.c_str():"NO SAVED NETWORK",173,127,1);
+  drawButton(9,151,147,42,"CALIBRATE TOUCH",0x035F);
+  drawButton(164,151,147,42,"CHANGE WI-FI",0x03B9);
+  drawNavigation(3);
 }
 
 static void showConnected() {
@@ -556,7 +578,10 @@ static void updateTouchCalibration(){
  if(touchCalStep<=4){drawCalibrationTarget(touchCalStep-1);return;}
  prefs.putBytes("touchraw",touchCorners,sizeof(touchCorners));prefs.putUChar("touchv",5);
  Serial.printf("Touch corners TL=%u,%u TR=%u,%u BL=%u,%u BR=%u,%u\\n",touchCorners[0],touchCorners[1],touchCorners[2],touchCorners[3],touchCorners[4],touchCorners[5],touchCorners[6],touchCorners[7]);
- touchCalibrated=true;screen=Screen::Init;showInitialization();screenStartedAt=millis();
+ touchCalibrated=true;
+ prefs.putBytes("touchraw",touchCorners,sizeof(touchCorners)); prefs.putUChar("touchv",5);
+ if(calibrationFromSystem) { calibrationFromSystem=false; touchWasDown=false; showSystemScreen(); }
+ else { screen=Screen::Init; showInitialization(); screenStartedAt=millis(); }
 }
 static void backspace() {
   String& target=editingPassword?wifiPassword:wifiName;
@@ -574,6 +599,15 @@ static void handleTouch(){
  touchWasDown=true;lastTouchAt=millis();
  Serial.printf("Touch stable raw=%u,%u mapped=%u,%u screen=%u\\n",rx,ry,x,y,(unsigned)screen);
  if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
+ else if(screen==Screen::SystemInfo && y>=145 && y<=199) {
+   if(x<160) {
+     calibrationFromSystem=true; touchCalibrated=false; touchCalStep=1;
+     touchWasDown=false; drawCalibrationTarget(0);
+   } else {
+     WiFi.disconnect(false,false); editingPassword=false; setupMessage="Edit network, then press CONNECT";
+     wifiScreenDrawn=false; showWifiSetup();
+   }
+ }
  else if((screen==Screen::Dashboard||screen==Screen::Satellite||screen==Screen::Antenna||screen==Screen::SystemInfo)&&y>=204) {
    if(x<81) showDashboard();
    else if(x<160) showSatelliteScreen();
@@ -602,7 +636,9 @@ void setup() {
   if(!wifiName.length() && WIFI_SSID[0]) {
     wifiName=WIFI_SSID;
     wifiPassword=WIFI_PASSWORD;
+    prefs.putString("ssid",wifiName); prefs.putString("password",wifiPassword);
   }
+  loadTouchCalibration();
   showSplash();
   screen=Screen::Splash;
   screenStartedAt=millis();
@@ -618,7 +654,8 @@ void loop() {
     lastDashboardRefreshAt=now;
   }
   if(screen==Screen::Splash && now-screenStartedAt>=SPLASH_MS) {
-    showTouchDiagnostic();
+    if(touchCalibrated) { screen=Screen::Init; showInitialization(); screenStartedAt=now; }
+    else showTouchDiagnostic();
     screenStartedAt=now;
   } else if(screen==Screen::TouchTest) {
     if(touchCalStep>=1&&!touchCalibrated)updateTouchCalibration();else updateTouchDiagnostic();

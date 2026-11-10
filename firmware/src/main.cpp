@@ -19,7 +19,7 @@ static uint32_t pageStartedAt = 0;
 
 static void printGeometry(const char* stage) {
   Serial.printf(
-    "DISPLAY DIAG V25 | %s | rotation=%u | logical=%dx%d | SPI write=%u Hz | SPI read=%u Hz\n",
+    "DISPLAY DIAG V26 | %s | rotation=%u | logical=%dx%d | SPI write=%u Hz | SPI read=%u Hz\n",
     stage,
     tft.getRotation(),
     tft.width(),
@@ -34,7 +34,7 @@ static void showSolid(uint8_t index) {
   tft.fillScreen(color);
   // A tiny black marker at the logical bottom-right verifies the final addressable pixel.
   tft.drawPixel(tft.width() - 1, tft.height() - 1, color == TFT_BLACK ? TFT_WHITE : TFT_BLACK);
-  Serial.printf("V25 SOLID %s (%u/%u)\n", solidNames[index],
+  Serial.printf("V26 SOLID %s (%u/%u)\n", solidNames[index],
                 index + 1, (unsigned)(sizeof(solidColors) / sizeof(solidColors[0])));
 }
 
@@ -69,7 +69,7 @@ static void showAddressPattern() {
 
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
-  tft.drawString("V25 ADDRESS TEST", 6, 8, 2);
+  tft.drawString("V26 ADDRESS TEST", 6, 8, 2);
 
   tft.setTextDatum(BL_DATUM);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);

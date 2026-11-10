@@ -17,7 +17,7 @@ static constexpr uint8_t DISPLAY_ROTATION = 1;
 static constexpr uint32_t SPLASH_MS = 6000;
 static constexpr uint32_t INIT_MS = 3500;
 static constexpr uint32_t WIFI_TIMEOUT_MS = 20000;
-static constexpr uint16_t TOUCH_THRESHOLD = 350;
+static constexpr uint16_t TOUCH_THRESHOLD = 250;
 
 enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Failed };
 static Screen screen = Screen::Splash;
@@ -296,7 +296,7 @@ static void showTouchDiagnostic() {
   tft.fillRect(0,0,tft.width(),42,0x3186);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TFT_YELLOW,0x3186); tft.drawString("TOUCH TEST / XPT2046",8,7,2);
-  tft.setTextColor(TFT_WHITE,0x3186); tft.drawString("Touch the screen",8,26,1);
+  tft.setTextColor(TFT_WHITE,0x3186); tft.drawString("Tap once to start calibration",8,26,1);
   tft.setTextColor(TFT_WHITE,TFT_BLACK);
   tft.drawString("Raw touch controller check",12,68,2);
   tft.drawString("X:",18,112,2); tft.drawString("Y:",18,145,2);
@@ -322,7 +322,7 @@ static void updateTouchDiagnostic() {
   }
 }
 static void calibrateTouchIfNeeded() {
-  if(prefs.getUChar("touchv",0)==3 && prefs.getBytesLength("touchcal")==sizeof(touchCal)) {
+  if(prefs.getUChar("touchv",0)==4 && prefs.getBytesLength("touchcal")==sizeof(touchCal)) {
     prefs.getBytes("touchcal",touchCal,sizeof(touchCal));
     tft.setTouch(touchCal);
     touchCalibrated=true;
@@ -331,7 +331,7 @@ static void calibrateTouchIfNeeded() {
   header("TOUCH SETUP","Touch the calibration targets");
   tft.calibrateTouch(touchCal,TFT_MAGENTA,TFT_BLACK,15);
   prefs.putBytes("touchcal",touchCal,sizeof(touchCal));
-  prefs.putUChar("touchv",3);
+  prefs.putUChar("touchv",4);
   tft.setTouch(touchCal);
   touchCalibrated=true;
   showInitialization();
@@ -347,6 +347,7 @@ static void handleTouch() {
   uint16_t x,y;
   if(!tft.getTouch(&x,&y,TOUCH_THRESHOLD)) return;
   lastTouchAt=millis();
+  Serial.printf("XPT2046 calibrated touch: X=%u Y=%u screen=%u\\n",x,y,(unsigned)screen);
   if(screen==Screen::WifiSetup) handleKeyboardTap(x,y);
   else if(screen==Screen::Connected && y>=200) {
     WiFi.disconnect();
@@ -365,6 +366,9 @@ void setup() {
   pinMode(Pins::TFT_BACKLIGHT,OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT,HIGH);
   tft.init();
+  // XPT2046 shares the display SPI bus; keep its chip-select inactive until sampled.
+  pinMode(TOUCH_CS, OUTPUT);
+  digitalWrite(TOUCH_CS, HIGH);
   tft.setRotation(DISPLAY_ROTATION);
   tft.fillScreen(TFT_BLACK);
   Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1);

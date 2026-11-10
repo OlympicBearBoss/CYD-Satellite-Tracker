@@ -20,6 +20,8 @@ static constexpr uint32_t SPLASH_MS = 6000;
 static constexpr uint32_t INIT_MS = 3500;
 static constexpr uint32_t WIFI_TIMEOUT_MS = 20000;
 static constexpr uint16_t TOUCH_THRESHOLD = 250;
+static constexpr uint16_t FIELD_HIT_TOP = 24;
+static constexpr uint16_t FIELD_HIT_BOTTOM = 99;
 
 enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Failed };
 static Screen screen = Screen::Splash;
@@ -76,7 +78,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V34 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V37 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -233,9 +235,15 @@ static void appendMappedKey(char c) {
 }
 static void handleKeyboardTap(uint16_t x,uint16_t y) {
   if(y>=209 && x>=5 && x<=315) { setupMessage=""; beginWiFi(); return; }
-  if(y>=37 && y<=63) { editingPassword=false; showWifiSetup(); return; }
-  if(y>=68 && y<=94) {
-    if(x>270) passwordVisible=!passwordVisible; else editingPassword=true;
+  // Generous, non-overlapping hit zones include the field captions as well as
+  // the value boxes. This makes SSID/password selection easier on the small panel.
+  if(y>=FIELD_HIT_TOP && y<65) {
+    if(editingPassword) { editingPassword=false; showWifiSetup(); }
+    return;
+  }
+  if(y>=65 && y<=FIELD_HIT_BOTTOM) {
+    if(x>270 && y>=82) passwordVisible=!passwordVisible;
+    else if(!editingPassword) { editingPassword=true; }
     showWifiSetup(); return;
   }
   if(y>=108 && y<=130) {
@@ -357,7 +365,7 @@ static void handleTouch(){
  // blocking every subsequent key after a screen redraw.
  uint16_t rx=0,ry=0,x=0,y=0;
  if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
- if(touchWasDown||millis()-lastTouchAt<20)return;
+ if(touchWasDown||millis()-lastTouchAt<12)return;
  touchWasDown=true;lastTouchAt=millis();
  if(!mapRawTouch(rx,ry,x,y)){
    Serial.printf("Touch map failed raw=%u,%u\\n",rx,ry);

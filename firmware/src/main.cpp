@@ -143,7 +143,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V53 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V55 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -412,19 +412,36 @@ static void handleKeyboardTap(uint16_t x,uint16_t y) {
     else if(!editingPassword) editingPassword=true;
     showWifiSetup(); return;
   }
-  if(y>=108 && y<=130) {
-    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3&&x<246+c*24+22) { Serial.printf("NUMKEY row=1 col=%d x=%u\\n",c,x); appendMappedKey("123"[c]); } }
-    else { int c=(x-5)/22; if(c>=0&&c<10&&x<5+c*22+21) appendMappedKey((symbolsPage?"!@#$%^&*()":"qwertyuiop")[c]); }
+  // Hit zones mirror the actual drawn rectangles. Keep the numeric keypad
+  // independent from the letter-row spacing (22/24/25 px differ by row).
+  if(y>=108 && y<130) {
+    if(x>=246 && x<318) {
+      const int col=(x-246)/24;
+      if(col<3 && x<(246+col*24+22)) { Serial.printf("KEYMAP digit=%c mapped=%u,%u raw=%u,%u\\n","123"[col],x,y,rawTouchX,rawTouchY); appendMappedKey("123"[col]); }
+    } else if(x>=5 && x<225) {
+      const int col=(x-5)/22;
+      if(col<10 && x<5+col*22+21) appendMappedKey((symbolsPage?"!@#$%^&*()":"qwertyuiop")[col]);
+    }
     showWifiSetup(); return;
   }
-  if(y>=133 && y<=155) {
-    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3&&x<246+c*24+22) { Serial.printf("NUMKEY row=2 col=%d x=%u\\n",c,x); appendMappedKey("456"[c]); } }
-    else { int c=(x-16)/24; if(c>=0&&c<9&&x<16+c*24+22) appendMappedKey((symbolsPage?"-_=+[]{};:":"asdfghjkl")[c]); }
+  if(y>=133 && y<155) {
+    if(x>=246 && x<318) {
+      const int col=(x-246)/24;
+      if(col<3 && x<(246+col*24+22)) { Serial.printf("KEYMAP digit=%c mapped=%u,%u raw=%u,%u\\n","456"[col],x,y,rawTouchX,rawTouchY); appendMappedKey("456"[col]); }
+    } else if(x>=16 && x<232) {
+      const int col=(x-16)/26;
+      if(col<9 && x<16+col*26+22) appendMappedKey((symbolsPage?"-_=+[]{};:":"asdfghjkl")[col]);
+    }
     showWifiSetup(); return;
   }
-  if(y>=158 && y<=180) {
-    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3&&x<246+c*24+22) { Serial.printf("NUMKEY row=3 col=%d x=%u\\n",c,x); appendMappedKey("789"[c]); } }
-    else { int c=(x-40)/25; if(c>=0&&c<7&&x<40+c*25+22) appendMappedKey((symbolsPage?".,?/'\\\\|~":"zxcvbnm")[c]); }
+  if(y>=158 && y<180) {
+    if(x>=246 && x<318) {
+      const int col=(x-246)/24;
+      if(col<3 && x<(246+col*24+22)) { Serial.printf("KEYMAP digit=%c mapped=%u,%u raw=%u,%u\\n","789"[col],x,y,rawTouchX,rawTouchY); appendMappedKey("789"[col]); }
+    } else if(x>=40 && x<215) {
+      const int col=(x-40)/25;
+      if(col<7 && x<40+col*25+22) appendMappedKey((symbolsPage?".,?/'\\\\|~":"zxcvbnm")[col]);
+    }
     showWifiSetup(); return;
   }
   if(y>=183 && y<=205) {
@@ -704,10 +721,24 @@ static void updateTouchDiagnostic(){
  touchCalStep=1;drawCalibrationTarget(0);
 }
 static void updateTouchCalibration(){
- uint16_t rx=0,ry=0;if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
- if(touchWasDown||millis()-lastTouchAt<45)return;touchWasDown=true;lastTouchAt=millis();
+ uint16_t rx=0,ry=0;
+ if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
+ if(touchWasDown||millis()-lastTouchAt<45)return;
+ touchWasDown=true;lastTouchAt=millis();
+ // Take a burst at each calibration target. A single XPT2046 sample can be
+ // displaced enough to move the whole keyboard by one 24 px numeric key.
+ uint16_t sx[7],sy[7]; sx[0]=rx; sy[0]=ry;
+ for(uint8_t i=1;i<7;i++){
+   if(!readXpt2046(sx[i],sy[i])) { sx[i]=sx[i-1]; sy[i]=sy[i-1]; }
+   delay(3);
+ }
+ for(uint8_t i=0;i<7;i++) for(uint8_t j=i+1;j<7;j++){
+   if(sx[j]<sx[i]){uint16_t t=sx[i];sx[i]=sx[j];sx[j]=t;}
+   if(sy[j]<sy[i]){uint16_t t=sy[i];sy[i]=sy[j];sy[j]=t;}
+ }
+ rx=sx[3]; ry=sy[3];
  touchCorners[(touchCalStep-1)*2]=rx;touchCorners[(touchCalStep-1)*2+1]=ry;
- Serial.printf("Touch calibration %u/4 raw=%u,%u\\n",touchCalStep,rx,ry);++touchCalStep;
+ Serial.printf("Touch calibration %u/4 median7=%u,%u\\n",touchCalStep,rx,ry);++touchCalStep;
  if(touchCalStep<=4){drawCalibrationTarget(touchCalStep-1);return;}
  prefs.putBytes("touchraw",touchCorners,sizeof(touchCorners));prefs.putUChar("touchv",5);
  Serial.printf("Touch corners TL=%u,%u TR=%u,%u BL=%u,%u BR=%u,%u\\n",touchCorners[0],touchCorners[1],touchCorners[2],touchCorners[3],touchCorners[4],touchCorners[5],touchCorners[6],touchCorners[7]);
@@ -730,7 +761,8 @@ static void handleTouch(){
  if(touchWasDown||millis()-lastTouchAt<35)return;
  if(!readStableTouch(rx,ry,x,y))return;
  touchWasDown=true;lastTouchAt=millis();
- Serial.printf("Touch stable raw=%u,%u mapped=%u,%u screen=%u\\n",rx,ry,x,y,(unsigned)screen);
+ rawTouchX=rx; rawTouchY=ry;
+ Serial.printf("Touch stable raw=%u,%u mapped=%u,%u rot=%u screen=%u\\n",rx,ry,x,y,tft.getRotation(),(unsigned)screen);
  if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
  else if(screen==Screen::SystemInfo && y>=145 && y<=199) {
    if(x<160) {

@@ -28,6 +28,7 @@ static Screen screen = Screen::Splash;
 static uint32_t screenStartedAt = 0;
 static uint32_t wifiAttemptAt = 0;
 static uint32_t lastTouchAt = 0;
+static bool wifiScreenDrawn = false;
 static bool gpsSeen = false;
 static bool touchCalibrated = false;
 static uint16_t rawTouchX = 0, rawTouchY = 0;
@@ -55,7 +56,7 @@ static uint16_t median3(uint16_t a,uint16_t b,uint16_t c){
 }
 static bool readXpt2046(uint16_t &x,uint16_t &y){
   if(digitalRead(TOUCH_IRQ_PIN)!=LOW)return false;
-  uint16_t xs[3],ys[3];touchSPI.beginTransaction(SPISettings(3000000,MSBFIRST,SPI_MODE0));
+  uint16_t xs[3],ys[3];touchSPI.beginTransaction(SPISettings(6000000,MSBFIRST,SPI_MODE0));
   digitalWrite(TOUCH_CS,LOW);
   for(int i=0;i<3;i++){xs[i]=readXptChannel(0xD0);ys[i]=readXptChannel(0x90);}
   digitalWrite(TOUCH_CS,HIGH);touchSPI.endTransaction();
@@ -113,7 +114,7 @@ static void drawSatellite(int16_t cx, int16_t cy) {
 
 static bool splashOutput(int16_t x,int16_t y,uint16_t w,uint16_t h,uint16_t* bitmap){
   if(y>=tft.height()) return false;
-  tft.pushImage(x,y,w,h,bitmap);
+  for(uint32_t i=0;i<(uint32_t)w*h;i++) bitmap[i]=~bitmap[i]; // RGB565 negative correction for the splash image\n  tft.pushImage(x,y,w,h,bitmap);
   return true;
 }
 static void showSplash(){
@@ -251,14 +252,6 @@ static void appendMappedKey(char c) {
   }
   char value[2]={c,0}; appendKeyUtf8(value);
 }
-static void flashKeyboardKey(uint16_t x,uint16_t y){
-  int kx=-1,ky=-1,kw=0,kh=0;
-  if(y>=108&&y<=130){ky=108;kh=22;if(x>=246){int c=(x-246)/24;if(c>=0&&c<3){kx=246+c*24;kw=22;}}else{int i=(x-5)/22;if(i>=0&&i<10){kx=5+i*22;kw=21;}}}
-  else if(y>=133&&y<=155){ky=133;kh=22;if(x>=246){int c=(x-246)/24;if(c>=0&&c<3){kx=246+c*24;kw=22;}}else{int i=(x-16)/24;if(i>=0&&i<9){kx=16+i*24;kw=22;}}}
-  else if(y>=158&&y<=180){ky=158;kh=22;if(x>=246){int c=(x-246)/24;if(c>=0&&c<3){kx=246+c*24;kw=22;}}else{int i=(x-40)/25;if(i>=0&&i<7){kx=40+i*25;kw=22;}}}
-  else if(y>=183&&y<=205){ky=184;kh=19;if(x<46){kx=5;kw=40;}else if(x<93){kx=48;kw=43;}else if(x<158){kx=94;kw=62;}else if(x<200){kx=159;kw=39;}else if(x<244){kx=201;kw=42;}else if(x>=270&&x<=294){kx=270;kw=22;}}
-  if(kx>=0){tft.fillRoundRect(kx,ky,kw,kh,3,TFT_CYAN);tft.drawRoundRect(kx,ky,kw,kh,3,TFT_WHITE);delay(75);}
-}
 static void handleKeyboardTap(uint16_t x,uint16_t y) {
   flashKeyboardKey(x,y);
   // CONNECT is deliberately limited to the left side. The DEL key is on
@@ -395,7 +388,7 @@ static void handleTouch(){
  // blocking every subsequent key after a screen redraw.
  uint16_t rx=0,ry=0,x=0,y=0;
  if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
- if(touchWasDown||millis()-lastTouchAt<12)return;
+ if(touchWasDown||millis()-lastTouchAt<6)return;
  touchWasDown=true;lastTouchAt=millis();
  if(!mapRawTouch(rx,ry,x,y)){
    Serial.printf("Touch map failed raw=%u,%u\\n",rx,ry);

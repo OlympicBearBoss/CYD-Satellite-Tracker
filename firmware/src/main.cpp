@@ -602,7 +602,7 @@ static void handleTouch(){
  else if(screen==Screen::SystemInfo && y>=145 && y<=199) {
    if(x<160) {
      calibrationFromSystem=true; touchCalibrated=false; touchCalStep=1;
-     touchWasDown=false; drawCalibrationTarget(0);
+     screen=Screen::TouchTest; touchWasDown=false; drawCalibrationTarget(0);
    } else {
      WiFi.disconnect(false,false); editingPassword=false; setupMessage="Edit network, then press CONNECT";
      wifiScreenDrawn=false; showWifiSetup();

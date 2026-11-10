@@ -49,6 +49,9 @@ static constexpr uint16_t BG = 0x0841;
 static constexpr uint16_t PANEL = 0x10A3;
 static constexpr uint16_t BLUE = 0x03B9;
 static constexpr uint16_t MUTED = 0x9CF3;
+static constexpr uint16_t KEY_BG = 0x10A3;
+static constexpr uint16_t KEY_NUM = 0x035F;
+static constexpr uint16_t KEY_EDGE = 0x07FF;
 static uint16_t touchCal[5];
 static constexpr int TOUCH_CLK_PIN=25, TOUCH_MISO_PIN=39, TOUCH_MOSI_PIN=32, TOUCH_IRQ_PIN=36;
 static bool touchWasDown=false; static uint8_t touchCalStep=0; static uint16_t touchCorners[8]={0};
@@ -59,7 +62,7 @@ static uint16_t median3(uint16_t a,uint16_t b,uint16_t c){
 }
 static bool readXpt2046(uint16_t &x,uint16_t &y){
   if(digitalRead(TOUCH_IRQ_PIN)!=LOW)return false;
-  uint16_t xs[5],ys[5];touchSPI.beginTransaction(SPISettings(2000000,MSBFIRST,SPI_MODE0));
+  uint16_t xs[5],ys[5];touchSPI.beginTransaction(SPISettings(1000000,MSBFIRST,SPI_MODE0));
   digitalWrite(TOUCH_CS,LOW);
   for(int i=0;i<5;i++){xs[i]=readXptChannel(0xD0);ys[i]=readXptChannel(0x90);}
   digitalWrite(TOUCH_CS,HIGH);touchSPI.endTransaction();
@@ -102,7 +105,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V46 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V47 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -214,8 +217,8 @@ static void beginWiFi();
 static void backspace();
 
 static void drawKey(int x,int y,int w,int h,const char* label, uint16_t fill=0x0000) {
-  tft.fillRoundRect(x,y,w,h,3,fill);
-  tft.drawRoundRect(x,y,w,h,3,TFT_WHITE);
+  tft.fillRoundRect(x,y,w,h,4,fill);
+  tft.drawRoundRect(x,y,w,h,4,KEY_EDGE);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(fill==0x07FF?TFT_BLACK:TFT_WHITE,fill);
   tft.drawString(label,x+w/2,y+h/2,2);
@@ -224,7 +227,7 @@ static void drawLetterRow(const char* keys,int y,int x,int keyW,int gap) {
   for(int i=0;keys[i];++i) {
     char label[2]={keys[i],0};
     if(shiftKey && !symbolsPage && label[0]>='a' && label[0]<='z') label[0]=toupper(label[0]);
-    drawKey(x+i*(keyW+gap),y,keyW,22,label,0x0000);
+    drawKey(x+i*(keyW+gap),y,keyW,22,label,KEY_BG);
   }
 }
 static void flashKeyboardKey(uint16_t x,uint16_t y) {
@@ -252,9 +255,9 @@ static void flashKeyboardKey(uint16_t x,uint16_t y) {
     else return;
   } else return;
   if(x<kx||x>=kx+kw)return;
-  drawKey(kx,ky,kw,kh,label,0x07FF);
+  drawKey(kx,ky,kw,kh,label,KEY_NUM);
   delay(45);
-  drawKey(kx,ky,kw,kh,label,0x0000);
+  drawKey(kx,ky,kw,kh,label,KEY_BG);
 }
 static void showWifiSetup() {
   const bool firstDraw = (screen != Screen::WifiSetup) || !wifiScreenDrawn;
@@ -284,14 +287,14 @@ static void showWifiSetup() {
     }
     const char* nums[3]={"123","456","789"};
     for(int r=0;r<3;++r) for(int col=0;col<3;++col) {
-      char k[2]={nums[r][col],0}; drawKey(246+col*24,108+r*25,22,22,k,0x0000);
+      char k[2]={nums[r][col],0}; drawKey(246+col*24,108+r*25,22,22,k,KEY_NUM);
     }
-    drawKey(270,183,22,19,"0",0x0000);
-    drawKey(5,184,40,19,russianLayout?"RU":"EN",0x0000);
-    drawKey(48,184,43,19,"SHIFT",0x0000);
-    drawKey(94,184,62,19,"SPACE",0x0000);
-    drawKey(159,184,39,19,symbolsPage?"ABC":"SYM",0x0000);
-    drawKey(201,184,42,19,"DEL",0x0000);
+    drawKey(270,183,22,19,"0",KEY_NUM);
+    drawKey(5,184,40,19,russianLayout?"RU":"EN",KEY_BG);
+    drawKey(48,184,43,19,"SHIFT",KEY_BG);
+    drawKey(94,184,62,19,"SPACE",KEY_BG);
+    drawKey(159,184,39,19,symbolsPage?"ABC":"SYM",KEY_BG);
+    drawKey(201,184,42,19,"DEL",KEY_BG);
     drawButton(5,209,190,27,"CONNECT",0x07FF);
   
     keyboardNeedsRedraw=false;
@@ -319,6 +322,7 @@ static void appendMappedKey(char c) {
   char value[2]={c,0}; appendKeyUtf8(value);
 }
 static void handleKeyboardTap(uint16_t x,uint16_t y) {
+  Serial.printf("KEYBOARD HIT x=%u y=%u page=%u field=%u\\n",x,y,(unsigned)symbolsPage,(unsigned)editingPassword);
   flashKeyboardKey(x,y);
   if(y>=209 && y<=239 && x>=5 && x<=195) { setupMessage=""; beginWiFi(); return; }
   if(y>=FIELD_HIT_TOP && y<65) {
@@ -331,17 +335,17 @@ static void handleKeyboardTap(uint16_t x,uint16_t y) {
     showWifiSetup(); return;
   }
   if(y>=108 && y<=130) {
-    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3&&x<246+c*24+22) appendMappedKey("123"[c]); }
+    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3&&x<246+c*24+22) { Serial.printf("NUMKEY row=1 col=%d x=%u\\n",c,x); appendMappedKey("123"[c]); } }
     else { int c=(x-5)/22; if(c>=0&&c<10&&x<5+c*22+21) appendMappedKey((symbolsPage?"!@#$%^&*()":"qwertyuiop")[c]); }
     showWifiSetup(); return;
   }
   if(y>=133 && y<=155) {
-    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3&&x<246+c*24+22) appendMappedKey("456"[c]); }
+    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3&&x<246+c*24+22) { Serial.printf("NUMKEY row=2 col=%d x=%u\\n",c,x); appendMappedKey("456"[c]); } }
     else { int c=(x-16)/24; if(c>=0&&c<9&&x<16+c*24+22) appendMappedKey((symbolsPage?"-_=+[]{};:":"asdfghjkl")[c]); }
     showWifiSetup(); return;
   }
   if(y>=158 && y<=180) {
-    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3&&x<246+c*24+22) appendMappedKey("789"[c]); }
+    if(x>=246) { int c=(x-246)/24; if(c>=0&&c<3&&x<246+c*24+22) { Serial.printf("NUMKEY row=3 col=%d x=%u\\n",c,x); appendMappedKey("789"[c]); } }
     else { int c=(x-40)/25; if(c>=0&&c<7&&x<40+c*25+22) appendMappedKey((symbolsPage?".,?/'\\\\|~":"zxcvbnm")[c]); }
     showWifiSetup(); return;
   }

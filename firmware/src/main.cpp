@@ -23,7 +23,7 @@ static constexpr uint16_t TOUCH_THRESHOLD = 250;
 static constexpr uint16_t FIELD_HIT_TOP = 24;
 static constexpr uint16_t FIELD_HIT_BOTTOM = 99;
 
-enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, SystemInfo, Failed };
+enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, Failed };
 static Screen screen = Screen::Splash;
 static uint32_t screenStartedAt = 0;
 static uint32_t wifiAttemptAt = 0;
@@ -105,7 +105,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V47 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V48 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -372,11 +372,11 @@ static void showConnecting() {
 }
 
 static void drawNavigation(uint8_t active) {
-  const uint16_t activeColor=0x07FF;
-  const uint16_t idleColor=0x001F;
-  drawButton(5,207,98,29,"GPS",active==0?activeColor:idleColor);
-  drawButton(111,207,98,29,"SAT",active==1?activeColor:idleColor);
-  drawButton(217,207,98,29,"SYSTEM",active==2?activeColor:idleColor);
+  const uint16_t activeColor=0x07FF, idleColor=0x001F;
+  drawButton(4,207,76,29,"HOME",active==0?activeColor:idleColor);
+  drawButton(83,207,76,29,"SAT",active==1?activeColor:idleColor);
+  drawButton(162,207,76,29,"ANT",active==2?activeColor:idleColor);
+  drawButton(241,207,76,29,"SYSTEM",active==3?activeColor:idleColor);
 }
 
 static void drawGpsPanel() {
@@ -440,32 +440,69 @@ static void showDashboard() {
   lastDashboardRefreshAt=millis();
 }
 
+static void satelliteRow(int y,const char* name,const char* type,bool selected) {
+  const uint16_t fill=selected?0x123B:PANEL;
+  tft.fillRoundRect(9,y,302,39,5,fill);
+  tft.drawRoundRect(9,y,302,39,5,selected?TFT_CYAN:0x2A69);
+  tft.fillCircle(22,y+19,4,selected?TFT_GREEN:TFT_CYAN);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(selected?TFT_CYAN:TFT_WHITE,fill);
+  tft.drawString(name,34,y+4,2);
+  tft.setTextColor(MUTED,fill);
+  tft.drawString(type,34,y+22,1);
+  tft.setTextDatum(MR_DATUM);
+  tft.setTextColor(TFT_YELLOW,fill);
+  tft.drawString(selected?"SELECTED":"ORBIT N/A",302,y+19,1);
+}
+
 static void showSatelliteScreen() {
   screen=Screen::Satellite;
-  header("SATELLITE","Target selection / tracking");
-  tft.fillRoundRect(10,105,300,94,8,PANEL);
-  tft.drawRoundRect(10,105,300,94,8,0x2A69);
-  drawSatellite(267,139);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("ISS  /  ZARYA",20,116,4);
-  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString("ORBIT DATA: NOT LOADED",20,154,2);
-  tft.setTextColor(TFT_YELLOW,PANEL); tft.drawString("MOTORS: LOCKED",20,178,2);
+  header("SATELLITES","Catalog / target selection");
+  satelliteRow(88,"ISS / ZARYA","International Space Station",true);
+  satelliteRow(132,"NOAA-18","Weather satellite",false);
+  satelliteRow(176,"NOAA-19","Weather satellite",false);
   drawNavigation(1);
+}
+
+static void showAntennaScreen() {
+  screen=Screen::Antenna;
+  header("ANTENNA","Pointing and rotator status");
+  tft.fillRoundRect(9,91,146,104,7,PANEL);
+  tft.drawRoundRect(9,91,146,104,7,0x2A69);
+  tft.fillRoundRect(164,91,147,104,7,PANEL);
+  tft.drawRoundRect(164,91,147,104,7,0x2A69);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(MUTED,PANEL); tft.drawString("AZIMUTH (AZ)",18,101,2);
+  tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("--.- deg",18,126,4);
+  tft.drawFastHLine(18,158,126,0x2A69);
+  tft.setTextColor(MUTED,PANEL); tft.drawString("ELEVATION (EL)",173,101,2);
+  tft.setTextColor(TFT_CYAN,PANEL); tft.drawString("--.- deg",173,126,4);
+  tft.drawFastHLine(173,158,126,0x2A69);
+  tft.setTextColor(TFT_YELLOW,PANEL); tft.drawString("NO ORBIT DATA",18,169,1);
+  tft.setTextColor(TFT_YELLOW,PANEL); tft.drawString("NO TARGET",173,169,1);
+  tft.fillRoundRect(9,181,302,19,4,0x4000);
+  tft.drawRoundRect(9,181,302,19,4,TFT_ORANGE);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_YELLOW,0x4000);
+  tft.drawString("MOTORS LOCKED - CONTROL DISABLED",160,190,1);
+  drawNavigation(2);
 }
 
 static void showSystemScreen() {
   screen=Screen::SystemInfo;
-  header("SYSTEM STATUS","Controller and network");
+  header("SYSTEM","Controller / diagnostics");
   char value[32];
-  statusRow(107,"WI-FI",WiFi.status()==WL_CONNECTED?"CONNECTED":"OFFLINE",
+  statusRow(88,"WI-FI",WiFi.status()==WL_CONNECTED?"CONNECTED":"OFFLINE",
             WiFi.status()==WL_CONNECTED?TFT_GREEN:TFT_ORANGE);
   snprintf(value,sizeof(value),"%d dBm",WiFi.status()==WL_CONNECTED?WiFi.RSSI():0);
-  statusRow(139,"SIGNAL",value,TFT_CYAN);
+  statusRow(117,"SIGNAL",WiFi.status()==WL_CONNECTED?value:"--",TFT_CYAN);
   String ip=WiFi.status()==WL_CONNECTED?WiFi.localIP().toString():String("--");
-  statusRow(171,"IP ADDRESS",ip.c_str(),TFT_WHITE);
-  drawNavigation(2);
+  statusRow(146,"IP",ip.c_str(),TFT_WHITE);
+  const bool fix=gps.location.isValid() && gps.location.age()<10000;
+  snprintf(value,sizeof(value),"%lu SAT",(unsigned long)(gps.satellites.isValid()?gps.satellites.value():0));
+  statusRow(175,"GPS",fix?value:"SEARCHING",fix?TFT_GREEN:TFT_YELLOW);
+  drawNavigation(3);
 }
-
 static void showConnected() {
   showDashboard();
 }
@@ -547,9 +584,10 @@ static void handleTouch(){
  touchWasDown=true;lastTouchAt=millis();
  Serial.printf("Touch stable raw=%u,%u mapped=%u,%u screen=%u\\n",rx,ry,x,y,(unsigned)screen);
  if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
- else if((screen==Screen::Dashboard||screen==Screen::Satellite||screen==Screen::SystemInfo)&&y>=204) {
-   if(x<106) showDashboard();
-   else if(x<214) showSatelliteScreen();
+ else if((screen==Screen::Dashboard||screen==Screen::Satellite||screen==Screen::Antenna||screen==Screen::SystemInfo)&&y>=204) {
+   if(x<81) showDashboard();
+   else if(x<160) showSatelliteScreen();
+   else if(x<239) showAntennaScreen();
    else showSystemScreen();
  }
  else if(screen==Screen::Connected&&y>=200){WiFi.disconnect();setupMessage="";editingPassword=false;showWifiSetup();}

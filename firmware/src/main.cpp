@@ -1059,6 +1059,16 @@ void setup() {
   tft.fillScreen(TFT_BLACK);
   Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1);
   prefs.begin("cyd-tracker",false);
+  // Remove legacy ESP32-to-cloud credentials: all cloud authentication now lives on Windows.
+  prefs.remove("device_token");
+  prefs.remove("device_id");
+  prefs.end();
+  prefs.begin("cyd-site",false);
+  prefs.remove("token");
+  prefs.remove("deviceId");
+  prefs.remove("code");
+  prefs.end();
+  prefs.begin("cyd-tracker",false);
   char hardwareIdBuffer[20];
   snprintf(hardwareIdBuffer,sizeof(hardwareIdBuffer),"CYD-%012llX",(unsigned long long)ESP.getEfuseMac());
   deviceHardwareId=hardwareIdBuffer;

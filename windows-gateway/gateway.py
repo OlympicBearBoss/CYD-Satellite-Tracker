@@ -112,16 +112,18 @@ def upload_one(cfg,db,token):
 
 def main():
     if os.name!="nt": raise SystemExit("Windows 10/11 required")
-    cfg=setup(); db=db_open(); token=""; next_upload=0
+    cfg=setup(); db=db_open(); token=""; next_capture=0; next_upload=0
     logging.info("Gateway started; CYD endpoint=%s",cfg["cyd_url"])
     while True:
         try:
             if not token: token=pair(cfg,db)
-            status=read_local(cfg); payload=cloud_payload(status); queue(db,payload)
+            status=read_local(cfg); payload=cloud_payload(status)
             logging.info("CYD local API OK; IP=%s GPS fix=%s",status.get("ip"),payload["gps_valid"])
             now=time.monotonic()
+            if token and now>=next_capture:
+                queue(db,payload); next_capture=now+UPLOAD_SECONDS
             if token and now>=next_upload:
-                upload_one(cfg,db,token); next_upload=now+UPLOAD_SECONDS
+                upload_one(cfg,db,token); next_upload=now+15
         except urllib.error.URLError as e: logging.warning("Local CYD or network unavailable: %s",e)
         except Exception: logging.exception("Gateway cycle failed")
         time.sleep(POLL_SECONDS)

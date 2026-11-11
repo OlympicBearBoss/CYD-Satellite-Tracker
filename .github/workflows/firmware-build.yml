@@ -10,6 +10,7 @@ on:
   pull_request:
     paths:
       - "firmware/**"
+      - "windows-gateway/**"
       - ".github/workflows/firmware-build.yml"
   workflow_dispatch:
 

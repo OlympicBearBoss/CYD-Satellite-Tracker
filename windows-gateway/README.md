@@ -1,32 +1,40 @@
-# CYD Satellite Tracker — Windows Gateway
+# CYD Satellite Tracker — шлюз Windows
 
-Windows 10/11 background relay. CYD serves its local HTTP API; this program forwards telemetry to Cloudflare independently of the browser.
+Фоновая программа для Windows 10/11. Плата CYD предоставляет локальный HTTP API, а шлюз пересылает телеметрию в Cloudflare независимо от браузера.
 
-## Requirements
-- Windows 10/11 and Python 3.11+
-- CYD and PC on the same Wi-Fi/LAN
-- Internet access on the PC
+## Требования
 
-## First setup
-1. Install Python 3.11+ and enable Add Python to PATH.
-2. Run gateway.py once. It creates %LOCALAPPDATA%\CYDSatelliteTracker\config.json.
-3. Edit that file. Set cyd_url to http://cyd-tracker.local or the CYD IP (for example http://192.168.0.48). Enter the one-time 8-digit website pairing code in pairing_code.
-4. Run gateway.py from PowerShell and confirm gateway.log says the local API and cloud sync are working.
-5. In this folder, run PowerShell as the current Windows user:
+- Windows 10 или 11
+- Python 3.11 или новее
+- CYD и компьютер подключены к одной Wi-Fi/LAN сети
+- Доступ компьютера в интернет
+
+## Первоначальная настройка
+
+1. Установите Python 3.11+ и включите опцию Add Python to PATH.
+2. Один раз запустите gateway.py. Программа создаст файл конфигурации:
+   %LOCALAPPDATA%\CYDSatelliteTracker\config.json
+3. Откройте config.json и укажите:
+   - cyd_url — http://cyd-tracker.local или локальный IP платы, например http://192.168.0.48.
+   - pairing_code — одноразовый 8-значный код привязки, созданный в разделе устройств на сайте.
+4. Запустите gateway.py из PowerShell. Убедитесь, что в gateway.log появились сообщения об успешном чтении локального API и синхронизации с облаком.
+5. В PowerShell от имени текущего пользователя выполните:
    Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
    .\install-startup.ps1
-6. Start immediately:
+6. Для немедленного запуска задачи выполните:
    Start-ScheduledTask -TaskName 'CYD Satellite Tracker Gateway'
 
-The scheduled task starts at Windows sign-in. It is independent of the browser, but stops after Windows sign-out/shutdown. It is a background logon task, not a Windows service.
+После входа пользователя в Windows шлюз запускается автоматически. Закрытие браузера не влияет на синхронизацию. При выходе из учётной записи или выключении компьютера шлюз останавливается. Это фоновая задача Планировщика Windows, а не системная служба.
 
-## Security and recovery
-- The device bearer token is encrypted using Windows DPAPI for the current Windows user.
-- Telemetry is buffered in SQLite and retried after outages; up to 500 recent samples are retained.
-- Logs are stored in %LOCALAPPDATA%\CYDSatelliteTracker\gateway.log.
-- The gateway makes outbound HTTPS requests only; no public inbound port is opened.
-- Do not expose the CYD local HTTP API to the public Internet.
-- If the device token is revoked, delete telemetry.sqlite3, enter a fresh pairing code and restart. Deleting the database also clears queued telemetry.
+## Безопасность и хранение данных
 
-## Scope of this first version
-Telemetry relay only. Remote command relay and a Windows tray/settings interface are future work.
+- Токен устройства шифруется Windows DPAPI и привязывается к текущей учётной записи Windows.
+- При отсутствии интернета телеметрия сохраняется в SQLite и отправляется повторно после восстановления соединения. Хранятся последние 500 записей.
+- Журнал работы: %LOCALAPPDATA%\CYDSatelliteTracker\gateway.log
+- Шлюз сам инициирует исходящие HTTPS-запросы. Входящие порты из интернета не открываются.
+- Не публикуйте локальный HTTP API CYD в интернете.
+- Если токен устройства отозван, удалите telemetry.sqlite3, укажите новый код привязки в config.json и перезапустите шлюз. Удаление базы также очищает очередь телеметрии.
+
+## Что реализовано сейчас
+
+Пересылка телеметрии. Передача удалённых команд на CYD и графический интерфейс/значок в системном трее Windows будут отдельным этапом.

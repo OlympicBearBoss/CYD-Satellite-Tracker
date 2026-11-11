@@ -1131,7 +1131,14 @@ if(host){
   function updatePassNotice(){
    const card=document.getElementById('nextPassCountdown'),meta=document.getElementById('nextPassMeta');
    if(!nextVisiblePass){if(card)card.textContent='Нет видимого пролёта в ближайшие 24 часа';if(meta)meta.textContent='Порог видимости: высота ≥ 10°';if(passNotice)passNotice.hidden=true;return;}
-   const now=new Date(),remaining=nextVisiblePass.start-now,active=remaining<=0&&now<nextVisiblePass.end;
+   const now=new Date(),remaining=nextVisiblePass.start-now;
+   if(now>=nextVisiblePass.end){
+    passNotice.hidden=true;noticeOpenedAt=0;
+    if(card)card.textContent='Обновление прогноза пролёта…';
+    if(meta)meta.textContent='Предыдущий пролёт завершён';
+    return;
+   }
+   const active=remaining<=0;
    if(card)card.textContent=active?'СЕЙЧАС · '+formatCountdown(nextVisiblePass.end-now):'Через '+formatCountdown(remaining);
    if(meta)meta.textContent='Макс. высота '+THREE.MathUtils.radToDeg(nextVisiblePass.maxElevation).toFixed(1)+'° · '+nextVisiblePass.start.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
    if(!passNotice)return;
@@ -1197,8 +1204,19 @@ if(host){
   const arrivalElevations=new Map(),arrivalNotified=new Map();
   const arrivalQueue=[];
   let arrivalToastTimer=null,arrivalToastRoot=null;
+  function scheduleArrivalExpiry(){
+   clearTimeout(arrivalToastTimer);
+   if(!arrivalQueue.length){arrivalToastTimer=null;return;}
+   const delay=Math.max(0,(arrivalQueue[0].expiresAt||arrivalQueue[0].time+20000)-Date.now());
+   arrivalToastTimer=setTimeout(()=>{arrivalQueue.shift();renderArrivalQueue();},delay);
+  }
   function renderArrivalQueue(){
-   if(!arrivalQueue.length){if(arrivalToastRoot)arrivalToastRoot.remove();arrivalToastRoot=null;return;}
+   const now=Date.now();
+   while(arrivalQueue.length&&(arrivalQueue[0].expiresAt||arrivalQueue[0].time+20000)<=now)arrivalQueue.shift();
+   if(!arrivalQueue.length){
+    clearTimeout(arrivalToastTimer);arrivalToastTimer=null;
+    if(arrivalToastRoot)arrivalToastRoot.remove();arrivalToastRoot=null;return;
+   }
    if(!arrivalToastRoot){
     arrivalToastRoot=document.createElement('aside');arrivalToastRoot.id='satelliteArrivalToast';
     arrivalToastRoot.setAttribute('role','status');arrivalToastRoot.setAttribute('aria-live','polite');
@@ -1232,8 +1250,8 @@ if(host){
     close.addEventListener('click',()=>{arrivalQueue.splice(index,1);renderArrivalQueue();});
     actions.append(follow,close);card.append(title,detail,actions);arrivalToastRoot.appendChild(card);
    });
-   clearTimeout(arrivalToastTimer);
-   arrivalToastTimer=setTimeout(()=>{arrivalQueue.shift();renderArrivalQueue();},20000);
+   // Срок жизни не продлевается при повторной отрисовке карточек.
+   scheduleArrivalExpiry();
   }
   function getArrivalCategory(item){
    const rawId=String(item&&item.id||'').replace(/^catalog-/,'');
@@ -1244,7 +1262,9 @@ if(host){
   }
   function showSatelliteArrival(item,elevation){
    if(!arrivalEnabled)return;
-   arrivalQueue.push({id:item.id,name:item.name||item.id,category:item.category||getArrivalCategory(item),elevation,time:Date.now()});
+   const now=Date.now(),id=String(item.id);
+   if(arrivalQueue.some(entry=>String(entry.id)===id))return;
+   arrivalQueue.push({id:item.id,name:item.name||item.id,category:item.category||getArrivalCategory(item),elevation,time:now,expiresAt:now+20000});
    renderArrivalQueue();
   }
   function scanSatelliteArrivals(){

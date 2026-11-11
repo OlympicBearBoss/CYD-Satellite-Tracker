@@ -162,7 +162,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V73 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V74 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -522,7 +522,36 @@ static bool cloudRequest(const char* method,const String& path,const String& bod
     Serial.printf("[CLOUD] DNS FAILED host=%s\n",host);
     return false;
   }
-  Serial.printf("[CLOUD] DNS %s -> %s, RSSI=%d dBm\n",host,apiIp.toString().c_str(),WiFi.RSSI());
+  Serial.printf("[CLOUD] DNS %s -> %s, RSSI=%d dBm\\n",host,apiIp.toString().c_str(),WiFi.RSSI());
+
+  // Separate raw TCP reachability from TLS certificate/handshake diagnostics.
+  WiFiClient tcpProbe;
+  const uint32_t tcpStartedAt=millis();
+  const bool tcpOk=tcpProbe.connect(apiIp,443);
+  Serial.printf("[CLOUD] TCP PREFLIGHT ip=%s port=443 ok=%d elapsed=%lu ms\\n",
+                apiIp.toString().c_str(),tcpOk?1:0,(unsigned long)(millis()-tcpStartedAt));
+  tcpProbe.stop();
+  if(!tcpOk) {
+    response="TCP connection to API failed";
+    return false;
+  }
+
+  WiFiClientSecure tlsProbe;
+  tlsProbe.setCACert(ROOT_CA_BUNDLE);
+  tlsProbe.setHandshakeTimeout(12);
+  const uint32_t tlsStartedAt=millis();
+  const int tlsProbeOk=tlsProbe.connect(host,443);
+  char tlsProbeError[160]={0};
+  const int tlsProbeErrorCode=tlsProbe.lastError(tlsProbeError,sizeof(tlsProbeError));
+  Serial.printf("[CLOUD] TLS PREFLIGHT host=%s ok=%d elapsed=%lu ms error_code=%d detail=%s\\n",
+                host,tlsProbeOk,(unsigned long)(millis()-tlsStartedAt),tlsProbeErrorCode,
+                tlsProbeError[0]?tlsProbeError:"none");
+  tlsProbe.stop();
+  if(!tlsProbeOk) {
+    response=String("TLS preflight failed: ")+(tlsProbeError[0]?tlsProbeError:"unknown");
+    return false;
+  }
+
   WiFiClientSecure tls;
   tls.setCACert(ROOT_CA_BUNDLE); // Keep certificate verification enabled.
   tls.setHandshakeTimeout(20);   // Bound TLS handshake so the UI cannot wait indefinitely.
@@ -612,7 +641,7 @@ static void sendDeviceHeartbeat() {
   }
   if(gps.altitude.isValid()) doc["altitude"]=gps.altitude.meters();
   if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
-  doc["firmware"]="V73";
+  doc["firmware"]="V74";
   String body,response; serializeJson(doc,body);
   if(cloudRequest("POST","/api/devices/heartbeat",body,response)) cloudStatus="LINKED";
   else if(response.indexOf("401")>=0 || response.indexOf("не авторизовано")>=0) {

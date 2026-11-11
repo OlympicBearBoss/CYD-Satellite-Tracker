@@ -161,7 +161,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V71 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V72 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -497,30 +497,42 @@ static bool cloudRequest(const char* method,const String& path,const String& bod
   }
   Serial.printf("[CLOUD] DNS %s -> %s, RSSI=%d dBm\n",host,apiIp.toString().c_str(),WiFi.RSSI());
   WiFiClientSecure tls;
-  tls.setCACert(ROOT_CA_BUNDLE); // Verify Cloudflare edge certificate; never disable TLS verification.
+  tls.setCACert(ROOT_CA_BUNDLE); // Keep certificate verification enabled.
+  tls.setHandshakeTimeout(20);   // Bound TLS handshake so the UI cannot wait indefinitely.
   HTTPClient http;
   http.setConnectTimeout(12000);
   http.setTimeout(15000);
   http.setReuse(false);
   const String url=String(API_BASE)+path;
-  if(!http.begin(tls,url)) { response="HTTPS init failed"; Serial.printf("[CLOUD] HTTP begin failed: %s\n",url.c_str()); return false; }
+  Serial.printf("[CLOUD] HTTPS init: %s\\n",url.c_str());
+  if(!http.begin(tls,url)) {
+    response="HTTPS init failed";
+    Serial.printf("[CLOUD] HTTP begin failed: %s\\n",url.c_str());
+    return false;
+  }
+  Serial.println("[CLOUD] HTTPS client ready");
   http.addHeader("Content-Type","application/json");
   if(deviceToken.length()) http.addHeader("Authorization",String("Bearer ")+deviceToken);
   int status=-1;
+  Serial.printf("[CLOUD] REQUEST START method=%s path=%s payload=%u bytes\\n",method,path.c_str(),(unsigned)body.length());
+  const uint32_t requestStartedAt=millis();
   if(strcmp(method,"POST")==0) status=http.POST((uint8_t*)body.c_str(),body.length());
   else if(strcmp(method,"PUT")==0) status=http.PUT((uint8_t*)body.c_str(),body.length());
   else status=http.GET();
+  Serial.printf("[CLOUD] REQUEST FINISHED status=%d elapsed=%lu ms\\n",status,(unsigned long)(millis()-requestStartedAt));
   if(status>0) {
     response=http.getString();
-    Serial.printf("[CLOUD] %s %s -> HTTP %d, body=%u bytes\n",method,path.c_str(),status,(unsigned)response.length());
+    Serial.printf("[CLOUD] %s %s -> HTTP %d, response=%u bytes\\n",method,path.c_str(),status,(unsigned)response.length());
+    if(status<200 || status>=300) Serial.printf("[CLOUD] ERROR BODY: %.180s\\n",response.c_str());
   } else {
     char tlsError[160]={0};
     tls.lastError(tlsError,sizeof(tlsError));
     response=http.errorToString(status);
-    Serial.printf("[CLOUD] %s %s -> %s; IP=%s; TLS=%s\n",method,path.c_str(),response.c_str(),apiIp.toString().c_str(),tlsError);
+    Serial.printf("[CLOUD] %s %s -> %s; IP=%s; TLS=%s\\n",method,path.c_str(),response.c_str(),apiIp.toString().c_str(),tlsError);
     response += " IP " + apiIp.toString();
   }
   http.end();
+  Serial.println("[CLOUD] HTTP client closed");
   return status>=200 && status<300;
 }
 static void showPairingScreen();
@@ -573,7 +585,7 @@ static void sendDeviceHeartbeat() {
   }
   if(gps.altitude.isValid()) doc["altitude"]=gps.altitude.meters();
   if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
-  doc["firmware"]="V71";
+  doc["firmware"]="V72";
   String body,response; serializeJson(doc,body);
   if(cloudRequest("POST","/api/devices/heartbeat",body,response)) cloudStatus="LINKED";
   else if(response.indexOf("401")>=0 || response.indexOf("не авторизовано")>=0) {

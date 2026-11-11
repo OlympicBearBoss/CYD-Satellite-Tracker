@@ -482,21 +482,39 @@ static void showConnecting() {
 
 static void showSystemScreen();
 static bool cloudRequest(const char* method,const String& path,const String& body,String& response) {
-  if(WiFi.status()!=WL_CONNECTED) { response="Wi-Fi offline"; return false; }
+  if(WiFi.status()!=WL_CONNECTED) { response="Wi-Fi offline"; Serial.println("[CLOUD] Wi-Fi offline"); return false; }
+  const char* host="cyd-satellite-tracker.pages.dev";
+  IPAddress apiIp;
+  if(!WiFi.hostByName(host,apiIp,7000)) {
+    response="DNS lookup failed";
+    Serial.printf("[CLOUD] DNS FAILED host=%s\n",host);
+    return false;
+  }
+  Serial.printf("[CLOUD] DNS %s -> %s, RSSI=%d dBm\n",host,apiIp.toString().c_str(),WiFi.RSSI());
   WiFiClientSecure tls;
   tls.setCACert(ROOT_CA_BUNDLE); // Verify Cloudflare edge certificate; never disable TLS verification.
   HTTPClient http;
-  http.setConnectTimeout(7000);
-  http.setTimeout(7000);
+  http.setConnectTimeout(12000);
+  http.setTimeout(15000);
+  http.setReuse(false);
   const String url=String(API_BASE)+path;
-  if(!http.begin(tls,url)) { response="HTTPS init failed"; return false; }
+  if(!http.begin(tls,url)) { response="HTTPS init failed"; Serial.printf("[CLOUD] HTTP begin failed: %s\n",url.c_str()); return false; }
   http.addHeader("Content-Type","application/json");
   if(deviceToken.length()) http.addHeader("Authorization",String("Bearer ")+deviceToken);
   int status=-1;
   if(strcmp(method,"POST")==0) status=http.POST((uint8_t*)body.c_str(),body.length());
   else if(strcmp(method,"PUT")==0) status=http.PUT((uint8_t*)body.c_str(),body.length());
   else status=http.GET();
-  response=status>0?http.getString():http.errorToString(status);
+  if(status>0) {
+    response=http.getString();
+    Serial.printf("[CLOUD] %s %s -> HTTP %d, body=%u bytes\n",method,path.c_str(),status,(unsigned)response.length());
+  } else {
+    char tlsError[160]={0};
+    tls.lastError(tlsError,sizeof(tlsError));
+    response=http.errorToString(status);
+    Serial.printf("[CLOUD] %s %s -> %s; IP=%s; TLS=%s\n",method,path.c_str(),response.c_str(),apiIp.toString().c_str(),tlsError);
+    response += " IP " + apiIp.toString();
+  }
   http.end();
   return status>=200 && status<300;
 }

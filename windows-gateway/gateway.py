@@ -36,7 +36,7 @@ def setup():
     h=RotatingFileHandler(LOG_PATH,maxBytes=1_000_000,backupCount=3,encoding="utf-8")
     logging.basicConfig(level=logging.INFO,handlers=[h],format="%(asctime)s %(levelname)s %(message)s")
     if not CONFIG_PATH.exists(): CONFIG_PATH.write_text(json.dumps(DEFAULT_CONFIG,ensure_ascii=False,indent=2),encoding="utf-8")
-    cfg=DEFAULT_CONFIG.copy(); cfg.update(json.loads(CONFIG_PATH.read_text(encoding="utf-8")))
+    cfg=DEFAULT_CONFIG.copy(); cfg.update(json.loads(CONFIG_PATH.read_text(encoding="utf-8-sig")))
     return cfg
 
 def db_open():

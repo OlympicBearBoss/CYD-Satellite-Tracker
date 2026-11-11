@@ -2,24 +2,17 @@
 #include <TFT_eSPI.h>
 #include <SPI.h>
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
-#include <HTTPClient.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <TinyGPSPlus.h>
 #include <ctype.h>
-#include <time.h>
-#include <errno.h>
-#include <esp_heap_caps.h>
-#include <lwip/dns.h>
 #include <TJpg_Decoder.h>
 #include "splash_jpg.h"
 #include "ui_assets.h"
 #include "BoardConfig.h"
 #include "WifiConfig.h"
-#include "RootCACert.h"
 
 TFT_eSPI tft;
 SPIClass touchSPI(VSPI);
@@ -58,13 +51,7 @@ static String wifiName;
 static String wifiPassword;
 static String setupMessage;
 static String pairingCode;
-static String deviceToken;
-static String deviceId;
 static String deviceHardwareId;
-static uint32_t lastHeartbeatAt=0;
-static uint32_t lastCommandPollAt=0;
-static String cloudStatus="NOT LINKED";
-static const char* API_BASE="https://cyd-satellite-tracker.pages.dev";
 static WebServer localServer(80);
 static bool localApiStarted=false;
 
@@ -491,274 +478,8 @@ static void showConnecting() {
 
 static void showSystemScreen();
 
-// TLS certificate validation requires a sane wall clock. ESP32 starts with
-// an unset clock after boot, so synchronize SNTP before opening HTTPS sessions.
-static bool ensureSystemClock() {
-  time_t now = time(nullptr);
-  if (now >= 1760000000) {
-    Serial.printf("[CLOUD] System clock already valid: epoch=%lu\n",(unsigned long)now);
-    return true;
-  }
-  Serial.printf("[CLOUD] System clock unset (epoch=%lu); starting SNTP\n",(unsigned long)now);
-  configTime(0,0,"pool.ntp.org","time.cloudflare.com","time.google.com");
-  const uint32_t startedAt=millis();
-  while(millis()-startedAt<15000) {
-    now=time(nullptr);
-    if(now>=1760000000) {
-      Serial.printf("[CLOUD] SNTP synchronized: epoch=%lu\n",(unsigned long)now);
-      return true;
-    }
-    delay(250);
-  }
-  now=time(nullptr);
-  Serial.printf("[CLOUD] SNTP FAILED after 15000 ms; epoch=%lu\n",(unsigned long)now);
-  return false;
-}
-
-static bool cloudRequest(const char* method,const String& path,const String& body,String& response) {
-  if(WiFi.status()!=WL_CONNECTED) { response="Wi-Fi offline"; Serial.println("[CLOUD] Wi-Fi offline"); return false; }
-  if(!ensureSystemClock()) { response="NTP time synchronization failed"; return false; }
-  const char* host="cyd-satellite-tracker.pages.dev";
-  IPAddress apiIp(0,0,0,0);
-  bool dnsOk=false;
-  // Validate the address, not only hostByName's return value: some ESP32
-  // network stacks may report success while leaving the result as 0.0.0.0.
-  for(uint8_t attempt=1; attempt<=2 && !dnsOk; ++attempt) {
-    apiIp=IPAddress(0,0,0,0);
-    const int result=WiFi.hostByName(host,apiIp);
-    dnsOk=(result==1 && apiIp!=IPAddress(0,0,0,0));
-    Serial.printf("[CLOUD] DNS DHCP attempt=%u result=%d ip=%s valid=%d\\n",
-                  attempt,result,apiIp.toString().c_str(),dnsOk?1:0);
-    if(!dnsOk) delay(250);
-  }
-  if(!dnsOk) {
-    // Set lwIP resolver entries directly; keep the DHCP IP, gateway and subnet.
-    ip_addr_t fallbackDns1, fallbackDns2;
-    IP_ADDR4(&fallbackDns1,1,1,1,1);
-    IP_ADDR4(&fallbackDns2,8,8,8,8);
-    dns_setserver(0,&fallbackDns1);
-    dns_setserver(1,&fallbackDns2);
-    Serial.println("[CLOUD] DNS FALLBACK configured primary=1.1.1.1 secondary=8.8.8.8");
-    for(uint8_t attempt=1; attempt<=3 && !dnsOk; ++attempt) {
-      apiIp=IPAddress(0,0,0,0);
-      const int result=WiFi.hostByName(host,apiIp);
-      dnsOk=(result==1 && apiIp!=IPAddress(0,0,0,0));
-      Serial.printf("[CLOUD] DNS fallback attempt=%u result=%d ip=%s valid=%d\\n",
-                    attempt,result,apiIp.toString().c_str(),dnsOk?1:0);
-      if(!dnsOk) delay(350);
-    }
-  }
-  if(!dnsOk) {
-    response="DNS lookup failed (DHCP and fallback resolvers)";
-    Serial.printf("[CLOUD] DNS FAILED host=%s after 5 attempts\\n",host);
-    return false;
-  }
-  Serial.printf("[CLOUD] DNS OK %s -> %s, RSSI=%d dBm\\n",
-                host,apiIp.toString().c_str(),WiFi.RSSI());
-  Serial.printf("[CLOUD] NETWORK local=%s gateway=%s subnet=%s rssi=%d dBm\\n",
-                WiFi.localIP().toString().c_str(),WiFi.gatewayIP().toString().c_str(),
-                WiFi.subnetMask().toString().c_str(),WiFi.RSSI());
-
-  // Retry raw TCP with a fresh DNS lookup each time. This distinguishes a
-  // transient Cloudflare route/IP issue from a persistent socket failure.
-  bool tcpOk=false;
-  for(uint8_t attempt=1; attempt<=3 && !tcpOk; ++attempt) {
-    if(attempt>1) {
-      delay(500);
-      IPAddress retryIp(0,0,0,0);
-      const int dnsResult=WiFi.hostByName(host,retryIp);
-      const bool retryDnsOk=(dnsResult==1 && retryIp!=IPAddress(0,0,0,0));
-      Serial.printf("[CLOUD] DNS RETRY attempt=%u result=%d ip=%s valid=%d\\n",
-                    attempt,dnsResult,retryIp.toString().c_str(),retryDnsOk?1:0);
-      if(retryDnsOk) apiIp=retryIp;
-      else continue;
-    }
-    WiFiClient tcpProbe;
-    const uint32_t tcpStartedAt=millis();
-    errno=0;
-    tcpOk=tcpProbe.connect(apiIp,443);
-    const int tcpErrno=errno;
-    Serial.printf("[CLOUD] TCP PREFLIGHT attempt=%u ip=%s port=443 ok=%d elapsed=%lu ms errno=%d (%s)\\n",
-                  attempt,apiIp.toString().c_str(),tcpOk?1:0,
-                  (unsigned long)(millis()-tcpStartedAt),tcpErrno,strerror(tcpErrno));
-    tcpProbe.stop();
-  }
-  if(!tcpOk) {
-    response="TCP connection to API failed after 3 attempts";
-    Serial.printf("[CLOUD] TCP FAILED host=%s last_ip=%s local=%s gateway=%s\\n",
-                  host,apiIp.toString().c_str(),WiFi.localIP().toString().c_str(),
-                  WiFi.gatewayIP().toString().c_str());
-    return false;
-  }
-
-  WiFiClientSecure tlsProbe;
-  tlsProbe.setHandshakeTimeout(12);
-  // Split socket setup from the TLS handshake so the serial log identifies
-  // which phase fails. Certificate-chain and hostname verification stay on.
-  tlsProbe.setPlainStart();
-  Serial.printf("[CLOUD] TLS MEMORY before free=%u min=%u largest=%u\\n",
-                ESP.getFreeHeap(),ESP.getMinFreeHeap(),
-                (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-  Serial.printf("[CLOUD] TLS SOCKET START ip=%s port=443 sni=%s verify=enabled\\n",
-                apiIp.toString().c_str(),host);
-  const uint32_t tlsSocketStartedAt=millis();
-  errno=0;
-  const int tlsSocketOk=tlsProbe.connect(apiIp,443,host,ROOT_CA_BUNDLE,nullptr,nullptr);
-  const int tlsSocketErrno=errno;
-  Serial.printf("[CLOUD] TLS SOCKET RESULT ok=%d elapsed=%lu ms fd=%d errno=%d (%s)\\n",
-                tlsSocketOk,(unsigned long)(millis()-tlsSocketStartedAt),
-                tlsProbe.fd(),tlsSocketErrno,strerror(tlsSocketErrno));
-  if(!tlsSocketOk) {
-    char socketError[160]={0};
-    const int socketErrorCode=tlsProbe.lastError(socketError,sizeof(socketError));
-    Serial.printf("[CLOUD] TLS SOCKET ERROR code=%d detail=%s\\n",
-                  socketErrorCode,socketError[0]?socketError:"none");
-    tlsProbe.stop();
-    response=String("TLS socket setup failed: ")+(socketError[0]?socketError:"unknown");
-    return false;
-  }
-
-  Serial.printf("[CLOUD] TLS HANDSHAKE START host=%s fd=%d free=%u largest=%u\\n",
-                host,tlsProbe.fd(),ESP.getFreeHeap(),
-                (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-  const uint32_t tlsHandshakeStartedAt=millis();
-  errno=0;
-  const int tlsHandshakeOk=tlsProbe.startTLS();
-  const int tlsHandshakeErrno=errno;
-  char tlsHandshakeError[160]={0};
-  const int tlsHandshakeErrorCode=tlsProbe.lastError(tlsHandshakeError,sizeof(tlsHandshakeError));
-  Serial.printf("[CLOUD] TLS HANDSHAKE RESULT ok=%d elapsed=%lu ms error_code=%d detail=%s errno=%d (%s)\\n",
-                tlsHandshakeOk,(unsigned long)(millis()-tlsHandshakeStartedAt),
-                tlsHandshakeErrorCode,tlsHandshakeError[0]?tlsHandshakeError:"none",
-                tlsHandshakeErrno,strerror(tlsHandshakeErrno));
-  Serial.printf("[CLOUD] TLS MEMORY after free=%u min=%u largest=%u\\n",
-                ESP.getFreeHeap(),ESP.getMinFreeHeap(),
-                (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-  tlsProbe.stop();
-  if(!tlsHandshakeOk) {
-    response=String("TLS handshake failed: ")+(tlsHandshakeError[0]?tlsHandshakeError:"unknown");
-    return false;
-  }
-
-  WiFiClientSecure tls;
-  tls.setCACert(ROOT_CA_BUNDLE); // Keep certificate verification enabled.
-  tls.setHandshakeTimeout(20);   // Bound TLS handshake so the UI cannot wait indefinitely.
-  HTTPClient http;
-  http.setConnectTimeout(12000);
-  http.setTimeout(15000);
-  http.setReuse(false);
-  const String url=String(API_BASE)+path;
-  Serial.printf("[CLOUD] HTTPS init: %s\\n",url.c_str());
-  if(!http.begin(tls,url)) {
-    response="HTTPS init failed";
-    Serial.printf("[CLOUD] HTTP begin failed: %s\\n",url.c_str());
-    return false;
-  }
-  Serial.println("[CLOUD] HTTPS client ready");
-  http.addHeader("Content-Type","application/json");
-  if(deviceToken.length()) http.addHeader("Authorization",String("Bearer ")+deviceToken);
-  int status=-1;
-  Serial.printf("[CLOUD] REQUEST START method=%s path=%s payload=%u bytes\\n",method,path.c_str(),(unsigned)body.length());
-  const uint32_t requestStartedAt=millis();
-  if(strcmp(method,"POST")==0) status=http.POST((uint8_t*)body.c_str(),body.length());
-  else if(strcmp(method,"PUT")==0) status=http.PUT((uint8_t*)body.c_str(),body.length());
-  else status=http.GET();
-  Serial.printf("[CLOUD] REQUEST FINISHED status=%d elapsed=%lu ms\\n",status,(unsigned long)(millis()-requestStartedAt));
-  if(status>0) {
-    response=http.getString();
-    Serial.printf("[CLOUD] %s %s -> HTTP %d, response=%u bytes\\n",method,path.c_str(),status,(unsigned)response.length());
-    if(status<200 || status>=300) Serial.printf("[CLOUD] ERROR BODY: %.180s\\n",response.c_str());
-  } else {
-    char tlsError[160]={0};
-    tls.lastError(tlsError,sizeof(tlsError));
-    response=http.errorToString(status);
-    Serial.printf("[CLOUD] %s %s -> %s; IP=%s; TLS=%s\\n",method,path.c_str(),response.c_str(),apiIp.toString().c_str(),tlsError);
-    response += " IP " + apiIp.toString();
-  }
-  http.end();
-  Serial.println("[CLOUD] HTTP client closed");
-  return status>=200 && status<300;
-}
-static void showPairingScreen();
-static void startDevicePairing() {
-  if(pairingCode.length()!=8) { setupMessage="Enter all 8 digits"; showPairingScreen(); return; }
-  JsonDocument requestDoc;
-  requestDoc["code"]=pairingCode;
-  requestDoc["device_name"]="CYD Satellite Tracker";
-  String body; serializeJson(requestDoc,body);
-  String response;
-  cloudStatus="PAIRING...";
-  if(!cloudRequest("POST","/api/devices/claim",body,response)) {
-    JsonDocument errorDoc;
-    if(deserializeJson(errorDoc,response)==DeserializationError::Ok && errorDoc["error"].is<const char*>())
-      setupMessage=String((const char*)errorDoc["error"]);
-    else setupMessage="HTTPS error: "+response.substring(0,34);
-    cloudStatus="PAIR FAILED";
-    showPairingScreen();
-    return;
-  }
-  JsonDocument result;
-  if(deserializeJson(result,response)!=DeserializationError::Ok || !result["device_token"].is<const char*>()) {
-    setupMessage="Invalid server response"; cloudStatus="PAIR FAILED"; showPairingScreen(); return;
-  }
-  deviceToken=String((const char*)result["device_token"]);
-  deviceId=String((const char*)result["device_id"]);
-  prefs.putString("device_token",deviceToken);
-  prefs.putString("device_id",deviceId);
-  pairingCode="";
-  setupMessage="Device linked to your account";
-  cloudStatus="LINKED";
-  showSystemScreen();
-}
-static void sendDeviceHeartbeat() {
-  if(!deviceToken.length() || WiFi.status()!=WL_CONNECTED) return;
-  JsonDocument doc;
-  doc["wifi_rssi"]=WiFi.RSSI();
-  doc["hardware_id"]=deviceHardwareId;
-  doc["gps_connected"]=gps.charsProcessed()>0;
-  doc["angle_sensor_connected"]=false;
-  doc["compass_connected"]=false;
-  doc["motor_drivers_connected"]=false;
-  doc["limit_switches_connected"]=false;
-  doc["ip"]=WiFi.localIP().toString();
-  const bool fix=gps.location.isValid() && gps.location.age()<10000;
-  doc["gps_valid"]=fix;
-  if(fix) {
-    doc["latitude"]=gps.location.lat();
-    doc["longitude"]=gps.location.lng();
-  }
-  if(gps.altitude.isValid()) doc["altitude"]=gps.altitude.meters();
-  if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
-  doc["firmware"]="V74";
-  String body,response; serializeJson(doc,body);
-  if(cloudRequest("POST","/api/devices/heartbeat",body,response)) cloudStatus="LINKED";
-  else if(response.indexOf("401")>=0 || response.indexOf("не авторизовано")>=0) {
-    deviceToken=""; prefs.remove("device_token"); prefs.remove("device_id"); cloudStatus="TOKEN INVALID";
-  }
-}
-static void pollDeviceCommands() {
-  if(!deviceToken.length() || WiFi.status()!=WL_CONNECTED) return;
-  String response;
-  if(!cloudRequest("GET","/api/devices/commands","",response)) return;
-  JsonDocument doc;
-  if(deserializeJson(doc,response)!=DeserializationError::Ok) return;
-  JsonArray commands=doc["commands"].as<JsonArray>();
-  for(JsonObject command:commands) {
-    const String id=command["id"]| "";
-    const String name=command["command"]| "";
-    String result="ignored";
-    if(name=="telemetry_refresh") { sendDeviceHeartbeat(); result="telemetry sent"; }
-    else if(name=="stop") { result="motors already locked"; } // No motor motion is enabled in this firmware.
-    JsonDocument ack; ack["id"]=id; ack["result"]=result;
-    String body,ackResponse; serializeJson(ack,body);
-    cloudRequest("PUT","/api/devices/commands",body,ackResponse);
-  }
-}
-static void updateCloudServices(uint32_t now) {
-  if(!deviceToken.length() || WiFi.status()!=WL_CONNECTED) return;
-  if(now-lastHeartbeatAt>=30000) { lastHeartbeatAt=now; sendDeviceHeartbeat(); }
-  if(now-lastCommandPollAt>=10000) { lastCommandPollAt=now; pollDeviceCommands(); }
-}
+// Cloud communication is intentionally delegated to the Windows gateway.
+// The ESP32 only serves local HTTP telemetry and accepts local control requests.
 static void drawPairingCodeField() {
   tft.fillRoundRect(16,42,288,34,7,0x1028);
   tft.drawRoundRect(16,42,288,34,7,0x07FF);
@@ -1047,12 +768,12 @@ static void showSystemScreen() {
   tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,0x0822);tft.drawString(fix?"FIX":"SEARCH",173,114,4);
   tft.setTextColor(MUTED,0x0822);tft.drawString(wifi?WiFi.localIP().toString().c_str():"NO NETWORK",17,140,1);
   tft.drawString(gps.satellites.isValid()?"SATELLITES RECEIVED":"WAITING FOR DATA",173,140,1);
-  tft.setTextColor(deviceToken.length()?TFT_GREEN:TFT_YELLOW,0x0822);
-  tft.drawString(deviceToken.length()?"CLOUD LINKED":cloudStatus.c_str(),173,151,1);
+  tft.setTextColor(TFT_CYAN,0x0822);
+  tft.drawString("WINDOWS GATEWAY",173,151,1);
   tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,BG);tft.drawString("QUICK ACTIONS",10,160,1);
   drawButton(7,174,98,26,"TOUCH",0x035F);
   drawButton(111,174,98,26,"WI-FI",0x03B9);
-  drawButton(215,174,98,26,"LINK",0x03B9);
+  drawButton(215,174,98,26,"GATEWAY",0x03B9);
   drawNavigation(3);
 }
 
@@ -1163,51 +884,9 @@ static void handleTouch(){
    } else if(x<212) {
      WiFi.disconnect(false,false); editingPassword=false; setupMessage="Edit network, then press CONNECT";
      wifiScreenDrawn=false; showWifiSetup();
-   } else { pairingCode=""; setupMessage=""; showPairingScreen(); }
+   } else { setupMessage="CLOUD SYNC RUNS THROUGH WINDOWS GATEWAY"; showSystemScreen(); }
  }
- else if(screen==Screen::Pairing) {
-   Serial.printf("PAIR SCREEN TOUCH x=%u y=%u code_len=%u\\n",x,y,(unsigned)pairingCode.length());
-   // Header BACK exits pairing without changing saved Wi-Fi or device credentials.
-   if(y<=30 && x>=225) {
-     pairingCode=""; setupMessage=""; showSystemScreen();
-   }
-   // Bottom-row hit zones follow the actual button layout and tolerate calibration drift.
-   else if(y>=178 && x>=198) {
-     tft.fillRoundRect(204,195,88,27,4,0x07FF);
-     tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_BLACK,0x07FF); tft.drawString("PAIR",248,208,2);
-     setupMessage="PAIR pressed - contacting server...";
-     drawPairingMessage();
-     Serial.println("PAIR BUTTON ACTIVATED");
-     startDevicePairing();
-   } else if(y>=178 && x<108) {
-     tft.fillRoundRect(28,195,72,27,4,0x5D7A);
-     tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,0x5D7A); tft.drawString("DEL",64,208,2);
-     delay(65);
-     if(pairingCode.length()) pairingCode.remove(pairingCode.length()-1);
-     setupMessage=""; drawPairingCodeField(); drawPairingMessage();
-     drawKey(28,195,72,27,"DEL",KEY_BG);
-   } else if(y>=178 && x>=108 && x<198) {
-     tft.fillRoundRect(116,195,72,27,4,0x5DFF);
-     tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_BLACK,0x5DFF); tft.drawString("0",152,208,2);
-     delay(65);
-     if(pairingCode.length()<8) pairingCode+="0";
-     setupMessage=""; drawPairingCodeField(); drawPairingMessage();
-     drawKey(116,195,72,27,"0",KEY_NUM);
-   } else if(y>=96 && y<190) {
-     const int row=(y-99)/32, col=(x-28)/88;
-     if(row>=0 && row<3 && col>=0 && col<3 && x>=28+col*88 && x<100+col*88 && y>=99+row*32 && y<126+row*32 && pairingCode.length()<8) {
-       const int kx=28+col*88, ky=99+row*32;
-       char label[2]={(char)('1'+row*3+col),0};
-       drawKey(kx,ky,72,27,label,0x07FF);
-       delay(55);
-       pairingCode+=label; setupMessage="";
-       drawPairingCodeField(); drawPairingMessage();
-       drawKey(kx,ky,72,27,label,KEY_NUM);
-     }
-   } else {
-     setupMessage="Touch detected"; drawPairingMessage();
-   }
- }
+ else if(screen==Screen::Pairing) { showSystemScreen(); }
  else if(screen==Screen::Dashboard && y>=160 && y<200) {
    showSatelliteScreen();
  }
@@ -1270,7 +949,6 @@ static void sendLocalStatus() {
   doc["device"]="CYD Satellite Tracker";
   doc["firmware"]="V71";
   doc["hardware_id"]=deviceHardwareId;
-  doc["device_id"]=deviceId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
   hardware["angle_sensor_connected"]=false;
@@ -1289,7 +967,8 @@ static void sendLocalStatus() {
   }
   if(gps.altitude.isValid()) doc["altitude_m"]=gps.altitude.meters();
   if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
-  doc["cloud_linked"]=deviceToken.length()>0;
+  doc["cloud_linked"]=false;
+  doc["gateway_required"]=true;
   String body; serializeJson(doc,body);
   localServer.sendHeader("Cache-Control","no-store");
   localServer.send(200,"application/json; charset=utf-8",body);
@@ -1386,9 +1065,6 @@ void setup() {
   Serial.printf("[DEVICE] hardware_id=%s\\n",deviceHardwareId.c_str());
   wifiName=prefs.getString("ssid","");
   wifiPassword=prefs.getString("password","");
-  deviceToken=prefs.getString("device_token","");
-  deviceId=prefs.getString("device_id","");
-  if(deviceToken.length()) cloudStatus="LINKED";
   if(!wifiName.length() && WIFI_SSID[0]) {
     wifiName=WIFI_SSID;
     wifiPassword=WIFI_PASSWORD;
@@ -1431,7 +1107,7 @@ void loop() {
     }
   }
   if(!displayDiagnosticActive) handleTouch();
-  if(!displayDiagnosticActive) { serviceLocalApi(); updateCloudServices(now); }
+  if(!displayDiagnosticActive) serviceLocalApi();
   // Refresh only the three telemetry tiles; keep the photo, radar and chrome static.
   if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastDashboardRefreshAt>=1000) {
     updateGpsTelemetry();

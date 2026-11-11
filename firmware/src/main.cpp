@@ -1097,8 +1097,9 @@ static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V67-local";
+  doc["firmware"]="V68-local";
   doc["connection"]="local-wifi";
+  doc["discovery"]="mdns";
   doc["ip"]=WiFi.localIP().toString();
   doc["hostname"]="cyd-tracker.local";
   doc["wifi_rssi"]=WiFi.RSSI();

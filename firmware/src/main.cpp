@@ -162,8 +162,8 @@ static void drawSatellite(int16_t cx, int16_t cy) {
 
 static bool splashOutput(int16_t x,int16_t y,uint16_t w,uint16_t h,uint16_t* bitmap){
   if(y>=tft.height()) return false;
-  const uint32_t pixels=(uint32_t)w*(uint32_t)h;
-  for(uint32_t i=0;i<pixels;++i) bitmap[i]=(uint16_t)~bitmap[i];
+  // LCD inversion is configured globally in setup(). Do not invert JPEG
+  // pixels a second time here; doing so makes the splash artwork negative.
   tft.pushImage(x,y,w,h,bitmap);
   return true;
 }

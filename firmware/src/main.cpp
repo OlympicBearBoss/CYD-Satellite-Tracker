@@ -533,12 +533,12 @@ static bool cloudRequest(const char* method,const String& path,const String& bod
   }
   if(!dnsOk) {
     // Set lwIP resolver entries directly; keep the DHCP IP, gateway and subnet.
-    const IPAddress fallbackDns1(1,1,1,1);
-    const IPAddress fallbackDns2(8,8,8,8);
+    ip_addr_t fallbackDns1, fallbackDns2;
+    IP_ADDR4(&fallbackDns1,1,1,1,1);
+    IP_ADDR4(&fallbackDns2,8,8,8,8);
     dns_setserver(0,&fallbackDns1);
     dns_setserver(1,&fallbackDns2);
-    Serial.printf("[CLOUD] DNS FALLBACK configured primary=%s secondary=%s\\n",
-                  fallbackDns1.toString().c_str(),fallbackDns2.toString().c_str());
+    Serial.println("[CLOUD] DNS FALLBACK configured primary=1.1.1.1 secondary=8.8.8.8");
     for(uint8_t attempt=1; attempt<=3 && !dnsOk; ++attempt) {
       apiIp=IPAddress(0,0,0,0);
       const int result=WiFi.hostByName(host,apiIp,6000);

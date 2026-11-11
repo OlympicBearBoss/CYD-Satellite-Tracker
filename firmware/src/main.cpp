@@ -27,7 +27,7 @@ static constexpr uint16_t TOUCH_THRESHOLD = 250;
 static constexpr uint16_t FIELD_HIT_TOP = 24;
 static constexpr uint16_t FIELD_HIT_BOTTOM = 99;
 
-enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Pairing, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, Failed };
+enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, Failed };
 static Screen screen = Screen::Splash;
 static uint32_t screenStartedAt = 0;
 static uint32_t wifiAttemptAt = 0;
@@ -50,7 +50,6 @@ static bool editingPassword = false;
 static String wifiName;
 static String wifiPassword;
 static String setupMessage;
-static String pairingCode;
 static String deviceHardwareId;
 static WebServer localServer(80);
 static bool localApiStarted=false;
@@ -480,40 +479,6 @@ static void showSystemScreen();
 
 // Cloud communication is intentionally delegated to the Windows gateway.
 // The ESP32 only serves local HTTP telemetry and accepts local control requests.
-static void drawPairingCodeField() {
-  tft.fillRoundRect(16,42,288,34,7,0x1028);
-  tft.drawRoundRect(16,42,288,34,7,0x07FF);
-  String shown=pairingCode; while(shown.length()<8) shown+="_";
-  tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,0x1028);
-  tft.drawString(shown,160,59,4);
-}
-static void drawPairingMessage() {
-  tft.fillRect(8,78,304,15,BG);
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(setupMessage.length()?TFT_YELLOW:MUTED,BG);
-  String msg=setupMessage.length()?setupMessage:"Enter the 8-digit code from the website";
-  if(msg.length()>39) msg=msg.substring(0,39);
-  tft.drawString(msg,12,80,1);
-}
-static void showPairingScreen() {
-  screen=Screen::Pairing;
-  tft.fillScreen(BG);
-  tft.fillRect(0,0,320,30,0x0862); tft.fillRect(0,29,320,2,TFT_CYAN);
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_WHITE,0x0862);
-  tft.drawString("LINK DEVICE",12,7,2);
-  tft.setTextDatum(TR_DATUM); tft.setTextColor(TFT_CYAN,0x0862);
-  tft.drawString("CLOUD / HTTPS",309,9,1);
-  drawButton(235,3,78,23,"BACK",0x035F);
-  drawPairingCodeField();
-  drawPairingMessage();
-  for(int row=0;row<3;row++) for(int col=0;col<3;col++) {
-    char key[2]={(char)('1'+row*3+col),0};
-    drawKey(28+col*88,99+row*32,72,27,key,KEY_NUM);
-  }
-  drawKey(28,195,72,27,"DEL",KEY_BG);
-  drawKey(116,195,72,27,"0",KEY_NUM);
-  drawKey(204,195,88,27,"PAIR",0x03B9);
-}
-
 static void drawNavigation(uint8_t active) {
   const uint16_t activeColor=0x07FF, idleColor=0x001F;
   drawButton(4,207,76,29,"HOME",active==0?activeColor:idleColor);
@@ -886,7 +851,7 @@ static void handleTouch(){
      wifiScreenDrawn=false; showWifiSetup();
    } else { setupMessage="CLOUD SYNC RUNS THROUGH WINDOWS GATEWAY"; showSystemScreen(); }
  }
- else if(screen==Screen::Pairing) { showSystemScreen(); }
+
  else if(screen==Screen::Dashboard && y>=160 && y<200) {
    showSatelliteScreen();
  }

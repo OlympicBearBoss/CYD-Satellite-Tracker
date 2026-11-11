@@ -566,7 +566,7 @@ static void sendDeviceHeartbeat() {
   }
   if(gps.altitude.isValid()) doc["altitude"]=gps.altitude.meters();
   if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
-  doc["firmware"]="V66";
+  doc["firmware"]="V67";
   String body,response; serializeJson(doc,body);
   if(cloudRequest("POST","/api/devices/heartbeat",body,response)) cloudStatus="LINKED";
   else if(response.indexOf("401")>=0 || response.indexOf("не авторизовано")>=0) {

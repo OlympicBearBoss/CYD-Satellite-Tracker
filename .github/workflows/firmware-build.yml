@@ -54,7 +54,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.11.63"
+          FW_VERSION="v2026.11.11.64"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 

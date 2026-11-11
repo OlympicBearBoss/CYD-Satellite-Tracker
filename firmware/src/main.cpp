@@ -485,7 +485,7 @@ static bool cloudRequest(const char* method,const String& path,const String& bod
   if(WiFi.status()!=WL_CONNECTED) { response="Wi-Fi offline"; Serial.println("[CLOUD] Wi-Fi offline"); return false; }
   const char* host="cyd-satellite-tracker.pages.dev";
   IPAddress apiIp;
-  if(!WiFi.hostByName(host,apiIp,7000)) {
+  if(!WiFi.hostByName(host,apiIp)) {
     response="DNS lookup failed";
     Serial.printf("[CLOUD] DNS FAILED host=%s\n",host);
     return false;

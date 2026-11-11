@@ -1,0 +1,33 @@
+name: CYD Flutter app check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app_flutter/**"
+      - ".github/workflows/flutter-app-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Android and iOS project scaffolding
+        working-directory: app_flutter
+        run: flutter create --platforms=android,ios --project-name cyd_satellite_tracker .
+      - name: Resolve packages
+        working-directory: app_flutter
+        run: flutter pub get
+      - name: Analyze Dart source
+        working-directory: app_flutter
+        run: flutter analyze --no-pub

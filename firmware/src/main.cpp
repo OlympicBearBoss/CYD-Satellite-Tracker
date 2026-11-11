@@ -10,6 +10,7 @@
 #include <Preferences.h>
 #include <TinyGPSPlus.h>
 #include <ctype.h>
+#include <time.h>
 #include <TJpg_Decoder.h>
 #include "splash_jpg.h"
 #include "ui_assets.h"
@@ -161,7 +162,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V72 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V73 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -486,8 +487,34 @@ static void showConnecting() {
 
 
 static void showSystemScreen();
+
+// TLS certificate validation requires a sane wall clock. ESP32 starts with
+// an unset clock after boot, so synchronize SNTP before opening HTTPS sessions.
+static bool ensureSystemClock() {
+  time_t now = time(nullptr);
+  if (now >= 1760000000) {
+    Serial.printf("[CLOUD] System clock already valid: epoch=%lu\n",(unsigned long)now);
+    return true;
+  }
+  Serial.printf("[CLOUD] System clock unset (epoch=%lu); starting SNTP\n",(unsigned long)now);
+  configTime(0,0,"pool.ntp.org","time.cloudflare.com","time.google.com");
+  const uint32_t startedAt=millis();
+  while(millis()-startedAt<15000) {
+    now=time(nullptr);
+    if(now>=1760000000) {
+      Serial.printf("[CLOUD] SNTP synchronized: epoch=%lu\n",(unsigned long)now);
+      return true;
+    }
+    delay(250);
+  }
+  now=time(nullptr);
+  Serial.printf("[CLOUD] SNTP FAILED after 15000 ms; epoch=%lu\n",(unsigned long)now);
+  return false;
+}
+
 static bool cloudRequest(const char* method,const String& path,const String& body,String& response) {
   if(WiFi.status()!=WL_CONNECTED) { response="Wi-Fi offline"; Serial.println("[CLOUD] Wi-Fi offline"); return false; }
+  if(!ensureSystemClock()) { response="NTP time synchronization failed"; return false; }
   const char* host="cyd-satellite-tracker.pages.dev";
   IPAddress apiIp;
   if(!WiFi.hostByName(host,apiIp)) {
@@ -585,7 +612,7 @@ static void sendDeviceHeartbeat() {
   }
   if(gps.altitude.isValid()) doc["altitude"]=gps.altitude.meters();
   if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
-  doc["firmware"]="V72";
+  doc["firmware"]="V73";
   String body,response; serializeJson(doc,body);
   if(cloudRequest("POST","/api/devices/heartbeat",body,response)) cloudStatus="LINKED";
   else if(response.indexOf("401")>=0 || response.indexOf("не авторизовано")>=0) {

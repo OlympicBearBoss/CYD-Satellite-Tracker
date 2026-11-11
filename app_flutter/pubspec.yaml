@@ -8,6 +8,7 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.2
+  multicast_dns: ^0.3.2+7
 dev_dependencies:
   flutter_test:
     sdk: flutter

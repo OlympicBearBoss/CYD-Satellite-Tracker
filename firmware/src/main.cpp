@@ -555,16 +555,39 @@ static bool cloudRequest(const char* method,const String& path,const String& bod
   }
   Serial.printf("[CLOUD] DNS OK %s -> %s, RSSI=%d dBm\\n",
                 host,apiIp.toString().c_str(),WiFi.RSSI());
+  Serial.printf("[CLOUD] NETWORK local=%s gateway=%s subnet=%s rssi=%d dBm\\n",
+                WiFi.localIP().toString().c_str(),WiFi.gatewayIP().toString().c_str(),
+                WiFi.subnetMask().toString().c_str(),WiFi.RSSI());
 
-  // Separate raw TCP reachability from TLS certificate/handshake diagnostics.
-  WiFiClient tcpProbe;
-  const uint32_t tcpStartedAt=millis();
-  const bool tcpOk=tcpProbe.connect(apiIp,443);
-  Serial.printf("[CLOUD] TCP PREFLIGHT ip=%s port=443 ok=%d elapsed=%lu ms\\n",
-                apiIp.toString().c_str(),tcpOk?1:0,(unsigned long)(millis()-tcpStartedAt));
-  tcpProbe.stop();
+  // Retry raw TCP with a fresh DNS lookup each time. This distinguishes a
+  // transient Cloudflare route/IP issue from a persistent socket failure.
+  bool tcpOk=false;
+  for(uint8_t attempt=1; attempt<=3 && !tcpOk; ++attempt) {
+    if(attempt>1) {
+      delay(500);
+      IPAddress retryIp(0,0,0,0);
+      const int dnsResult=WiFi.hostByName(host,retryIp);
+      const bool retryDnsOk=(dnsResult==1 && retryIp!=IPAddress(0,0,0,0));
+      Serial.printf("[CLOUD] DNS RETRY attempt=%u result=%d ip=%s valid=%d\\n",
+                    attempt,dnsResult,retryIp.toString().c_str(),retryDnsOk?1:0);
+      if(retryDnsOk) apiIp=retryIp;
+      else continue;
+    }
+    WiFiClient tcpProbe;
+    const uint32_t tcpStartedAt=millis();
+    errno=0;
+    tcpOk=tcpProbe.connect(apiIp,443);
+    const int tcpErrno=errno;
+    Serial.printf("[CLOUD] TCP PREFLIGHT attempt=%u ip=%s port=443 ok=%d elapsed=%lu ms errno=%d (%s)\\n",
+                  attempt,apiIp.toString().c_str(),tcpOk?1:0,
+                  (unsigned long)(millis()-tcpStartedAt),tcpErrno,strerror(tcpErrno));
+    tcpProbe.stop();
+  }
   if(!tcpOk) {
-    response="TCP connection to API failed";
+    response="TCP connection to API failed after 3 attempts";
+    Serial.printf("[CLOUD] TCP FAILED host=%s last_ip=%s local=%s gateway=%s\\n",
+                  host,apiIp.toString().c_str(),WiFi.localIP().toString().c_str(),
+                  WiFi.gatewayIP().toString().c_str());
     return false;
   }
 

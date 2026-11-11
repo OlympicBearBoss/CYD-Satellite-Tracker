@@ -11,6 +11,8 @@
 #include <TinyGPSPlus.h>
 #include <ctype.h>
 #include <time.h>
+#include <errno.h>
+#include <esp_heap_caps.h>
 #include <TJpg_Decoder.h>
 #include "splash_jpg.h"
 #include "ui_assets.h"
@@ -539,13 +541,20 @@ static bool cloudRequest(const char* method,const String& path,const String& bod
   WiFiClientSecure tlsProbe;
   tlsProbe.setCACert(ROOT_CA_BUNDLE);
   tlsProbe.setHandshakeTimeout(12);
+  Serial.printf("[CLOUD] TLS MEMORY before free=%u min=%u largest=%u\\n",
+                ESP.getFreeHeap(),ESP.getMinFreeHeap(),
+                (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
   const uint32_t tlsStartedAt=millis();
   const int tlsProbeOk=tlsProbe.connect(host,443);
+  const int tlsSystemErrno=errno;
   char tlsProbeError[160]={0};
   const int tlsProbeErrorCode=tlsProbe.lastError(tlsProbeError,sizeof(tlsProbeError));
-  Serial.printf("[CLOUD] TLS PREFLIGHT host=%s ok=%d elapsed=%lu ms error_code=%d detail=%s\\n",
+  Serial.printf("[CLOUD] TLS PREFLIGHT host=%s ok=%d elapsed=%lu ms error_code=%d detail=%s errno=%d (%s)\\n",
                 host,tlsProbeOk,(unsigned long)(millis()-tlsStartedAt),tlsProbeErrorCode,
-                tlsProbeError[0]?tlsProbeError:"none");
+                tlsProbeError[0]?tlsProbeError:"none",tlsSystemErrno,strerror(tlsSystemErrno));
+  Serial.printf("[CLOUD] TLS MEMORY after free=%u min=%u largest=%u\\n",
+                ESP.getFreeHeap(),ESP.getMinFreeHeap(),
+                (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
   tlsProbe.stop();
   if(!tlsProbeOk) {
     response=String("TLS preflight failed: ")+(tlsProbeError[0]?tlsProbeError:"unknown");

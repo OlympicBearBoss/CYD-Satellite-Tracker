@@ -4,6 +4,8 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <WebServer.h>
+#include <ESPmDNS.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <TinyGPSPlus.h>
@@ -58,6 +60,8 @@ static uint32_t lastHeartbeatAt=0;
 static uint32_t lastCommandPollAt=0;
 static String cloudStatus="NOT LINKED";
 static const char* API_BASE="https://cyd-satellite-tracker.pages.dev";
+static WebServer localServer(80);
+static bool localApiStarted=false;
 
 // Space Dark palette: deep navy background, layered blue panels and cyan telemetry.
 static constexpr uint16_t BG = 0x0841;
@@ -1089,6 +1093,67 @@ static void handleSerialDisplayDiagnostics() {
   }
 }
 
+static void sendLocalStatus() {
+  JsonDocument doc;
+  doc["ok"]=true;
+  doc["device"]="CYD Satellite Tracker";
+  doc["firmware"]="V67-local";
+  doc["connection"]="local-wifi";
+  doc["ip"]=WiFi.localIP().toString();
+  doc["hostname"]="cyd-tracker.local";
+  doc["wifi_rssi"]=WiFi.RSSI();
+  doc["gps_valid"]=gps.location.isValid() && gps.location.age()<10000;
+  if(doc["gps_valid"].as<bool>()) {
+    doc["latitude"]=gps.location.lat();
+    doc["longitude"]=gps.location.lng();
+  }
+  if(gps.altitude.isValid()) doc["altitude_m"]=gps.altitude.meters();
+  if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
+  doc["cloud_linked"]=deviceToken.length()>0;
+  String body; serializeJson(doc,body);
+  localServer.sendHeader("Cache-Control","no-store");
+  localServer.send(200,"application/json; charset=utf-8",body);
+}
+static void startLocalApi() {
+  if(localApiStarted || WiFi.status()!=WL_CONNECTED) return;
+  localServer.on("/",HTTP_GET,[](){
+    const char page[] PROGMEM=R"HTML(<!doctype html><html lang="ru"><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8"><title>CYD Satellite Tracker</title><style>
+*{box-sizing:border-box}body{margin:0;background:#071426;color:#eaf6ff;font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{padding:22px 20px;background:#0b2039;border-bottom:1px solid #087eaa}main{max-width:760px;margin:24px auto;padding:0 16px}.card{background:#102844;border:1px solid #205176;border-radius:18px;padding:20px;margin:14px 0;box-shadow:0 10px 30px #0004}h1{font-size:22px;margin:0}h2{font-size:17px;margin:0 0 16px;color:#65d9ff}.muted{color:#9db6cc}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.metric{padding:14px;background:#091c31;border-radius:12px}.metric b{display:block;font-size:20px;margin-top:5px}.actions{display:flex;gap:10px;flex-wrap:wrap}button{border:0;border-radius:12px;padding:13px 18px;background:#087eaa;color:white;font-weight:700}button.stop{background:#a8324b}small{color:#9db6cc}@media(max-width:480px){.grid{grid-template-columns:1fr}}</style><header><h1>CYD Satellite Tracker</h1><div class="muted">Локальное управление · Wi‑Fi</div></header><main><section class="card"><h2>СОСТОЯНИЕ УСТРОЙСТВА</h2><div class="grid"><div class="metric">Подключение<b id="conn">Проверка…</b></div><div class="metric">Wi‑Fi сигнал<b id="rssi">—</b></div><div class="metric">GPS<b id="gps">—</b></div><div class="metric">Спутники GPS<b id="sats">—</b></div><div class="metric">Широта<b id="lat">—</b></div><div class="metric">Долгота<b id="lon">—</b></div></div><p class="muted" id="ip"></p></section><section class="card"><h2>УПРАВЛЕНИЕ</h2><div class="actions"><button class="stop" onclick="send('stop')">АВАРИЙНЫЙ СТОП</button><button onclick="refresh()">ОБНОВИТЬ ДАННЫЕ</button></div><p><small>Команды движения будут добавлены после подключения и проверки драйверов и концевиков. Сейчас моторы программно заблокированы.</small></p></section><section class="card"><h2>ПОДКЛЮЧЕНИЕ ПРИЛОЖЕНИЯ</h2><p>Адрес устройства: <b id="url">http://cyd-tracker.local</b></p><p class="muted">Если имя не открывается, используйте IP-адрес из строки состояния Wi‑Fi.</p></section></main><script>
+async function refresh(){try{let r=await fetch('/api/v1/status',{cache:'no-store'}),d=await r.json();document.querySelector('#conn').textContent='В сети';document.querySelector('#rssi').textContent=d.wifi_rssi+' dBm';document.querySelector('#gps').textContent=d.gps_valid?'Есть фиксация':'Поиск';document.querySelector('#sats').textContent=d.gps_satellites??'—';document.querySelector('#lat').textContent=d.latitude??'—';document.querySelector('#lon').textContent=d.longitude??'—';document.querySelector('#ip').textContent='IP: '+d.ip+' · Облако: '+(d.cloud_linked?'подключено':'не привязано');document.querySelector('#url').textContent='http://'+d.ip;}catch(e){document.querySelector('#conn').textContent='Нет связи';}}async function send(command){try{let r=await fetch('/api/v1/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command})});let d=await r.json();alert(d.message||d.error||'Готово');}catch(e){alert('Нет связи с контроллером');}}refresh();setInterval(refresh,2000);
+</script></html>)HTML";
+    localServer.send(200,"text/html; charset=utf-8",page);
+  });
+  localServer.on("/api/v1/status",HTTP_GET,sendLocalStatus);
+  localServer.on("/api/v1/command",HTTP_POST,[](){
+    JsonDocument req; JsonDocument out;
+    if(deserializeJson(req,localServer.arg("plain"))!=DeserializationError::Ok) {
+      out["ok"]=false; out["error"]="invalid_json";
+      String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
+    }
+    const String command=req["command"]| "";
+    if(command=="stop") {
+      out["ok"]=true; out["message"]="STOP принят. Двигатели сейчас заблокированы прошивкой.";
+      Serial.println("[LOCAL] STOP command received");
+      String body; serializeJson(out,body); localServer.send(200,"application/json",body); return;
+    }
+    out["ok"]=false; out["error"]="unsupported_command";
+    out["message"]="Команда не поддерживается текущей версией прошивки";
+    String body; serializeJson(out,body); localServer.send(400,"application/json",body);
+  });
+  localServer.onNotFound([](){
+    localServer.send(404,"application/json","{\"ok\":false,\"error\":\"not_found\"}");
+  });
+  localServer.begin();
+  if(MDNS.begin("cyd-tracker")) MDNS.addService("http","tcp",80);
+  localApiStarted=true;
+  Serial.printf("[LOCAL] API ready: http://%s/ and http://cyd-tracker.local/\\n",WiFi.localIP().toString().c_str());
+}
+static void serviceLocalApi() {
+  if(WiFi.status()!=WL_CONNECTED) { localApiStarted=false; return; }
+  if(!localApiStarted) startLocalApi();
+  if(localApiStarted) localServer.handleClient();
+}
+
 void setup() {
   Serial.begin(115200);
   delay(150);
@@ -1146,7 +1211,7 @@ void loop() {
     }
   }
   if(!displayDiagnosticActive) handleTouch();
-  if(!displayDiagnosticActive) updateCloudServices(now);
+  if(!displayDiagnosticActive) { serviceLocalApi(); updateCloudServices(now); }
   // Refresh only the three telemetry tiles; keep the photo, radar and chrome static.
   if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastDashboardRefreshAt>=1000) {
     updateGpsTelemetry();

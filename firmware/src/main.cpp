@@ -145,7 +145,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V61 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V62 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -536,108 +536,109 @@ static void drawDialNeedle(int cx,int cy,int length,float degrees,uint16_t color
 }
 
 static void drawGpsPanel() {
-  // Main screen: photo-led orbital overview with a compact instrument HUD.
-  // The native JPEG is kept at its decoded size; no low-quality software scaling.
-  tft.fillRoundRect(7,32,184,116,10,0x0008);
-  tft.drawRoundRect(7,32,184,116,10,0x03BF);
-  tft.fillRoundRect(11,36,176,108,7,0x0010);
-  // One photographic Earth + ISS hero image replaces the tiny layered thumbnails.
-  drawUiImage(11,39,ui_hero_jpg,sizeof(ui_hero_jpg));
-  // Space vignette and featured target label sit outside the photograph.
-  tft.fillRect(11,119,176,25,0x0008);
+  // V62: compact four-zone instrument dashboard, designed for native 320x240.
+  // Photo and static chrome are drawn once; telemetry values are refreshed separately.
+  const uint16_t edge=0x03BF, panel=0x0822, panelHi=0x1045;
+  // Featured ISS photograph card.
+  tft.fillRoundRect(5,31,181,113,9,0x0000);
+  tft.drawRoundRect(5,31,181,113,9,edge);
+  tft.fillRoundRect(8,34,175,107,6,panel);
+  drawUiImage(8,34,ui_hero_jpg,sizeof(ui_hero_jpg)); // native 176x80 photo
+  tft.fillRect(8,114,175,27,0x0010);
   tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_WHITE,0x0008);tft.drawString("ISS  /  ZARYA",17,121,2);
-  tft.setTextColor(TFT_GREEN,0x0008);tft.drawString("TRACKING TARGET",17,137,1);
-
-  // Radar instrument, matching the approved reference sketch.
-  const int cx=254,cy=91,r=53;
-  tft.fillCircle(cx,cy,r+7,0x0008);
-  tft.drawCircle(cx,cy,r+6,0x03BF);
+  tft.setTextColor(TFT_WHITE,0x0010); tft.drawString("ISS  /  ZARYA",14,116,2);
+  tft.setTextColor(TFT_GREEN,0x0010); tft.drawString("ORBITAL TARGET",14,132,1);
+  // Radar: luminous rings, graduated ticks, cardinal marks and target marker.
+  const int cx=250,cy=87,r=49;
+  tft.fillCircle(cx,cy,r+8,0x0000);
+  tft.drawCircle(cx,cy,r+7,0x03BF);
   tft.drawCircle(cx,cy,r,0x2A69);
-  tft.drawCircle(cx,cy,35,0x1A45);
-  tft.drawCircle(cx,cy,17,0x1A45);
+  tft.drawCircle(cx,cy,32,0x1A45);
+  tft.drawCircle(cx,cy,15,0x1A45);
   tft.drawFastHLine(cx-r,cy,2*r,0x2A69);
   tft.drawFastVLine(cx,cy-r,2*r,0x2A69);
-  for(int a=0;a<360;a+=10) {
+  for(int a=0;a<360;a+=5) {
     const float q=(a-90)*0.0174532925f;
-    const int r1=r-2, r2=r-(a%30==0?10:5);
+    const int r1=r-2, r2=r-(a%30==0?10:(a%10==0?7:4));
+    const uint16_t c=a%30==0?TFT_CYAN:0x2A69;
     tft.drawLine(cx+(int)(r1*cosf(q)),cy+(int)(r1*sinf(q)),
-                 cx+(int)(r2*cosf(q)),cy+(int)(r2*sinf(q)),
-                 a%30==0?TFT_CYAN:0x2A69);
+                 cx+(int)(r2*cosf(q)),cy+(int)(r2*sinf(q)),c);
   }
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,BG);
-  tft.drawString("N",cx,cy-r-1,2);tft.drawString("E",cx+r+1,cy,2);
-  tft.drawString("S",cx,cy+r+1,2);tft.drawString("W",cx-r-1,cy,2);
+  tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,BG);
+  tft.drawString("N",cx,cy-r-2,2); tft.drawString("E",cx+r+2,cy,2);
+  tft.drawString("S",cx,cy+r+2,2); tft.drawString("W",cx-r-2,cy,2);
   tft.fillTriangle(cx,cy-13,cx-6,cy+7,cx+6,cy+7,TFT_CYAN);
-  tft.fillCircle(cx,cy,4,TFT_WHITE);
-  tft.fillCircle(cx-27,cy+28,4,TFT_RED);
-  tft.drawCircle(cx-27,cy+28,6,0xF986);
-
-  // Three independent telemetry tiles.
-  tft.fillRoundRect(7,153,145,47,8,0x0822);
-  tft.drawRoundRect(7,153,145,47,8,0x03BF);
-  tft.fillRoundRect(157,153,76,47,8,0x0822);
-  tft.drawRoundRect(157,153,76,47,8,0x2A69);
-  tft.fillRoundRect(238,153,75,47,8,0x0822);
-  tft.drawRoundRect(238,153,75,47,8,0x2A69);
+  tft.fillCircle(cx,cy,3,TFT_WHITE);
+  tft.fillCircle(cx-25,cy+23,4,TFT_RED);
+  tft.drawCircle(cx-25,cy+23,6,0xF986);
+  // Three aligned data cards with consistent inset, edge and typography.
+  const int xs[3]={5,111,217}, ws[3]={101,101,98};
+  for(int i=0;i<3;i++) {
+    tft.fillRoundRect(xs[i],149,ws[i],50,7,0x0000);
+    tft.fillRoundRect(xs[i]+2,151,ws[i]-4,46,5,panelHi);
+    tft.drawRoundRect(xs[i],149,ws[i],50,7,i==0?edge:0x2A69);
+  }
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(TFT_CYAN,panelHi); tft.drawString("GPS",11,155,1);
+  tft.setTextColor(TFT_CYAN,panelHi); tft.drawString("SATELLITES",117,155,1);
+  tft.setTextColor(TFT_CYAN,panelHi); tft.drawString("LINK",223,155,1);
   updateGpsTelemetry();
 }
 static void updateGpsTelemetry() {
   const bool fix=gps.location.isValid() && gps.location.age()<10000;
   const bool wifi=WiFi.status()==WL_CONNECTED;
   char line[32];
-  // GPS tile
-  tft.fillRect(13,159,132,34,0x0822);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,0x0822);
-  tft.drawString("GPS",17,158,1);
-  tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,0x0822);
-  tft.drawString(fix?"FIX":"ПОИСК",52,158,1);
-  if(fix) snprintf(line,sizeof(line),"%.3f %.3f",gps.location.lat(),gps.location.lng());
-  else snprintf(line,sizeof(line),"--.---  --.---");
-  tft.setTextColor(TFT_WHITE,0x0822);tft.drawString(line,17,174,1);
+  // GPS fix and altitude.
+  tft.fillRect(10,169,91,25,0x1045);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,0x1045);
+  if(fix) snprintf(line,sizeof(line),"%.2f %.2f",gps.location.lat(),gps.location.lng());
+  else snprintf(line,sizeof(line),"SEARCHING");
+  tft.drawString(line,11,169,1);
   if(fix) snprintf(line,sizeof(line),"ALT %.0fm",gps.altitude.meters());
   else snprintf(line,sizeof(line),"ALT ---");
-  tft.setTextColor(MUTED,0x0822);tft.drawString(line,17,186,1);
-
-  // This is the GPS receiver satellite count, not the orbital catalog count.
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(MUTED,0x0822);
-  tft.drawString("GPS SAT",195,162,1);
+  tft.setTextColor(TFT_WHITE,0x1045); tft.drawString(line,11,183,1);
+  // This is the GNSS receiver's satellite count, not the orbital catalog.
+  tft.fillRect(116,169,91,25,0x1045);
+  tft.setTextDatum(MC_DATUM);
   snprintf(line,sizeof(line),"%02lu",(unsigned long)(gps.satellites.isValid()?gps.satellites.value():0));
-  tft.setTextColor(TFT_WHITE,0x0822);tft.drawString(line,195,183,4);
-
-  tft.setTextColor(wifi?TFT_GREEN:TFT_ORANGE,0x0822);
-  tft.drawString("WI-FI",275,162,1);
-  tft.fillCircle(275,182,5,wifi?TFT_GREEN:TFT_ORANGE);
-  tft.setTextColor(TFT_WHITE,0x0822);
-  tft.drawString(wifi?"ON":"OFF",275,190,1);
+  tft.setTextColor(TFT_WHITE,0x1045); tft.drawString(line,161,182,4);
+  // Wi-Fi state and UTC clock.
+  tft.fillRect(222,169,90,25,0x1045);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(wifi?TFT_GREEN:TFT_ORANGE,0x1045);
+  tft.drawString(wifi?"CONNECTED":"OFFLINE",266,174,1);
+  tft.setTextColor(TFT_WHITE,0x1045);
+  if(gps.time.isValid()) {
+    snprintf(line,sizeof(line),"%02u:%02u:%02u",gps.time.hour(),gps.time.minute(),gps.time.second());
+    tft.drawString(line,266,188,1);
+  } else tft.drawString("UTC --:--",266,188,1);
 }
 static void showDashboard() {
   screen=Screen::Dashboard;
   tft.fillScreen(BG);
-  // Header is intentionally minimal so the photographic hero dominates.
+  // Slim premium header with project mark, clock and connection state.
   tft.fillRect(0,0,320,27,0x0010);
-  tft.drawFastHLine(0,27,320,0x03BF);
-  tft.fillCircle(15,13,8,0x03BF);tft.fillCircle(15,13,4,TFT_WHITE);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x0010);
+  tft.fillRect(0,26,320,2,0x03BF);
+  tft.fillCircle(15,13,8,0x03BF); tft.fillCircle(15,13,4,TFT_WHITE);
+  tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_WHITE,0x0010);
   tft.drawString("CYD SATELLITE TRACKER",29,6,2);
-  tft.setTextDatum(TR_DATUM);tft.setTextColor(TFT_CYAN,0x0010);
+  tft.setTextDatum(TR_DATUM); tft.setTextColor(TFT_CYAN,0x0010);
   if(gps.time.isValid()) {
-    char utc[18];snprintf(utc,sizeof(utc),"%02u:%02u:%02u UTC",gps.time.hour(),gps.time.minute(),gps.time.second());
-    tft.drawString(utc,312,7,1);
-  } else tft.drawString("UTC --:--:--",312,7,1);
-
+    char utc[18]; snprintf(utc,sizeof(utc),"%02u:%02u UTC",gps.time.hour(),gps.time.minute());
+    tft.drawString(utc,311,7,1);
+  } else tft.drawString("UTC --:--",311,7,1);
   drawGpsPanel();
-  // Four large, consistent touch targets at the bottom edge.
-  const uint16_t active=0x03BF,idle=0x0822;
-  const int y=205,h=32;
+  // Wide, equal navigation controls; the active section has a brighter fill.
+  const uint16_t idle=0x0822, active=0x035F;
   const int xs[4]={5,84,163,242};
   const char* labels[4]={"HOME","SAT","ANT","SYS"};
   for(int i=0;i<4;i++) {
-    const uint16_t fill=i==0?0x035F:idle;
-    tft.fillRoundRect(xs[i],y,73,h,7,fill);
-    tft.drawRoundRect(xs[i],y,73,h,7,i==0?TFT_CYAN:0x2A69);
-    tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,fill);
-    tft.drawString(labels[i],xs[i]+36,y+16,2);
+    const uint16_t fill=i==0?active:idle;
+    tft.fillRoundRect(xs[i],204,73,32,7,fill);
+    tft.drawRoundRect(xs[i],204,73,32,7,i==0?TFT_CYAN:0x2A69);
+    tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,fill);
+    tft.drawString(labels[i],xs[i]+36,220,2);
   }
   lastDashboardRefreshAt=millis();
 }

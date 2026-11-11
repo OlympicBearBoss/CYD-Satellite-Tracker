@@ -574,6 +574,20 @@ static void updateCloudServices(uint32_t now) {
   if(now-lastHeartbeatAt>=30000) { lastHeartbeatAt=now; sendDeviceHeartbeat(); }
   if(now-lastCommandPollAt>=10000) { lastCommandPollAt=now; pollDeviceCommands(); }
 }
+static void drawPairingCodeField() {
+  tft.fillRoundRect(16,42,288,34,7,0x1028);
+  tft.drawRoundRect(16,42,288,34,7,0x07FF);
+  String shown=pairingCode; while(shown.length()<8) shown+="_";
+  tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,0x1028);
+  tft.drawString(shown,160,59,4);
+}
+static void drawPairingMessage() {
+  tft.fillRect(8,78,304,15,BG);
+  tft.setTextDatum(TL_DATUM); tft.setTextColor(setupMessage.length()?TFT_YELLOW:MUTED,BG);
+  String msg=setupMessage.length()?setupMessage:"Enter the 8-digit code from the website";
+  if(msg.length()>39) msg=msg.substring(0,39);
+  tft.drawString(msg,12,80,1);
+}
 static void showPairingScreen() {
   screen=Screen::Pairing;
   tft.fillScreen(BG);
@@ -582,15 +596,8 @@ static void showPairingScreen() {
   tft.drawString("LINK DEVICE",12,7,2);
   tft.setTextDatum(TR_DATUM); tft.setTextColor(TFT_CYAN,0x0862);
   tft.drawString("CLOUD / HTTPS",309,9,1);
-  tft.fillRoundRect(16,42,288,34,7,0x1028); tft.drawRoundRect(16,42,288,34,7,0x07FF);
-  String shown=pairingCode;
-  while(shown.length()<8) shown+="_";
-  tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,0x1028);
-  tft.drawString(shown,160,59,4);
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(setupMessage.length()?TFT_YELLOW:MUTED,BG);
-  String msg=setupMessage.length()?setupMessage:"Enter the 8-digit code from the website";
-  if(msg.length()>39) msg=msg.substring(0,39);
-  tft.drawString(msg,12,80,1);
+  drawPairingCodeField();
+  drawPairingMessage();
   for(int row=0;row<3;row++) for(int col=0;col<3;col++) {
     char key[2]={(char)('1'+row*3+col),0};
     drawKey(28+col*88,99+row*32,72,27,key,KEY_NUM);
@@ -969,26 +976,43 @@ static void handleTouch(){
      wifiScreenDrawn=false; showWifiSetup();
    } else { pairingCode=""; setupMessage=""; showPairingScreen(); }
  }
- else if(screen==Screen::Pairing && y>=95) {
+ else if(screen==Screen::Pairing) {
    Serial.printf("PAIR SCREEN TOUCH x=%u y=%u code_len=%u\\n",x,y,(unsigned)pairingCode.length());
-   // Wider PAIR hitbox tolerates small calibration offsets at the screen edge.
-   if(y>=185 && x>=190) {
+   // Bottom-row hit zones follow the actual button layout and tolerate calibration drift.
+   if(y>=178 && x>=198) {
+     tft.fillRoundRect(204,195,88,27,4,0x07FF);
+     tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_BLACK,0x07FF); tft.drawString("PAIR",248,208,2);
+     setupMessage="PAIR pressed - contacting server...";
+     drawPairingMessage();
      Serial.println("PAIR BUTTON ACTIVATED");
      startDevicePairing();
-   }
-   else if(y>=185 && x<104) {
+   } else if(y>=178 && x<108) {
+     tft.fillRoundRect(28,195,72,27,4,0x5D7A);
+     tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,0x5D7A); tft.drawString("DEL",64,208,2);
+     delay(65);
      if(pairingCode.length()) pairingCode.remove(pairingCode.length()-1);
-     setupMessage=""; showPairingScreen();
-   }
-   else if(y>=185 && x>=104 && x<190) {
+     setupMessage=""; drawPairingCodeField(); drawPairingMessage();
+     drawKey(28,195,72,27,"DEL",KEY_BG);
+   } else if(y>=178 && x>=108 && x<198) {
+     tft.fillRoundRect(116,195,72,27,4,0x5DFF);
+     tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_BLACK,0x5DFF); tft.drawString("0",152,208,2);
+     delay(65);
      if(pairingCode.length()<8) pairingCode+="0";
-     setupMessage=""; showPairingScreen();
-   }
-   else if(y<190 && y>=95) {
+     setupMessage=""; drawPairingCodeField(); drawPairingMessage();
+     drawKey(116,195,72,27,"0",KEY_NUM);
+   } else if(y>=96 && y<190) {
      const int row=(y-99)/32, col=(x-28)/88;
      if(row>=0 && row<3 && col>=0 && col<3 && x>=28+col*88 && x<100+col*88 && y>=99+row*32 && y<126+row*32 && pairingCode.length()<8) {
-       pairingCode+=(char)(49+row*3+col); setupMessage=""; showPairingScreen();
+       const int kx=28+col*88, ky=99+row*32;
+       char label[2]={(char)('1'+row*3+col),0};
+       drawKey(kx,ky,72,27,label,0x07FF);
+       delay(55);
+       pairingCode+=label; setupMessage="";
+       drawPairingCodeField(); drawPairingMessage();
+       drawKey(kx,ky,72,27,label,KEY_NUM);
      }
+   } else {
+     setupMessage="Touch detected"; drawPairingMessage();
    }
  }
  else if(screen==Screen::Dashboard && y>=160 && y<200) {

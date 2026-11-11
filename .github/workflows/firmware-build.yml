@@ -1,4 +1,4 @@
-name: CYD firmware build # V63 approved splash integration
+name: CYD firmware build # V65 Space Dark dashboard
 
 on:
   push:

@@ -525,7 +525,7 @@ static bool cloudRequest(const char* method,const String& path,const String& bod
   // network stacks may report success while leaving the result as 0.0.0.0.
   for(uint8_t attempt=1; attempt<=2 && !dnsOk; ++attempt) {
     apiIp=IPAddress(0,0,0,0);
-    const int result=WiFi.hostByName(host,apiIp,5000);
+    const int result=WiFi.hostByName(host,apiIp);
     dnsOk=(result==1 && apiIp!=IPAddress(0,0,0,0));
     Serial.printf("[CLOUD] DNS DHCP attempt=%u result=%d ip=%s valid=%d\\n",
                   attempt,result,apiIp.toString().c_str(),dnsOk?1:0);
@@ -541,7 +541,7 @@ static bool cloudRequest(const char* method,const String& path,const String& bod
     Serial.println("[CLOUD] DNS FALLBACK configured primary=1.1.1.1 secondary=8.8.8.8");
     for(uint8_t attempt=1; attempt<=3 && !dnsOk; ++attempt) {
       apiIp=IPAddress(0,0,0,0);
-      const int result=WiFi.hostByName(host,apiIp,6000);
+      const int result=WiFi.hostByName(host,apiIp);
       dnsOk=(result==1 && apiIp!=IPAddress(0,0,0,0));
       Serial.printf("[CLOUD] DNS fallback attempt=%u result=%d ip=%s valid=%d\\n",
                     attempt,result,apiIp.toString().c_str(),dnsOk?1:0);

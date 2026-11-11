@@ -25,6 +25,7 @@ $Config = @{
     device_name = $Name
     pairing_code = $Code
 }
-$Config | ConvertTo-Json | Set-Content -Path $ConfigPath -Encoding UTF8
+$Json = $Config | ConvertTo-Json
+[System.IO.File]::WriteAllText($ConfigPath, $Json, [System.Text.UTF8Encoding]::new($false))
 Write-Host "Конфигурация сохранена: $ConfigPath"
 Write-Host "Запустите gateway.py. Код привязки будет использован один раз и удалён из конфигурации."

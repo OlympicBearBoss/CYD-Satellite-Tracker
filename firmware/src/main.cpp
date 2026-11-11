@@ -970,9 +970,20 @@ static void handleTouch(){
    } else { pairingCode=""; setupMessage=""; showPairingScreen(); }
  }
  else if(screen==Screen::Pairing && y>=95) {
-   if(y>=190 && x<104) { if(pairingCode.length()) pairingCode.remove(pairingCode.length()-1); setupMessage=""; showPairingScreen(); }
-   else if(y>=190 && x>=200) startDevicePairing();
-   else if(y>=190 && x>=104 && x<200) { if(pairingCode.length()<8) pairingCode+="0"; showPairingScreen(); }
+   Serial.printf("PAIR SCREEN TOUCH x=%u y=%u code_len=%u\\n",x,y,(unsigned)pairingCode.length());
+   // Wider PAIR hitbox tolerates small calibration offsets at the screen edge.
+   if(y>=185 && x>=190) {
+     Serial.println("PAIR BUTTON ACTIVATED");
+     startDevicePairing();
+   }
+   else if(y>=185 && x<104) {
+     if(pairingCode.length()) pairingCode.remove(pairingCode.length()-1);
+     setupMessage=""; showPairingScreen();
+   }
+   else if(y>=185 && x>=104 && x<190) {
+     if(pairingCode.length()<8) pairingCode+="0";
+     setupMessage=""; showPairingScreen();
+   }
    else if(y<190 && y>=95) {
      const int row=(y-99)/32, col=(x-28)/88;
      if(row>=0 && row<3 && col>=0 && col<3 && x>=28+col*88 && x<100+col*88 && y>=99+row*32 && y<126+row*32 && pairingCode.length()<8) {

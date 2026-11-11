@@ -618,6 +618,7 @@ static void showPairingScreen() {
   tft.drawString("LINK DEVICE",12,7,2);
   tft.setTextDatum(TR_DATUM); tft.setTextColor(TFT_CYAN,0x0862);
   tft.drawString("CLOUD / HTTPS",309,9,1);
+  drawButton(235,3,78,23,"BACK",0x035F);
   drawPairingCodeField();
   drawPairingMessage();
   for(int row=0;row<3;row++) for(int col=0;col<3;col++) {
@@ -787,10 +788,13 @@ static void showDashboard() {
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TFT_WHITE,top); tft.drawString("CYD",29,4,2);
   tft.setTextColor(0x8E7F,top); tft.drawString("SATELLITE TRACKER",65,8,1);
-  tft.fillCircle(260,13,3,wifi?TFT_GREEN:TFT_ORANGE);
-  tft.setTextDatum(TR_DATUM);
-  tft.setTextColor(wifi?TFT_GREEN:TFT_ORANGE,top);
-  tft.drawString(wifi?"ONLINE":"OFFLINE",310,7,1);
+  // Compact Wi-Fi glyph replaces the text badge; color reflects link state.
+  const uint16_t wifiColor=wifi?TFT_GREEN:TFT_ORANGE;
+  tft.drawLine(250,9,254,6,wifiColor); tft.drawLine(254,6,260,4,wifiColor);
+  tft.drawLine(260,4,266,6,wifiColor); tft.drawLine(266,6,270,9,wifiColor);
+  tft.drawLine(254,13,257,10,wifiColor); tft.drawLine(257,10,260,9,wifiColor);
+  tft.drawLine(260,9,263,10,wifiColor); tft.drawLine(263,10,266,13,wifiColor);
+  tft.fillCircle(260,17,2,wifiColor);
   drawGpsPanel();
   drawNavigation(0);
   lastDashboardRefreshAt=millis();
@@ -1000,8 +1004,12 @@ static void handleTouch(){
  }
  else if(screen==Screen::Pairing) {
    Serial.printf("PAIR SCREEN TOUCH x=%u y=%u code_len=%u\\n",x,y,(unsigned)pairingCode.length());
+   // Header BACK exits pairing without changing saved Wi-Fi or device credentials.
+   if(y<=30 && x>=225) {
+     pairingCode=""; setupMessage=""; showSystemScreen();
+   }
    // Bottom-row hit zones follow the actual button layout and tolerate calibration drift.
-   if(y>=178 && x>=198) {
+   else if(y>=178 && x>=198) {
      tft.fillRoundRect(204,195,88,27,4,0x07FF);
      tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_BLACK,0x07FF); tft.drawString("PAIR",248,208,2);
      setupMessage="PAIR pressed - contacting server...";
@@ -1150,7 +1158,9 @@ function copyAddress(){const a='http://'+(lastStatus?.ip||location.hostname)+'/'
 async function requestStop(){if(!confirm('Отправить тестовый запрос STOP? Это не аппаратная аварийная остановка.'))return;try{const r=await fetch('/api/v1/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:'stop'})});const d=await r.json();alert(d.message||d.error||'Ответ контроллера получен');}catch(e){alert('Нет связи с контроллером')}}
 refreshStatus();setInterval(refreshStatus,3000);
 </script></body></html>)HTML";
-    localServer.send(200,"text/html; charset=utf-8",page);
+    // Stream the large page directly from flash. send(String) first copies the
+    // entire HTML into heap RAM and can exhaust/fragment memory on the CYD.
+    localServer.send_P(200,"text/html; charset=utf-8",page);
   });
   localServer.on("/api/v1/status",HTTP_GET,sendLocalStatus);
   localServer.on("/api/v1/command",HTTP_POST,[](){
@@ -1221,7 +1231,11 @@ void loop() {
   const uint32_t now=millis();
   if(!displayDiagnosticActive && screen==Screen::Splash && now-screenStartedAt>=SPLASH_MS) {
     if(touchCalibrated) { screen=Screen::Init; showInitialization(); screenStartedAt=now; }
-    else showTouchDiagnostic();
+    else {
+      // Skip the obsolete TOUCH TEST screen and go straight to calibration.
+      touchCalStep=1; touchWasDown=false; screen=Screen::TouchTest;
+      drawCalibrationTarget(0);
+    }
     screenStartedAt=now;
   } else if(!displayDiagnosticActive && screen==Screen::TouchTest) {
     if(touchCalStep>=1&&!touchCalibrated)updateTouchCalibration();else updateTouchDiagnostic();

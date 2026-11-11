@@ -32,7 +32,26 @@ $("targetSelect").addEventListener("change",e=>{selected=e.target.value;renderTa
 $("centerBtn").addEventListener("click",()=>{setAxes(180,45);$("controlStatus").textContent=t("centered");addLog("CTRL",t("centered"));});
 $("trackBtn").addEventListener("click",()=>{const o=objectData[selected];setAxes(o.az,o.el);$("controlStatus").textContent=t("tracking")+o.name;addLog("CTRL",t("tracking")+o.name);});
 $("stopBtn").addEventListener("click",()=>{$("controlStatus").textContent=t("stopped");addLog("STOP",t("stopped"));});
-$("testConnection").addEventListener("click",()=>{$("connectionResult").textContent=t("connection_test_ok");addLog("NET",t("connection_test_ok"));});
+async function refreshLiveDevice(){
+ const result=$("connectionResult");if(result)result.textContent="Запрос данных…";
+ try{
+  const response=await fetch("/api/devices/telemetry",{credentials:"same-origin",cache:"no-store"});
+  const data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error||"Не удалось получить состояние");
+  const device=(data.devices||[]).find(d=>d.status==="online")||(data.devices||[])[0];
+  if(!device){$("liveDeviceBadge").querySelector("span").textContent="Нет привязанной платы";$("liveDeviceInfo").textContent="Создайте код в профиле → Мои устройства.";["liveDeviceIp","liveDeviceRssi","liveDeviceGps","liveDeviceCoords","liveDeviceSeen"].forEach(id=>$(id).textContent="—");if(result)result.textContent="Сервер доступен. Устройство пока не передаёт телеметрию.";return;}
+  const tdata=device.telemetry||{},online=device.status==="online";
+  $("liveDeviceBadge").querySelector("span").textContent=online?"Устройство в сети":"Устройство не в сети";
+  $("liveDeviceInfo").textContent=device.device_name+" · "+(tdata.firmware||"прошивка не указана");
+  $("liveDeviceIp").textContent=tdata.ip||"—";$("liveDeviceRssi").textContent=Number.isFinite(tdata.wifi_rssi)?tdata.wifi_rssi+" dBm":"—";
+  $("liveDeviceGps").textContent=tdata.gps_valid?"FIX · "+(tdata.gps_satellites??"—")+" спутн.":"Нет FIX";
+  $("liveDeviceCoords").textContent=tdata.gps_valid&&Number.isFinite(tdata.latitude)&&Number.isFinite(tdata.longitude)?tdata.latitude.toFixed(5)+", "+tdata.longitude.toFixed(5):"—";
+  $("liveDeviceSeen").textContent=device.last_seen_at?new Date(device.last_seen_at*1000).toLocaleString():"—";
+  if(result)result.textContent=online?"Телеметрия получена с устройства.":"Последняя связь: "+(device.last_seen_at?new Date(device.last_seen_at*1000).toLocaleString():"нет данных");
+ }catch(e){if(result)result.textContent=e.message;}
+}
+$("testConnection").addEventListener("click",refreshLiveDevice);
+$("openDevicePairing").addEventListener("click",()=>{const trigger=$("accountProfileOpen");if(trigger)trigger.click();else $("connectionResult").textContent="Сначала войдите в аккаунт.";});
+
 function renderRadarObjects(){
  const list=$("radarObjects");
  if(list)list.innerHTML=Object.entries(objectData).map(([id,o])=>'<div class="object-row"><div><b><i class="radar-object-dot '+id+'"></i>'+o.name+'</b><small>'+o.norad+' · '+(o.real?(o.el>0?"ВИДЕН":"НИЖЕ ГОРИЗОНТА"):"ДЕМО")+'</small></div><strong>'+o.az.toFixed(1)+'° / '+o.el.toFixed(1)+'°</strong></div>').join("");

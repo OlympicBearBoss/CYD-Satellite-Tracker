@@ -542,11 +542,12 @@ static void drawGpsPanel() {
   tft.drawRoundRect(7,32,184,116,10,0x03BF);
   tft.fillRoundRect(11,36,176,108,7,0x0010);
   drawUiImage(13,39,ui_earth_jpg,sizeof(ui_earth_jpg));
+  drawUiImage(116,53,ui_iss_jpg,sizeof(ui_iss_jpg));
   // Space vignette and featured target label sit outside the photograph.
   tft.fillRect(11,119,176,25,0x0008);
   tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_WHITE,0x0008);tft.drawString("МКС  /  ISS",17,121,2);
-  tft.setTextColor(TFT_GREEN,0x0008);tft.drawString("ОБЪЕКТ ВЫБРАН",17,137,1);
+  tft.setTextColor(TFT_WHITE,0x0008);tft.drawString("ISS  /  ZARYA",17,121,2);
+  tft.setTextColor(TFT_GREEN,0x0008);tft.drawString("TRACKING TARGET",17,137,1);
 
   // Radar instrument, matching the approved reference sketch.
   const int cx=254,cy=91,r=53;

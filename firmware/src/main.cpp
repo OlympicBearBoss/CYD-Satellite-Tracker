@@ -33,6 +33,7 @@ static uint32_t lastDashboardRefreshAt = 0;
 static bool wifiScreenDrawn = false;
 static bool keyboardNeedsRedraw = true;
 static bool gpsSeen = false;
+static bool displayDiagnosticActive = false;
 static bool touchCalibrated = false;
 static bool calibrationFromSystem = false;
 static uint16_t rawTouchX = 0, rawTouchY = 0;
@@ -764,6 +765,7 @@ static void backspace() {
 }
 
 static void handleTouch(){
+ if(displayDiagnosticActive) return;
  if(!touchCalibrated||screen==Screen::TouchTest)return;
  // Always poll release first. This prevents a stale pressed-state from
  // blocking every subsequent key after a screen redraw.
@@ -797,6 +799,7 @@ static void handleTouch(){
 // exact RGB565 primary/secondary colors; send 'b' to return to the current UI.
 // This does not alter normal boot or disturb touch calibration.
 static void drawDisplayColorTest() {
+  displayDiagnosticActive = true;
   tft.fillScreen(TFT_BLACK);
   const uint16_t colors[6] = {0xF800, 0x07E0, 0x001F, 0xFFFF, 0x07FF, 0xF81F};
   const char* labels[6] = {"RED  F800", "GREEN 07E0", "BLUE 001F",
@@ -813,6 +816,7 @@ static void drawDisplayColorTest() {
                 tft.getRotation(),tft.width(),tft.height());
 }
 static void restoreCurrentScreen() {
+  displayDiagnosticActive = false;
   switch(screen) {
     case Screen::Dashboard: showDashboard(); break;
     case Screen::Satellite: showSatelliteScreen(); break;
@@ -862,7 +866,7 @@ void loop() {
     if(gps.encode(Serial2.read()) && gps.location.isValid()) gpsSeen=true;
   }
   const uint32_t now=millis();
-  if(screen==Screen::Dashboard && now-lastDashboardRefreshAt>=1000) {
+  if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastDashboardRefreshAt>=1000) {
     updateGpsTelemetry();
     lastDashboardRefreshAt=now;
   }

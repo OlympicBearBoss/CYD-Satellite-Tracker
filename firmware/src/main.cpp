@@ -2,6 +2,9 @@
 #include <TFT_eSPI.h>
 #include <SPI.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
 #include <Preferences.h>
 #include <TinyGPSPlus.h>
 #include <ctype.h>
@@ -10,6 +13,7 @@
 #include "ui_assets.h"
 #include "BoardConfig.h"
 #include "WifiConfig.h"
+#include "RootCACert.h"
 
 TFT_eSPI tft;
 SPIClass touchSPI(VSPI);
@@ -24,7 +28,7 @@ static constexpr uint16_t TOUCH_THRESHOLD = 250;
 static constexpr uint16_t FIELD_HIT_TOP = 24;
 static constexpr uint16_t FIELD_HIT_BOTTOM = 99;
 
-enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, Failed };
+enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Pairing, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, Failed };
 static Screen screen = Screen::Splash;
 static uint32_t screenStartedAt = 0;
 static uint32_t wifiAttemptAt = 0;
@@ -47,6 +51,13 @@ static bool editingPassword = false;
 static String wifiName;
 static String wifiPassword;
 static String setupMessage;
+static String pairingCode;
+static String deviceToken;
+static String deviceId;
+static uint32_t lastHeartbeatAt=0;
+static uint32_t lastCommandPollAt=0;
+static String cloudStatus="NOT LINKED";
+static const char* API_BASE="https://cyd-satellite-tracker.pages.dev";
 
 // Space Dark palette: deep navy background, layered blue panels and cyan telemetry.
 static constexpr uint16_t BG = 0x0841;
@@ -468,6 +479,126 @@ static void showConnecting() {
   tft.drawString("Please wait",tft.width()/2,tft.height()-7,1);
 }
 
+
+static bool cloudRequest(const char* method,const String& path,const String& body,String& response) {
+  if(WiFi.status()!=WL_CONNECTED) { response="Wi-Fi offline"; return false; }
+  WiFiClientSecure tls;
+  tls.setCACert(ROOT_CA_BUNDLE); // Verify Cloudflare edge certificate; never disable TLS verification.
+  HTTPClient http;
+  http.setConnectTimeout(7000);
+  http.setTimeout(7000);
+  const String url=String(API_BASE)+path;
+  if(!http.begin(tls,url)) { response="HTTPS init failed"; return false; }
+  http.addHeader("Content-Type","application/json");
+  if(deviceToken.length()) http.addHeader("Authorization",String("Bearer ")+deviceToken);
+  int status=-1;
+  if(strcmp(method,"POST")==0) status=http.POST((uint8_t*)body.c_str(),body.length());
+  else if(strcmp(method,"PUT")==0) status=http.PUT((uint8_t*)body.c_str(),body.length());
+  else status=http.GET();
+  response=status>0?http.getString():http.errorToString(status);
+  http.end();
+  return status>=200 && status<300;
+}
+static void showPairingScreen();
+static void startDevicePairing() {
+  if(pairingCode.length()!=8) { setupMessage="Enter all 8 digits"; showPairingScreen(); return; }
+  JsonDocument requestDoc;
+  requestDoc["code"]=pairingCode;
+  requestDoc["device_name"]="CYD Satellite Tracker";
+  String body; serializeJson(requestDoc,body);
+  String response;
+  cloudStatus="PAIRING...";
+  if(!cloudRequest("POST","/api/devices/claim",body,response)) {
+    JsonDocument errorDoc;
+    if(deserializeJson(errorDoc,response)==DeserializationError::Ok && errorDoc["error"].is<const char*>())
+      setupMessage=String((const char*)errorDoc["error"]);
+    else setupMessage="HTTPS error: "+response.substring(0,34);
+    cloudStatus="PAIR FAILED";
+    showPairingScreen();
+    return;
+  }
+  JsonDocument result;
+  if(deserializeJson(result,response)!=DeserializationError::Ok || !result["device_token"].is<const char*>()) {
+    setupMessage="Invalid server response"; cloudStatus="PAIR FAILED"; showPairingScreen(); return;
+  }
+  deviceToken=String((const char*)result["device_token"]);
+  deviceId=String((const char*)result["device_id"]);
+  prefs.putString("device_token",deviceToken);
+  prefs.putString("device_id",deviceId);
+  pairingCode="";
+  setupMessage="Device linked to your account";
+  cloudStatus="LINKED";
+  showSystemScreen();
+}
+static void sendDeviceHeartbeat() {
+  if(!deviceToken.length() || WiFi.status()!=WL_CONNECTED) return;
+  JsonDocument doc;
+  doc["wifi_rssi"]=WiFi.RSSI();
+  doc["ip"]=WiFi.localIP().toString();
+  const bool fix=gps.location.isValid() && gps.location.age()<10000;
+  doc["gps_valid"]=fix;
+  if(fix) {
+    doc["latitude"]=gps.location.lat();
+    doc["longitude"]=gps.location.lng();
+  }
+  if(gps.altitude.isValid()) doc["altitude"]=gps.altitude.meters();
+  if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
+  doc["firmware"]="V66";
+  String body,response; serializeJson(doc,body);
+  if(cloudRequest("POST","/api/devices/heartbeat",body,response)) cloudStatus="LINKED";
+  else if(response.indexOf("401")>=0 || response.indexOf("не авторизовано")>=0) {
+    deviceToken=""; prefs.remove("device_token"); prefs.remove("device_id"); cloudStatus="TOKEN INVALID";
+  }
+}
+static void pollDeviceCommands() {
+  if(!deviceToken.length() || WiFi.status()!=WL_CONNECTED) return;
+  String response;
+  if(!cloudRequest("GET","/api/devices/commands","",response)) return;
+  JsonDocument doc;
+  if(deserializeJson(doc,response)!=DeserializationError::Ok) return;
+  JsonArray commands=doc["commands"].as<JsonArray>();
+  for(JsonObject command:commands) {
+    const String id=command["id"]| "";
+    const String name=command["command"]| "";
+    String result="ignored";
+    if(name=="telemetry_refresh") { sendDeviceHeartbeat(); result="telemetry sent"; }
+    else if(name=="stop") { result="motors already locked"; } // No motor motion is enabled in this firmware.
+    JsonDocument ack; ack["id"]=id; ack["result"]=result;
+    String body,ackResponse; serializeJson(ack,body);
+    cloudRequest("PUT","/api/devices/commands",body,ackResponse);
+  }
+}
+static void updateCloudServices(uint32_t now) {
+  if(!deviceToken.length() || WiFi.status()!=WL_CONNECTED) return;
+  if(now-lastHeartbeatAt>=30000) { lastHeartbeatAt=now; sendDeviceHeartbeat(); }
+  if(now-lastCommandPollAt>=10000) { lastCommandPollAt=now; pollDeviceCommands(); }
+}
+static void showPairingScreen() {
+  screen=Screen::Pairing;
+  tft.fillScreen(BG);
+  tft.fillRect(0,0,320,30,0x0862); tft.fillRect(0,29,320,2,TFT_CYAN);
+  tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_WHITE,0x0862);
+  tft.drawString("LINK DEVICE",12,7,2);
+  tft.setTextDatum(TR_DATUM); tft.setTextColor(TFT_CYAN,0x0862);
+  tft.drawString("CLOUD / HTTPS",309,9,1);
+  tft.fillRoundRect(16,42,288,34,7,0x1028); tft.drawRoundRect(16,42,288,34,7,0x07FF);
+  String shown=pairingCode;
+  while(shown.length()<8) shown+="_";
+  tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,0x1028);
+  tft.drawString(shown,160,59,4);
+  tft.setTextDatum(TL_DATUM); tft.setTextColor(setupMessage.length()?TFT_YELLOW:MUTED,BG);
+  String msg=setupMessage.length()?setupMessage:"Enter the 8-digit code from the website";
+  if(msg.length()>39) msg=msg.substring(0,39);
+  tft.drawString(msg,12,80,1);
+  for(int row=0;row<3;row++) for(int col=0;col<3;col++) {
+    char key[2]={(char)('1'+row*3+col),0};
+    drawKey(28+col*88,99+row*32,72,27,key,KEY_NUM);
+  }
+  drawKey(28,195,72,27,"DEL",KEY_BG);
+  drawKey(116,195,72,27,"0",KEY_NUM);
+  drawKey(204,195,88,27,"PAIR",0x03B9);
+}
+
 static void drawNavigation(uint8_t active) {
   const uint16_t activeColor=0x07FF, idleColor=0x001F;
   drawButton(4,207,76,29,"HOME",active==0?activeColor:idleColor);
@@ -719,9 +850,12 @@ static void showSystemScreen() {
   tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,0x0822);tft.drawString(fix?"FIX":"SEARCH",173,114,4);
   tft.setTextColor(MUTED,0x0822);tft.drawString(wifi?WiFi.localIP().toString().c_str():"NO NETWORK",17,140,1);
   tft.drawString(gps.satellites.isValid()?"SATELLITES RECEIVED":"WAITING FOR DATA",173,140,1);
+  tft.setTextColor(deviceToken.length()?TFT_GREEN:TFT_YELLOW,0x0822);
+  tft.drawString(deviceToken.length()?"CLOUD LINKED":cloudStatus.c_str(),173,151,1);
   tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,BG);tft.drawString("QUICK ACTIONS",10,160,1);
-  drawButton(9,174,147,26,"TOUCH CALIBRATE",0x035F);
-  drawButton(164,174,147,26,"CHANGE WI-FI",0x03B9);
+  drawButton(7,174,98,26,"TOUCH",0x035F);
+  drawButton(111,174,98,26,"WI-FI",0x03B9);
+  drawButton(215,174,98,26,"LINK",0x03B9);
   drawNavigation(3);
 }
 
@@ -825,13 +959,24 @@ static void handleTouch(){
  rawTouchX=rx; rawTouchY=ry;
  Serial.printf("Touch stable raw=%u,%u mapped=%u,%u rot=%u screen=%u\\n",rx,ry,x,y,tft.getRotation(),(unsigned)screen);
  if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
- else if(screen==Screen::SystemInfo && y>=145 && y<=199) {
-   if(x<160) {
+ else if(screen==Screen::SystemInfo && y>=170 && y<=203) {
+   if(x<108) {
      calibrationFromSystem=true; touchCalibrated=false; touchCalStep=1;
      screen=Screen::TouchTest; touchWasDown=false; drawCalibrationTarget(0);
-   } else {
+   } else if(x<212) {
      WiFi.disconnect(false,false); editingPassword=false; setupMessage="Edit network, then press CONNECT";
      wifiScreenDrawn=false; showWifiSetup();
+   } else { pairingCode=""; setupMessage=""; showPairingScreen(); }
+ }
+ else if(screen==Screen::Pairing && y>=95) {
+   if(y>=190 && x<104) { if(pairingCode.length()) pairingCode.remove(pairingCode.length()-1); setupMessage=""; showPairingScreen(); }
+   else if(y>=190 && x>=200) startDevicePairing();
+   else if(y>=190 && x>=104 && x<200) { if(pairingCode.length()<8) pairingCode+="0"; showPairingScreen(); }
+   else if(y<190 && y>=95) {
+     const int row=(y-99)/32, col=(x-28)/88;
+     if(row>=0 && row<3 && col>=0 && col<3 && x>=28+col*88 && x<100+col*88 && y>=99+row*32 && y<126+row*32 && pairingCode.length()<8) {
+       pairingCode+=(char)(49+row*3+col); setupMessage=""; showPairingScreen();
+     }
    }
  }
  else if(screen==Screen::Dashboard && y>=160 && y<200) {
@@ -906,6 +1051,9 @@ void setup() {
   prefs.begin("cyd-tracker",false);
   wifiName=prefs.getString("ssid","");
   wifiPassword=prefs.getString("password","");
+  deviceToken=prefs.getString("device_token","");
+  deviceId=prefs.getString("device_id","");
+  if(deviceToken.length()) cloudStatus="LINKED";
   if(!wifiName.length() && WIFI_SSID[0]) {
     wifiName=WIFI_SSID;
     wifiPassword=WIFI_PASSWORD;
@@ -944,6 +1092,7 @@ void loop() {
     }
   }
   if(!displayDiagnosticActive) handleTouch();
+  if(!displayDiagnosticActive) updateCloudServices(now);
   // Refresh only the three telemetry tiles; keep the photo, radar and chrome static.
   if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastDashboardRefreshAt>=1000) {
     updateGpsTelemetry();

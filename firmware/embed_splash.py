@@ -36,11 +36,11 @@ def emit_array(lines, symbol, payload):
     lines.append("};")
 
 # Approved Olympic Bear splash, 320x240 landscape.
-splash = validate_jpeg(read_asset("splash_v61.jpg"), "splash_v61.jpg", (320, 240))
+splash = validate_jpeg(read_asset("splash_v62.jpg"), "splash_v62.jpg", (320, 240))
 splash_lines = ["#pragma once", "#include <Arduino.h>"]
 emit_array(splash_lines, "splash_jpg", splash)
 target.write_text("\n".join(splash_lines) + "\n", encoding="utf-8")
-print(f"Embedded approved V61 splash: {len(splash)} bytes -> {target}")
+print(f"Embedded approved V62 splash: {len(splash)} bytes -> {target}")
 
 # Existing small image assets are retained; the dashboard uses a single larger photo.
 ui_assets = [
@@ -54,4 +54,4 @@ for symbol, filename in ui_assets:
     emit_array(ui_lines, symbol, payload)
 ui_header = project / "include" / "ui_assets.h"
 ui_header.write_text("\n".join(ui_lines) + "\n", encoding="utf-8")
-print(f"Embedded {len(ui_assets)} UI JPEG assets including V61 photographic hero -> {ui_header}")
+print(f"Embedded {len(ui_assets)} UI JPEG assets including V62 approved splash -> {ui_header}")

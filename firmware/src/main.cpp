@@ -480,6 +480,7 @@ static void showConnecting() {
 }
 
 
+static void showSystemScreen();
 static bool cloudRequest(const char* method,const String& path,const String& body,String& response) {
   if(WiFi.status()!=WL_CONNECTED) { response="Wi-Fi offline"; return false; }
   WiFiClientSecure tls;

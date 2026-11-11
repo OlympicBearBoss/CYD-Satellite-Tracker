@@ -569,18 +569,22 @@ static bool cloudRequest(const char* method,const String& path,const String& bod
   }
 
   WiFiClientSecure tlsProbe;
-  tlsProbe.setCACert(ROOT_CA_BUNDLE);
   tlsProbe.setHandshakeTimeout(12);
   Serial.printf("[CLOUD] TLS MEMORY before free=%u min=%u largest=%u\\n",
                 ESP.getFreeHeap(),ESP.getMinFreeHeap(),
                 (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+  Serial.printf("[CLOUD] TLS CONNECT using resolved IP=%s with SNI/verify host=%s\\n",
+                apiIp.toString().c_str(),host);
   const uint32_t tlsStartedAt=millis();
-  const int tlsProbeOk=tlsProbe.connect(host,443);
+  // Use the already-resolved address but pass the hostname separately.
+  // This preserves TLS SNI and certificate hostname validation while
+  // avoiding a second DNS lookup inside WiFiClientSecure::connect(host,...).
+  const int tlsProbeOk=tlsProbe.connect(apiIp,443,host,ROOT_CA_BUNDLE,nullptr,nullptr);
   const int tlsSystemErrno=errno;
   char tlsProbeError[160]={0};
   const int tlsProbeErrorCode=tlsProbe.lastError(tlsProbeError,sizeof(tlsProbeError));
-  Serial.printf("[CLOUD] TLS PREFLIGHT host=%s ok=%d elapsed=%lu ms error_code=%d detail=%s errno=%d (%s)\\n",
-                host,tlsProbeOk,(unsigned long)(millis()-tlsStartedAt),tlsProbeErrorCode,
+  Serial.printf("[CLOUD] TLS PREFLIGHT host=%s ip=%s ok=%d elapsed=%lu ms error_code=%d detail=%s errno=%d (%s)\\n",
+                host,apiIp.toString().c_str(),tlsProbeOk,(unsigned long)(millis()-tlsStartedAt),tlsProbeErrorCode,
                 tlsProbeError[0]?tlsProbeError:"none",tlsSystemErrno,strerror(tlsSystemErrno));
   Serial.printf("[CLOUD] TLS MEMORY after free=%u min=%u largest=%u\\n",
                 ESP.getFreeHeap(),ESP.getMinFreeHeap(),

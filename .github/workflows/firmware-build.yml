@@ -6,6 +6,10 @@ on:
     paths:
       - "firmware/**"
       - ".github/workflows/firmware-build.yml"
+  pull_request:
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware-build.yml"
   workflow_dispatch:
 
 permissions:

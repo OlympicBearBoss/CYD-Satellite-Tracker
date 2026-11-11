@@ -34,7 +34,7 @@ static bool wifiScreenDrawn = false;
 static bool keyboardNeedsRedraw = true;
 static bool gpsSeen = false;
 static bool displayDiagnosticActive = false;
-static bool displayInvertTestState = false;
+static bool displayInvertTestState = true;
 static bool touchCalibrated = false;
 static bool calibrationFromSystem = false;
 static uint16_t rawTouchX = 0, rawTouchY = 0;
@@ -846,7 +846,7 @@ void setup() {
   pinMode(Pins::TFT_BACKLIGHT,OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT,HIGH); // Constant backlight; no PWM/fade in firmware.
   tft.init();
-  tft.invertDisplay(false);
+  tft.invertDisplay(true);
   pinMode(TOUCH_CS,OUTPUT);digitalWrite(TOUCH_CS,HIGH);
   pinMode(TOUCH_IRQ_PIN,INPUT);
   touchSPI.begin(TOUCH_CLK_PIN,TOUCH_MISO_PIN,TOUCH_MOSI_PIN,TOUCH_CS);

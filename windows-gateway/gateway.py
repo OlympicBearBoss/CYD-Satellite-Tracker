@@ -96,19 +96,25 @@ def queue(db,payload):
 
 def upload_one(cfg,db,token):
     row=db.execute("SELECT id,payload FROM pending ORDER BY id LIMIT 1").fetchone()
-    if not row: return
+    if not row: return True
     try:
         _,result=request_json(cfg["cloud_url"].rstrip("/")+"/api/devices/heartbeat","POST",json.loads(row[1]),token)
         if result.get("ok") is True:
             db.execute("DELETE FROM pending WHERE id=?",(row[0],)); db.commit()
             logging.info("Cloud sync successful; queue=%d",db.execute("SELECT COUNT(*) FROM pending").fetchone()[0])
-        else: logging.warning("Cloud did not accept telemetry: %s",result)
+            return True
+        logging.warning("Cloud did not accept telemetry: %s",result)
+        return False
     except urllib.error.HTTPError as e:
         if e.code==401:
             db.execute("DELETE FROM state WHERE key='device_token'"); db.commit()
             logging.error("Cloud token rejected (401); set a new pairing code")
-        else: logging.warning("Cloud HTTP %s; telemetry queued",e.code)
-    except Exception as e: logging.warning("Cloud unavailable; telemetry queued: %s",e)
+            return False
+        logging.warning("Cloud HTTP %s; telemetry queued",e.code)
+        return False
+    except Exception as e:
+        logging.warning("Cloud unavailable; telemetry queued: %s",e)
+        return False
 
 def main():
     if os.name!="nt": raise SystemExit("Windows 10/11 required")
@@ -123,7 +129,8 @@ def main():
             if token and now>=next_capture:
                 queue(db,payload); next_capture=now+UPLOAD_SECONDS
             if token and now>=next_upload:
-                upload_one(cfg,db,token); next_upload=now+15
+                if not upload_one(cfg,db,token): token=""
+                next_upload=now+15
         except urllib.error.URLError as e: logging.warning("Local CYD or network unavailable: %s",e)
         except Exception: logging.exception("Gateway cycle failed")
         time.sleep(POLL_SECONDS)

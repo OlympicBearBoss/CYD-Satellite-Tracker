@@ -145,7 +145,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V60 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V61 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -541,8 +541,8 @@ static void drawGpsPanel() {
   tft.fillRoundRect(7,32,184,116,10,0x0008);
   tft.drawRoundRect(7,32,184,116,10,0x03BF);
   tft.fillRoundRect(11,36,176,108,7,0x0010);
-  drawUiImage(13,39,ui_earth_jpg,sizeof(ui_earth_jpg));
-  drawUiImage(116,53,ui_iss_jpg,sizeof(ui_iss_jpg));
+  // One photographic Earth + ISS hero image replaces the tiny layered thumbnails.
+  drawUiImage(11,39,ui_hero_jpg,sizeof(ui_hero_jpg));
   // Space vignette and featured target label sit outside the photograph.
   tft.fillRect(11,119,176,25,0x0008);
   tft.setTextDatum(TL_DATUM);

@@ -143,7 +143,7 @@ static void drawCalibrationTarget(uint8_t n){
 }
 
 static void printGeometry(const char* stage) {
-  Serial.printf("CYD V56 | %s | rotation=%u | logical=%dx%d\n",
+  Serial.printf("CYD V57 | %s | rotation=%u | logical=%dx%d\n",
                 stage, tft.getRotation(), tft.width(), tft.height());
 }
 
@@ -793,6 +793,42 @@ static void handleTouch(){
  else if(screen==Screen::Connected&&y>=200){WiFi.disconnect();setupMessage="";editingPassword=false;showWifiSetup();}
  else if(screen==Screen::Failed&&y>=190){setupMessage="Check password, then connect again";showWifiSetup();}
 }
+// Serial-only display diagnostic. Send 'c' in the serial monitor to show
+// exact RGB565 primary/secondary colors; send 'b' to return to the current UI.
+// This does not alter normal boot or disturb touch calibration.
+static void drawDisplayColorTest() {
+  tft.fillScreen(TFT_BLACK);
+  const uint16_t colors[6] = {0xF800, 0x07E0, 0x001F, 0xFFFF, 0x07FF, 0xF81F};
+  const char* labels[6] = {"RED  F800", "GREEN 07E0", "BLUE 001F",
+                           "WHITE FFFF", "CYAN 07FF", "MAGENTA F81F"};
+  for (int i=0; i<6; ++i) {
+    const int y=8+i*37;
+    tft.fillRect(8,y,304,30,colors[i]);
+    tft.drawRect(8,y,304,30,TFT_WHITE);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor((i==3||i==4)?TFT_BLACK:TFT_WHITE,colors[i]);
+    tft.drawString(labels[i],160,y+15,2);
+  }
+  Serial.printf("DISPLAY COLOR TEST | rotation=%u | size=%dx%d | RGB565: F800/07E0/001F/FFFF/07FF/F81F\n",
+                tft.getRotation(),tft.width(),tft.height());
+}
+static void restoreCurrentScreen() {
+  switch(screen) {
+    case Screen::Dashboard: showDashboard(); break;
+    case Screen::Satellite: showSatelliteScreen(); break;
+    case Screen::Antenna: showAntennaScreen(); break;
+    case Screen::SystemInfo: showSystemScreen(); break;
+    default: showDashboard(); break;
+  }
+}
+static void handleSerialDisplayDiagnostics() {
+  while(Serial.available()) {
+    const char command=(char)Serial.read();
+    if(command=='c' || command=='C') drawDisplayColorTest();
+    else if(command=='b' || command=='B') restoreCurrentScreen();
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   delay(150);
@@ -821,6 +857,7 @@ void setup() {
 }
 
 void loop() {
+  handleSerialDisplayDiagnostics();
   while(Serial2.available()) {
     if(gps.encode(Serial2.read()) && gps.location.isValid()) gpsSeen=true;
   }

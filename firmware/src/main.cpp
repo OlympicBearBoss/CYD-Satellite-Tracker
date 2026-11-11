@@ -593,28 +593,50 @@ static bool cloudRequest(const char* method,const String& path,const String& bod
 
   WiFiClientSecure tlsProbe;
   tlsProbe.setHandshakeTimeout(12);
+  // Split socket setup from the TLS handshake so the serial log identifies
+  // which phase fails. Certificate-chain and hostname verification stay on.
+  tlsProbe.setPlainStart();
   Serial.printf("[CLOUD] TLS MEMORY before free=%u min=%u largest=%u\\n",
                 ESP.getFreeHeap(),ESP.getMinFreeHeap(),
                 (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-  Serial.printf("[CLOUD] TLS CONNECT using resolved IP=%s with SNI/verify host=%s\\n",
+  Serial.printf("[CLOUD] TLS SOCKET START ip=%s port=443 sni=%s verify=enabled\\n",
                 apiIp.toString().c_str(),host);
-  const uint32_t tlsStartedAt=millis();
-  // Use the already-resolved address but pass the hostname separately.
-  // This preserves TLS SNI and certificate hostname validation while
-  // avoiding a second DNS lookup inside WiFiClientSecure::connect(host,...).
-  const int tlsProbeOk=tlsProbe.connect(apiIp,443,host,ROOT_CA_BUNDLE,nullptr,nullptr);
-  const int tlsSystemErrno=errno;
-  char tlsProbeError[160]={0};
-  const int tlsProbeErrorCode=tlsProbe.lastError(tlsProbeError,sizeof(tlsProbeError));
-  Serial.printf("[CLOUD] TLS PREFLIGHT host=%s ip=%s ok=%d elapsed=%lu ms error_code=%d detail=%s errno=%d (%s)\\n",
-                host,apiIp.toString().c_str(),tlsProbeOk,(unsigned long)(millis()-tlsStartedAt),tlsProbeErrorCode,
-                tlsProbeError[0]?tlsProbeError:"none",tlsSystemErrno,strerror(tlsSystemErrno));
+  const uint32_t tlsSocketStartedAt=millis();
+  errno=0;
+  const int tlsSocketOk=tlsProbe.connect(apiIp,443,host,ROOT_CA_BUNDLE,nullptr,nullptr);
+  const int tlsSocketErrno=errno;
+  Serial.printf("[CLOUD] TLS SOCKET RESULT ok=%d elapsed=%lu ms fd=%d errno=%d (%s)\\n",
+                tlsSocketOk,(unsigned long)(millis()-tlsSocketStartedAt),
+                tlsProbe.fd(),tlsSocketErrno,strerror(tlsSocketErrno));
+  if(!tlsSocketOk) {
+    char socketError[160]={0};
+    const int socketErrorCode=tlsProbe.lastError(socketError,sizeof(socketError));
+    Serial.printf("[CLOUD] TLS SOCKET ERROR code=%d detail=%s\\n",
+                  socketErrorCode,socketError[0]?socketError:"none");
+    tlsProbe.stop();
+    response=String("TLS socket setup failed: ")+(socketError[0]?socketError:"unknown");
+    return false;
+  }
+
+  Serial.printf("[CLOUD] TLS HANDSHAKE START host=%s fd=%d free=%u largest=%u\\n",
+                host,tlsProbe.fd(),ESP.getFreeHeap(),
+                (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+  const uint32_t tlsHandshakeStartedAt=millis();
+  errno=0;
+  const int tlsHandshakeOk=tlsProbe.startTLS();
+  const int tlsHandshakeErrno=errno;
+  char tlsHandshakeError[160]={0};
+  const int tlsHandshakeErrorCode=tlsProbe.lastError(tlsHandshakeError,sizeof(tlsHandshakeError));
+  Serial.printf("[CLOUD] TLS HANDSHAKE RESULT ok=%d elapsed=%lu ms error_code=%d detail=%s errno=%d (%s)\\n",
+                tlsHandshakeOk,(unsigned long)(millis()-tlsHandshakeStartedAt),
+                tlsHandshakeErrorCode,tlsHandshakeError[0]?tlsHandshakeError:"none",
+                tlsHandshakeErrno,strerror(tlsHandshakeErrno));
   Serial.printf("[CLOUD] TLS MEMORY after free=%u min=%u largest=%u\\n",
                 ESP.getFreeHeap(),ESP.getMinFreeHeap(),
                 (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
   tlsProbe.stop();
-  if(!tlsProbeOk) {
-    response=String("TLS preflight failed: ")+(tlsProbeError[0]?tlsProbeError:"unknown");
+  if(!tlsHandshakeOk) {
+    response=String("TLS handshake failed: ")+(tlsHandshakeError[0]?tlsHandshakeError:"unknown");
     return false;
   }
 

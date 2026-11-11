@@ -878,6 +878,9 @@ static void handleTouch(){
      wifiScreenDrawn=false; showWifiSetup();
    }
  }
+ else if(screen==Screen::Dashboard && y>=160 && y<200) {
+   showSatelliteScreen();
+ }
  else if((screen==Screen::Dashboard||screen==Screen::Satellite||screen==Screen::Antenna||screen==Screen::SystemInfo)&&y>=204) {
    if(x<81) showDashboard();
    else if(x<160) showSatelliteScreen();
@@ -964,10 +967,6 @@ void loop() {
     if(gps.encode(Serial2.read()) && gps.location.isValid()) gpsSeen=true;
   }
   const uint32_t now=millis();
-  if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastDashboardRefreshAt>=1000) {
-    updateGpsTelemetry();
-    lastDashboardRefreshAt=now;
-  }
   if(!displayDiagnosticActive && screen==Screen::Splash && now-screenStartedAt>=SPLASH_MS) {
     if(touchCalibrated) { screen=Screen::Init; showInitialization(); screenStartedAt=now; }
     else showTouchDiagnostic();

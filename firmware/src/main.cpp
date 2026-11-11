@@ -13,6 +13,7 @@
 #include <time.h>
 #include <errno.h>
 #include <esp_heap_caps.h>
+#include <lwip/dns.h>
 #include <TJpg_Decoder.h>
 #include "splash_jpg.h"
 #include "ui_assets.h"
@@ -518,13 +519,42 @@ static bool cloudRequest(const char* method,const String& path,const String& bod
   if(WiFi.status()!=WL_CONNECTED) { response="Wi-Fi offline"; Serial.println("[CLOUD] Wi-Fi offline"); return false; }
   if(!ensureSystemClock()) { response="NTP time synchronization failed"; return false; }
   const char* host="cyd-satellite-tracker.pages.dev";
-  IPAddress apiIp;
-  if(!WiFi.hostByName(host,apiIp)) {
-    response="DNS lookup failed";
-    Serial.printf("[CLOUD] DNS FAILED host=%s\n",host);
+  IPAddress apiIp(0,0,0,0);
+  bool dnsOk=false;
+  // Validate the address, not only hostByName's return value: some ESP32
+  // network stacks may report success while leaving the result as 0.0.0.0.
+  for(uint8_t attempt=1; attempt<=2 && !dnsOk; ++attempt) {
+    apiIp=IPAddress(0,0,0,0);
+    const int result=WiFi.hostByName(host,apiIp,5000);
+    dnsOk=(result==1 && apiIp!=IPAddress(0,0,0,0));
+    Serial.printf("[CLOUD] DNS DHCP attempt=%u result=%d ip=%s valid=%d\\n",
+                  attempt,result,apiIp.toString().c_str(),dnsOk?1:0);
+    if(!dnsOk) delay(250);
+  }
+  if(!dnsOk) {
+    // Set lwIP resolver entries directly; keep the DHCP IP, gateway and subnet.
+    const IPAddress fallbackDns1(1,1,1,1);
+    const IPAddress fallbackDns2(8,8,8,8);
+    dns_setserver(0,&fallbackDns1);
+    dns_setserver(1,&fallbackDns2);
+    Serial.printf("[CLOUD] DNS FALLBACK configured primary=%s secondary=%s\\n",
+                  fallbackDns1.toString().c_str(),fallbackDns2.toString().c_str());
+    for(uint8_t attempt=1; attempt<=3 && !dnsOk; ++attempt) {
+      apiIp=IPAddress(0,0,0,0);
+      const int result=WiFi.hostByName(host,apiIp,6000);
+      dnsOk=(result==1 && apiIp!=IPAddress(0,0,0,0));
+      Serial.printf("[CLOUD] DNS fallback attempt=%u result=%d ip=%s valid=%d\\n",
+                    attempt,result,apiIp.toString().c_str(),dnsOk?1:0);
+      if(!dnsOk) delay(350);
+    }
+  }
+  if(!dnsOk) {
+    response="DNS lookup failed (DHCP and fallback resolvers)";
+    Serial.printf("[CLOUD] DNS FAILED host=%s after 5 attempts\\n",host);
     return false;
   }
-  Serial.printf("[CLOUD] DNS %s -> %s, RSSI=%d dBm\\n",host,apiIp.toString().c_str(),WiFi.RSSI());
+  Serial.printf("[CLOUD] DNS OK %s -> %s, RSSI=%d dBm\\n",
+                host,apiIp.toString().c_str(),WiFi.RSSI());
 
   // Separate raw TCP reachability from TLS certificate/handshake diagnostics.
   WiFiClient tcpProbe;

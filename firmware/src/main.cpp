@@ -617,28 +617,64 @@ static void updateGpsTelemetry() {
 static void showDashboard() {
   screen=Screen::Dashboard;
   tft.fillScreen(BG);
-  // Slim premium header with project mark, clock and connection state.
-  tft.fillRect(0,0,320,27,0x0010);
-  tft.fillRect(0,26,320,2,0x03BF);
-  tft.fillCircle(15,13,8,0x03BF); tft.fillCircle(15,13,4,TFT_WHITE);
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_WHITE,0x0010);
-  tft.drawString("CYD SATELLITE TRACKER",29,6,2);
-  tft.setTextDatum(TR_DATUM); tft.setTextColor(TFT_CYAN,0x0010);
-  if(gps.time.isValid()) {
-    char utc[18]; snprintf(utc,sizeof(utc),"%02u:%02u UTC",gps.time.hour(),gps.time.minute());
-    tft.drawString(utc,311,7,1);
-  } else tft.drawString("UTC --:--",311,7,1);
-  drawGpsPanel();
-  // Wide, equal navigation controls; the active section has a brighter fill.
-  const uint16_t idle=0x0822, active=0x035F;
-  const int xs[4]={5,84,163,242};
-  const char* labels[4]={"HOME","SAT","ANT","SYS"};
+  // Minimal Blue HOME layout approved for the 320x240 landscape CYD.
+  // Keep the screen calm and legible: one target, two angle instruments,
+  // one primary action and persistent four-way navigation.
+  const uint16_t ink=0x0010, card=0x1045, edge=0x2A69, cyan=0x07FF;
+  // Header: product mark and truthful connection state.
+  tft.fillRect(0,0,320,29,ink);
+  tft.fillRect(0,28,320,1,cyan);
+  tft.drawCircle(15,14,7,cyan); tft.fillCircle(15,14,3,TFT_WHITE);
+  tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_WHITE,ink);
+  tft.drawString("CYD TRACKER",29,7,2);
+  const bool wifi=WiFi.status()==WL_CONNECTED;
+  tft.setTextDatum(TR_DATUM);
+  tft.setTextColor(wifi?TFT_GREEN:TFT_ORANGE,ink);
+  tft.drawString(wifi?"ONLINE":"OFFLINE",311,9,1);
+  tft.fillCircle(254,14,3,wifi?TFT_GREEN:TFT_ORANGE);
+
+  // Selected target card. NORAD ID is factual; unavailable orbit values
+  // remain placeholders until a live TLE source is integrated.
+  tft.fillRoundRect(7,35,306,65,7,card);
+  tft.drawRoundRect(7,35,306,65,7,edge);
+  tft.fillRoundRect(13,41,54,53,5,ink);
+  drawUiImage(15,45,ui_iss_jpg,sizeof(ui_iss_jpg));
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(TFT_CYAN,card); tft.drawString("ВЫБРАННЫЙ СПУТНИК",76,42,1);
+  tft.setTextColor(TFT_WHITE,card); tft.drawString("МКС  /  ISS",76,55,2);
+  tft.setTextColor(MUTED,card); tft.drawString("NORAD 25544  •  НА ОРБИТЕ",76,77,1);
+  tft.setTextDatum(TR_DATUM); tft.setTextColor(TFT_YELLOW,card);
+  tft.drawString("ВЫБРАНА",303,55,1);
+
+  // Two large, balanced instrument readouts.
+  const int cardY=107, cardH=47;
+  tft.fillRoundRect(7,cardY,149,cardH,7,card);
+  tft.fillRoundRect(164,cardY,149,cardH,7,card);
+  tft.drawRoundRect(7,cardY,149,cardH,7,edge);
+  tft.drawRoundRect(164,cardY,149,cardH,7,edge);
+  tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_CYAN,card);
+  tft.drawString("АЗИМУТ",16,113,1);
+  tft.drawString("УГОЛ МЕСТА",173,113,1);
+  tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,card);
+  tft.drawString("---.-°",81,137,4);
+  tft.drawString("--.-°",238,137,4);
+
+  // Clear primary action; it opens the satellite page for target selection.
+  tft.fillRoundRect(7,161,306,37,8,0x035F);
+  tft.drawRoundRect(7,161,306,37,8,cyan);
+  tft.fillTriangle(25,172,25,186,36,179,TFT_WHITE);
+  tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,0x035F);
+  tft.drawString("НАСТРОИТЬ СЛЕЖЕНИЕ",166,180,2);
+
+  // Persistent navigation: four equal touch targets.
+  const int xs[4]={4,84,164,244};
+  const char* labels[4]={"ГЛАВНАЯ","СПУТНИКИ","АНТЕННА","СИСТЕМА"};
   for(int i=0;i<4;i++) {
-    const uint16_t fill=i==0?active:idle;
-    tft.fillRoundRect(xs[i],204,73,32,7,fill);
-    tft.drawRoundRect(xs[i],204,73,32,7,i==0?TFT_CYAN:0x2A69);
+    const uint16_t fill=i==0?0x035F:0x0822;
+    tft.fillRoundRect(xs[i],207,72,29,6,fill);
+    tft.drawRoundRect(xs[i],207,72,29,6,i==0?cyan:edge);
     tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,fill);
-    tft.drawString(labels[i],xs[i]+36,220,2);
+    tft.drawString(labels[i],xs[i]+36,222,1);
   }
   lastDashboardRefreshAt=millis();
 }

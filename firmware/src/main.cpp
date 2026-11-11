@@ -34,6 +34,7 @@ static bool wifiScreenDrawn = false;
 static bool keyboardNeedsRedraw = true;
 static bool gpsSeen = false;
 static bool displayDiagnosticActive = false;
+static bool displayInvertTestState = false;
 static bool touchCalibrated = false;
 static bool calibrationFromSystem = false;
 static uint16_t rawTouchX = 0, rawTouchY = 0;
@@ -829,6 +830,12 @@ static void handleSerialDisplayDiagnostics() {
   while(Serial.available()) {
     const char command=(char)Serial.read();
     if(command=='c' || command=='C') drawDisplayColorTest();
+    else if(command=='i' || command=='I') {
+      displayInvertTestState = !displayInvertTestState;
+      tft.invertDisplay(displayInvertTestState);
+      drawDisplayColorTest();
+      Serial.printf("DISPLAY INVERSION TEST: %s\\n",displayInvertTestState?"ON":"OFF");
+    }
     else if(command=='b' || command=='B') restoreCurrentScreen();
   }
 }
@@ -870,16 +877,16 @@ void loop() {
     updateGpsTelemetry();
     lastDashboardRefreshAt=now;
   }
-  if(screen==Screen::Splash && now-screenStartedAt>=SPLASH_MS) {
+  if(!displayDiagnosticActive && screen==Screen::Splash && now-screenStartedAt>=SPLASH_MS) {
     if(touchCalibrated) { screen=Screen::Init; showInitialization(); screenStartedAt=now; }
     else showTouchDiagnostic();
     screenStartedAt=now;
-  } else if(screen==Screen::TouchTest) {
+  } else if(!displayDiagnosticActive && screen==Screen::TouchTest) {
     if(touchCalStep>=1&&!touchCalibrated)updateTouchCalibration();else updateTouchDiagnostic();
-  } else if(screen==Screen::Init && now-screenStartedAt>=INIT_MS) {
+  } else if(!displayDiagnosticActive && screen==Screen::Init && now-screenStartedAt>=INIT_MS) {
     if(wifiName.length()) beginWiFi();
     else { setupMessage="Enter your router details"; showWifiSetup(); }
-  } else if(screen==Screen::Connecting) {
+  } else if(!displayDiagnosticActive && screen==Screen::Connecting) {
     if(WiFi.status()==WL_CONNECTED) {
       screen=Screen::Connected;
       screenStartedAt=now;
@@ -890,5 +897,5 @@ void loop() {
       showFailed();
     }
   }
-  handleTouch();
+  if(!displayDiagnosticActive) handleTouch();
 }

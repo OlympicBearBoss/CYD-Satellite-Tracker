@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "firmware/**"
+      - "windows-gateway/**"
       - ".github/workflows/firmware-build.yml"
   pull_request:
     paths:
@@ -26,6 +27,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Check Windows gateway Python syntax
+        run: python -m py_compile windows-gateway/gateway.py
 
       - name: Install PlatformIO
         run: pip install --upgrade platformio pillow

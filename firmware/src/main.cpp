@@ -628,6 +628,29 @@ static void updateGpsTelemetry() {
     tft.drawString(line,266,188,1);
   } else tft.drawString("UTC --:--",266,188,1);
 }
+static void updateTargetTelemetry() {
+  char line[40];
+  if(screen==Screen::Dashboard) {
+    // Refresh the target readout without repainting the ISS artwork.
+    tft.fillRect(8,128,175,13,0x0010);
+    snprintf(line,sizeof(line),"AZ %.1f%c  EL %.1f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
+    tft.setTextDatum(TL_DATUM);
+    tft.setTextColor(TFT_CYAN,0x0010);
+    tft.drawString(line,14,129,1);
+  } else if(screen==Screen::Antenna) {
+    // Keep the motor-lock warning visible alongside the latest target values.
+    tft.fillRect(10,186,300,9,0x4000);
+    snprintf(line,sizeof(line),"LOCKED  AZ %.1f%c  EL %.1f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TFT_YELLOW,0x4000);
+    tft.drawString(line,160,190,1);
+    tft.fillRect(184,139,106,25,0x0822);
+    snprintf(line,sizeof(line),"%.1f%c",targetElevationDeg,(char)247);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TFT_WHITE,0x0822);
+    tft.drawString(line,237,151,4);
+  }
+}
 static void showDashboard() {
   screen=Screen::Dashboard;
   tft.fillScreen(BG);
@@ -649,6 +672,7 @@ static void showDashboard() {
   tft.fillCircle(260,17,2,wifiColor);
   drawGpsPanel();
   drawNavigation(0);
+  updateTargetTelemetry();
   lastDashboardRefreshAt=millis();
 }
 
@@ -719,8 +743,9 @@ static void showAntennaScreen() {
   tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,0x0822);
   tft.drawString("--.-°",237,151,4);
   tft.fillRoundRect(8,184,304,13,5,0x4000);tft.drawRoundRect(8,184,304,13,5,TFT_ORANGE);
-  tft.setTextColor(TFT_YELLOW,0x4000);tft.drawString("DRIVE LOCKED  /  ORBIT DATA REQUIRED",160,190,1);
+  tft.setTextColor(TFT_YELLOW,0x4000);tft.drawString("DRIVE LOCKED  /  TARGET PENDING",160,190,1);
   drawNavigation(2);
+  updateTargetTelemetry();
 }
 static void showSystemScreen() {
   screen=Screen::SystemInfo;
@@ -1118,8 +1143,9 @@ void loop() {
   if(!displayDiagnosticActive) handleTouch();
   if(!displayDiagnosticActive) { serviceLocalApi(); } // Browser and CYD communicate only over the local network.
   // Refresh only the three telemetry tiles; keep the photo, radar and chrome static.
-  if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastDashboardRefreshAt>=1000) {
-    updateGpsTelemetry();
+  if(!displayDiagnosticActive && (screen==Screen::Dashboard || screen==Screen::Antenna) && now-lastDashboardRefreshAt>=1000) {
+    if(screen==Screen::Dashboard) updateGpsTelemetry();
+    updateTargetTelemetry();
     lastDashboardRefreshAt=now;
   }
 }

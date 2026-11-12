@@ -1,9 +1,12 @@
 const KNOWN_IMAGES = {
-  // NASA image library, public-domain ISS photograph (small rendition).
+  // NASA Johnson photograph of the ISS, Oct. 4, 2018 (NASA/Roscosmos credit).
   "25544": "https://images-assets.nasa.gov/image/iss056e201248/iss056e201248~small.jpg"
 };
 
-const MAX_JPEG_BYTES = 120000;
+// The browser downsizes and recompresses this image before sending it to the
+// ESP32. Do not reject a valid NASA source merely because its original JPEG
+// rendition is larger than the final on-device payload.
+const MAX_JPEG_BYTES = 2 * 1024 * 1024;
 const CACHE_HEADERS = {
   "Cache-Control": "public, max-age=86400, s-maxage=31536000, stale-while-revalidate=604800",
   "X-Content-Type-Options": "nosniff"
@@ -87,7 +90,8 @@ export async function onRequestGet({ request }) {
   }
 
   const isDownload = url.searchParams.get("download") === "1";
-  const cacheKey = new Request(new URL("/api/satellite-image?v=3&norad=" + norad + "&download=" + (isDownload ? "1" : "0"), url.origin).toString(), { method: "GET" });
+  // Bump the cache namespace so stale negative photo lookups are not reused.
+  const cacheKey = new Request(new URL("/api/satellite-image?v=4&norad=" + norad + "&download=" + (isDownload ? "1" : "0"), url.origin).toString(), { method: "GET" });
   const edgeCache = caches.default;
   const cached = await edgeCache.match(cacheKey);
   if (cached) return cached;
@@ -103,7 +107,7 @@ export async function onRequestGet({ request }) {
       return missing;
     }
 
-    if (url.searchParams.get("download") === "1") {
+    if (isDownload) {
       let bytes = null;
       let selectedSource = "";
       for (const source of sources) {
@@ -112,7 +116,7 @@ export async function onRequestGet({ request }) {
           selectedSource = source;
           break;
         } catch (_) {
-          // Try the next approved source, e.g. SatNOGS when a known image is too large.
+          // Try the next approved source, e.g. SatNOGS when a known image fails.
         }
       }
       if (!bytes) throw new Error("no_usable_jpeg_source");
@@ -130,8 +134,7 @@ export async function onRequestGet({ request }) {
       return imageResponse;
     }
 
-    // Verify at least one source is a real, compact JPEG before advertising
-    // a photo to the browser and the ESP32.
+    // Verify at least one source is a valid JPEG before advertising it.
     let usableSource = false;
     let selectedSource = "";
     for (const source of sources) {
@@ -157,7 +160,7 @@ export async function onRequestGet({ request }) {
     imageUrl.searchParams.set("norad", String(norad));
     imageUrl.searchParams.set("download", "1");
     const metadata = Response.json(
-      { ok: true, norad_id: norad, image: imageUrl.toString(), sources: sources.length, source: selectedSource ? new URL(selectedSource).hostname : "" },
+      { ok: true, norad_id: norad, image: imageUrl.toString(), sources: sources.length, source: new URL(selectedSource).hostname },
       { headers: CACHE_HEADERS }
     );
     await edgeCache.put(cacheKey, metadata.clone());

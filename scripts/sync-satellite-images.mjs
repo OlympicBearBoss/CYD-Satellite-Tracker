@@ -102,6 +102,8 @@ for (const group of GROUPS) {
   }
 }
 
+if (!ids.size) throw new Error("No catalog records were retrieved; refusing to write an empty image manifest.");
+
 const due = [...ids].filter(id => {
   const entry = manifest.images[id];
   if (entry?.path && entry.checkedAt && Date.now() - Date.parse(entry.checkedAt) < 180 * 86400000) return false;

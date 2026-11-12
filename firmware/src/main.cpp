@@ -144,6 +144,10 @@ static double observerLatitude=DEMO_OBSERVER_LAT,observerLongitude=DEMO_OBSERVER
 static double issAzimuthDeg=0,issElevationDeg=0,issRangeKm=0;
 static uint32_t selectedNoradId=25544;
 static String selectedSatelliteName="ISS (ZARYA)";
+static String selectedSatelliteImageUrl="";
+static uint8_t* selectedSatelliteImageData=nullptr;
+static uint32_t selectedSatelliteImageSize=0;
+static bool selectedSatelliteImagePending=false;
 static String orbitDataMessage="Ожидание подключения Wi-Fi";
 
 // Space Dark palette: deep navy background, layered blue panels and cyan telemetry.
@@ -627,6 +631,29 @@ static void drawSatelliteArtwork(int cx,int cy,int scale) {
   tft.drawLine(cx,cy-6*scale,cx+4*scale,cy-14*scale,TFT_WHITE);
   tft.fillCircle(cx+4*scale,cy-15*scale,2*scale,TFT_YELLOW);
 }
+static void drawSelectedSatellitePhoto() {
+  // Replace the fixed ISS artwork with the selected object's public photo.
+  tft.fillRoundRect(8,34,175,80,6,0x0822);
+  if(selectedSatelliteImageData && selectedSatelliteImageSize>4) {
+    tft.setViewport(8,34,175,80,true);
+    TJpgDec.setJpgScale(2);
+    TJpgDec.setSwapBytes(true);
+    TJpgDec.setCallback(uiImageOutput);
+    TJpgDec.drawJpg(0,0,selectedSatelliteImageData,selectedSatelliteImageSize);
+    tft.resetViewport();
+  } else {
+    drawSatelliteArtwork(96,74,2);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TFT_YELLOW,0x0822);
+    tft.drawString("PHOTO NOT FOUND",96,105,1);
+  }
+  tft.fillRect(8,114,175,27,0x0010);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(TFT_WHITE,0x0010);
+  String label=selectedSatelliteName;
+  if(label.length()>25) label=label.substring(0,25);
+  tft.drawString(label,14,116,1);
+}
 static void drawDialNeedle(int cx,int cy,int length,float degrees,uint16_t color) {
   const float a=(degrees-90.0f)*0.0174532925f;
   int ex=cx+(int)(length*cosf(a)), ey=cy+(int)(length*sinf(a));
@@ -640,15 +667,10 @@ static void drawGpsPanel() {
   // V81: compact four-zone instrument dashboard, designed for native 320x240.
   // Photo and static chrome are drawn once; telemetry values are refreshed separately.
   const uint16_t edge=0x03BF, panel=0x0822, panelHi=0x1045;
-  // Featured ISS photograph card.
+  // Selected spacecraft photo card; never label a different satellite as ISS.
   tft.fillRoundRect(5,31,181,113,9,0x0000);
   tft.drawRoundRect(5,31,181,113,9,edge);
-  tft.fillRoundRect(8,34,175,107,6,panel);
-  drawUiImage(8,34,ui_hero_jpg,sizeof(ui_hero_jpg)); // native 176x80 photo
-  tft.fillRect(8,114,175,27,0x0010);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_WHITE,0x0010); tft.drawString("ISS  /  ZARYA",14,116,2);
-  tft.setTextColor(TFT_GREEN,0x0010); tft.drawString("ORBITAL TARGET",14,132,1);
+  drawSelectedSatellitePhoto();
   // Radar: luminous rings, graduated ticks, cardinal marks and target marker.
   const int cx=250,cy=87,r=49;
   tft.fillCircle(cx,cy,r+8,0x0000);
@@ -718,7 +740,7 @@ static void updateGpsTelemetry() {
 static void updateTargetTelemetry() {
   char line[40];
   if(screen==Screen::Dashboard) {
-    // Refresh the target readout without repainting the ISS artwork.
+    // Refresh the target readout without repainting the selected spacecraft photo.
     tft.fillRect(8,128,175,13,0x0010);
     snprintf(line,sizeof(line),"AZ %.1f%c  EL %.1f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
     tft.setTextDatum(TL_DATUM);
@@ -1116,6 +1138,41 @@ static bool fetchSelectedTle() {
   Serial.printf("[ORBIT] TLE accepted NORAD %lu: %s\\n",(unsigned long)selectedNoradId,tleName);
   return true;
 }
+static bool isAllowedSatelliteImageUrl(const String& url) {
+  return url.startsWith("https://db.satnogs.org/media/") ||
+         url.startsWith("https://db-satnogs.freetls.fastly.net/media/");
+}
+static bool fetchSelectedSatelliteImage() {
+  if(!isAllowedSatelliteImageUrl(selectedSatelliteImageUrl) || WiFi.status()!=WL_CONNECTED) return false;
+  WiFiClientSecure client;
+  client.setCACert(CELESTRAK_CA_BUNDLE);
+  HTTPClient http;
+  http.setTimeout(9000);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+  if(!http.begin(client,selectedSatelliteImageUrl)) return false;
+  const int code=http.GET();
+  const int length=http.getSize();
+  if(code!=HTTP_CODE_OK || length<4 || length>120000) {
+    http.end();
+    Serial.printf("[PHOTO] download rejected code=%d size=%d\\n",code,length);
+    return false;
+  }
+  uint8_t* buffer=(uint8_t*)malloc((size_t)length);
+  if(!buffer) { http.end(); return false; }
+  WiFiClient* stream=http.getStreamPtr();
+  const size_t received=stream->readBytes((char*)buffer,(size_t)length);
+  http.end();
+  if(received!=(size_t)length || buffer[0]!=0xFF || buffer[1]!=0xD8) {
+    free(buffer);
+    Serial.printf("[PHOTO] invalid JPEG bytes=%u/%d\\n",(unsigned)received,length);
+    return false;
+  }
+  if(selectedSatelliteImageData) free(selectedSatelliteImageData);
+  selectedSatelliteImageData=buffer;
+  selectedSatelliteImageSize=(uint32_t)length;
+  Serial.printf("[PHOTO] loaded %u bytes for NORAD %lu\\n",(unsigned)length,(unsigned long)selectedNoradId);
+  return true;
+}
 static void updateSelectedOrbit() {
   if(WiFi.status()!=WL_CONNECTED) return;
   startOrbitTimeSync();
@@ -1317,6 +1374,12 @@ refreshStatus();setInterval(refreshStatus,1000);
       selectedNoradId=norad;
       const String requestedName=req["name"]| "";
       selectedSatelliteName=requestedName.length()?requestedName:("NORAD "+String(norad));
+      selectedSatelliteImageUrl=req["image_url"]|"";
+      if(!isAllowedSatelliteImageUrl(selectedSatelliteImageUrl)) selectedSatelliteImageUrl="";
+      selectedSatelliteImagePending=selectedSatelliteImageUrl.length()>0;
+      if(selectedSatelliteImageData) { free(selectedSatelliteImageData); selectedSatelliteImageData=null; }
+      selectedSatelliteImageSize=0;
+      if(screen==Screen::Dashboard) drawSelectedSatellitePhoto();
       issTleValid=false; issPositionValid=false;
       lastTleAttemptMs=0; lastTleSuccessMs=0; lastOrbitCalcMs=0;
       targetAzimuthDeg=0.0f;
@@ -1422,6 +1485,10 @@ void loop() {
   if(!displayDiagnosticActive) handleTouch();
   if(!displayDiagnosticActive) { serviceLocalApi(); } // Browser and CYD communicate only over the local network.
   if(!displayDiagnosticActive) updateSelectedOrbit();
+  if(!displayDiagnosticActive && selectedSatelliteImagePending) {
+    selectedSatelliteImagePending=false;
+    if(fetchSelectedSatelliteImage() && screen==Screen::Dashboard) drawSelectedSatellitePhoto();
+  }
   // Refresh only dynamic telemetry; keep artwork and navigation static.
   if(!displayDiagnosticActive && now-lastDashboardRefreshAt>=1000) {
     if(screen==Screen::Dashboard) { updateGpsTelemetry(); updateTargetTelemetry(); }

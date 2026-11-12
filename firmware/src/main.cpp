@@ -8,6 +8,11 @@
 #include <Preferences.h>
 #include <TinyGPSPlus.h>
 #include <ctype.h>
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
+#include <time.h>
+#include <math.h>
+#include <Sgp4.h>
 #include <TJpg_Decoder.h>
 #include "splash_jpg.h"
 #include "ui_assets.h"
@@ -58,6 +63,18 @@ static float targetAzimuthDeg=0.0f;
 static float targetElevationDeg=0.0f;
 static bool trackingRequested=false;
 static uint32_t localCommandSequence=0;
+static constexpr double DEMO_OBSERVER_LAT=56.8389;
+static constexpr double DEMO_OBSERVER_LON=60.6057;
+static constexpr double DEMO_OBSERVER_ALT_M=250.0;
+static Sgp4 issSgp4;
+static bool ntpStarted=false,issTleValid=false,issPositionValid=false,observerUsesGps=false;
+static uint32_t lastTleAttemptMs=0,lastTleSuccessMs=0,lastOrbitCalcMs=0;
+static time_t orbitUtcEpoch=0;
+static double observerLatitude=DEMO_OBSERVER_LAT,observerLongitude=DEMO_OBSERVER_LON,observerAltitudeM=DEMO_OBSERVER_ALT_M;
+static double issAzimuthDeg=0,issElevationDeg=0,issRangeKm=0;
+static uint32_t selectedNoradId=25544;
+static String selectedSatelliteName="ISS (ZARYA)";
+static String orbitDataMessage="Ожидание подключения Wi-Fi";
 
 // Space Dark palette: deep navy background, layered blue panels and cyan telemetry.
 static constexpr uint16_t BG = 0x0841;
@@ -944,6 +961,27 @@ static void handleSerialDisplayDiagnostics() {
   }
 }
 
+static void updateOrbitTelemetry() {
+  if(screen!=Screen::Satellite) return;
+  tft.fillRect(10,88,300,105,BG);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(TFT_CYAN,BG);
+  String label=selectedSatelliteName;
+  if(label.length()>25) label=label.substring(0,25);
+  tft.drawString(label,14,91,2);
+  char norad[32]; snprintf(norad,sizeof(norad),"NORAD %lu",(unsigned long)selectedNoradId);
+  tft.setTextColor(MUTED,BG); tft.drawString(norad,14,111,1);
+  tft.setTextColor(issTleValid?TFT_GREEN:TFT_YELLOW,BG);
+  tft.drawString(issTleValid?"TLE OK":"TLE WAIT",220,111,1);
+  char line[40];
+  tft.setTextColor(TFT_WHITE,BG);
+  snprintf(line,sizeof(line),"AZ  %6.1f deg",issAzimuthDeg); tft.drawString(line,14,132,2);
+  snprintf(line,sizeof(line),"EL  %6.1f deg",issElevationDeg); tft.drawString(line,14,153,2);
+  snprintf(line,sizeof(line),"RANGE %7.1f km",issRangeKm); tft.drawString(line,164,153,1);
+  tft.setTextColor(MUTED,BG);
+  tft.drawString(observerUsesGps?"GPS FIX":"DEMO: YEKATERINBURG",14,178,1);
+}
+
 static void startOrbitTimeSync() {
   if(ntpStarted || WiFi.status()!=WL_CONNECTED) return;
   configTime(0,0,"pool.ntp.org","time.google.com","time.cloudflare.com");
@@ -951,15 +989,15 @@ static void startOrbitTimeSync() {
   orbitDataMessage="Синхронизация времени UTC через NTP";
   Serial.println("[ORBIT] NTP synchronization started");
 }
-static bool fetchIssTle() {
+static bool fetchSelectedTle() {
   if(WiFi.status()!=WL_CONNECTED) return false;
   WiFiClientSecure client;
   // Temporary TLS bootstrap: replace setInsecure with a pinned CA bundle before production use.
   client.setInsecure();
   HTTPClient http;
   http.setTimeout(12000);
-  const char* url="https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE";
-  if(!http.begin(client,url)) { orbitDataMessage="Не удалось открыть HTTPS CelesTrak"; return false; }
+  const String url="https://celestrak.org/NORAD/elements/gp.php?CATNR="+String(selectedNoradId)+"&FORMAT=TLE";
+  if(!http.begin(client,url.c_str())) { orbitDataMessage="Не удалось открыть HTTPS CelesTrak"; return false; }
   const int code=http.GET();
   if(code!=HTTP_CODE_OK) {
     orbitDataMessage="CelesTrak HTTP "+String(code);
@@ -980,7 +1018,7 @@ static bool fetchIssTle() {
     if(row.length()) rows[count++]=row;
     start=end+1;
   }
-  String name="ISS (ZARYA)",line1,line2;
+  String name=selectedSatelliteName,line1,line2;
   if(count>=3 && rows[1].startsWith("1 ") && rows[2].startsWith("2 ")) {
     name=rows[0]; line1=rows[1]; line2=rows[2];
   } else if(count>=2 && rows[0].startsWith("1 ") && rows[1].startsWith("2 ")) {
@@ -990,22 +1028,24 @@ static bool fetchIssTle() {
     Serial.println("[ORBIT] Invalid TLE response");
     return false;
   }
-  char tleName[32]={0},tle1[130]={0},tle2[130]={0};
+  char tleName[24]={0},tle1[130]={0},tle2[130]={0};
   name.toCharArray(tleName,sizeof(tleName));
   line1.toCharArray(tle1,sizeof(tle1));
   line2.toCharArray(tle2,sizeof(tle2));
-  if(!issSgp4.init(tleName,tle1,tle2)) {
-    orbitDataMessage="SGP4 отклонил TLE МКС";
-    Serial.println("[ORBIT] SGP4 rejected ISS TLE");
+  const bool initialized=issSgp4.init(tleName,tle1,tle2);
+  if(!initialized && !issTleValid) {
+    orbitDataMessage="SGP4 отклонил TLE выбранного спутника";
+    Serial.println("[ORBIT] SGP4 rejected selected satellite TLE");
     return false;
   }
   issTleValid=true;
+  selectedSatelliteName=name;
   lastTleSuccessMs=millis();
-  orbitDataMessage="Актуальные TLE МКС загружены";
-  Serial.printf("[ORBIT] ISS TLE accepted: %s\\n",tleName);
+  orbitDataMessage="TLE загружены: "+selectedSatelliteName;
+  Serial.printf("[ORBIT] TLE accepted NORAD %lu: %s\\n",(unsigned long)selectedNoradId,tleName);
   return true;
 }
-static void updateIssOrbit() {
+static void updateSelectedOrbit() {
   if(WiFi.status()!=WL_CONNECTED) return;
   startOrbitTimeSync();
   const time_t now=time(nullptr);
@@ -1015,10 +1055,10 @@ static void updateIssOrbit() {
   }
   if(!issTleValid && (lastTleAttemptMs==0 || millis()-lastTleAttemptMs>=60000)) {
     lastTleAttemptMs=millis();
-    fetchIssTle();
+    fetchSelectedTle();
   } else if(issTleValid && millis()-lastTleSuccessMs>=6UL*60UL*60UL*1000UL) {
     lastTleAttemptMs=millis();
-    fetchIssTle();
+    fetchSelectedTle();
   }
   if(!issTleValid || millis()-lastOrbitCalcMs<1000) return;
   lastOrbitCalcMs=millis();
@@ -1040,10 +1080,10 @@ static void updateIssOrbit() {
     issElevationDeg=issSgp4.satEl;
     issRangeKm=issSgp4.satDist;
     issPositionValid=true;
-    orbitDataMessage="Положение МКС рассчитано методом SGP4";
+    orbitDataMessage="SGP4: рассчитано положение "+selectedSatelliteName;
   } else {
     issPositionValid=false;
-    orbitDataMessage="SGP4 не вернул координаты МКС";
+    orbitDataMessage="SGP4 не вернул координаты выбранного спутника";
   }
   if(screen==Screen::Satellite) updateOrbitTelemetry();
 }
@@ -1075,8 +1115,8 @@ static void sendLocalStatus() {
   doc["time_valid"]=time(nullptr)>1700000000;
   doc["utc_epoch"]=(long long)time(nullptr);
   JsonObject orbit=doc["orbit"].to<JsonObject>();
-  orbit["satellite"]="ISS";
-  orbit["norad_id"]=25544;
+  orbit["satellite"]=selectedSatelliteName;
+  orbit["norad_id"]=selectedNoradId;
   orbit["tle_valid"]=issTleValid;
   orbit["position_valid"]=issPositionValid;
   orbit["observer_source"]=observerUsesGps?"gps":"demo_yekaterinburg";
@@ -1177,6 +1217,21 @@ refreshStatus();setInterval(refreshStatus,1000);
       }
       targetAzimuthDeg=az; targetElevationDeg=el;
       message="Целевые углы сохранены. Моторы пока не задействованы.";
+    } else if(command=="follow_satellite") {
+      const uint32_t norad=req["norad_id"]|0U;
+      if(norad<1 || norad>999999) {
+        out["ok"]=false; out["error"]="invalid_norad_id";
+        out["message"]="Нужен действительный NORAD ID от 1 до 999999.";
+        String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
+      }
+      selectedNoradId=norad;
+      const String requestedName=req["name"]| "";
+      selectedSatelliteName=requestedName.length()?requestedName:("NORAD "+String(norad));
+      issTleValid=false; issPositionValid=false;
+      lastTleAttemptMs=0; lastTleSuccessMs=0; lastOrbitCalcMs=0;
+      trackingRequested=false;
+      orbitDataMessage="Загрузка орбиты выбранного спутника";
+      message="Выбран "+selectedSatelliteName+" · NORAD "+String(selectedNoradId)+". Загружаю TLE и рассчитываю SGP4.";
     } else if(command=="tracking") {
       if(!req["enabled"].is<bool>()) {
         out["ok"]=false; out["error"]="invalid_enabled";
@@ -1186,7 +1241,7 @@ refreshStatus();setInterval(refreshStatus,1000);
       message=trackingRequested ? "Запрос слежения принят; движение моторов заблокировано." : "Слежение выключено.";
     } else {
       out["ok"]=false; out["error"]="unsupported_command";
-      out["message"]="Допустимые команды: stop, set_target, tracking.";
+      out["message"]="Допустимые команды: stop, set_target, follow_satellite, tracking."
       String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
     }
     ++localCommandSequence;
@@ -1274,7 +1329,7 @@ void loop() {
   }
   if(!displayDiagnosticActive) handleTouch();
   if(!displayDiagnosticActive) { serviceLocalApi(); } // Browser and CYD communicate only over the local network.
-  if(!displayDiagnosticActive) updateIssOrbit();
+  if(!displayDiagnosticActive) updateSelectedOrbit();
   // Refresh only dynamic telemetry; keep artwork and navigation static.
   if(!displayDiagnosticActive && now-lastDashboardRefreshAt>=1000) {
     if(screen==Screen::Dashboard) updateGpsTelemetry();

@@ -11,6 +11,8 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <math.h>
 #include <Sgp4.h>
 #include <TJpg_Decoder.h>
@@ -174,6 +176,7 @@ static uint32_t lastTouchAt = 0;
 static uint32_t lastDashboardRefreshAt = 0;
 static uint32_t lastHeaderIconsAt = 0;
 static uint32_t lastSiteClientAt = 0;
+static uint32_t firstSiteClientAt = 0;
 static constexpr uint32_t SITE_CLIENT_TIMEOUT_MS = 8000;
 static bool wifiScreenDrawn = false;
 static bool keyboardNeedsRedraw = true;
@@ -206,17 +209,20 @@ static constexpr double DEMO_OBSERVER_ALT_M=250.0;
 static Sgp4 issSgp4;
 static bool ntpStarted=false,issTleValid=false,issPositionValid=false,observerUsesGps=false;
 static uint32_t lastTleAttemptMs=0,lastTleSuccessMs=0,lastOrbitCalcMs=0;
+struct TleFetchRequest { uint32_t norad; char fallbackName[32]; };
+struct TleFetchResult { uint32_t norad; bool ok; char name[32]; char line1[130]; char line2[130]; char error[96]; };
+static volatile bool tleFetchInProgress=false;
+static volatile bool tleFetchResultReady=false;
+static portMUX_TYPE tleFetchMux=portMUX_INITIALIZER_UNLOCKED;
+static TleFetchResult tleFetchResult={};
 static time_t orbitUtcEpoch=0;
 static double observerLatitude=DEMO_OBSERVER_LAT,observerLongitude=DEMO_OBSERVER_LON,observerAltitudeM=DEMO_OBSERVER_ALT_M;
 static double issAzimuthDeg=0,issElevationDeg=0,issRangeKm=0;
 static uint32_t selectedNoradId=25544;
 static String selectedSatelliteName="ISS (ZARYA)";
-static String selectedSatelliteImageUrl="https://cyd-satellite-tracker.pages.dev/api/satellite-image?norad=25544&download=1";
 static uint8_t* selectedSatelliteImageData=nullptr;
 static uint32_t selectedSatelliteImageSize=0;
-static bool selectedSatelliteImagePending=true;
-static uint8_t selectedSatelliteImageAttempts=0;
-static uint32_t selectedSatelliteImageLastAttemptMs=0;
+static uint32_t selectedSatelliteImageNorad=0;
 static String orbitDataMessage="Ожидание подключения Wi-Fi";
 
 // Space Dark palette: deep navy background, layered blue panels and cyan telemetry.
@@ -230,6 +236,7 @@ static constexpr uint16_t KEY_EDGE = 0x07FF;
 static uint16_t touchCal[5];
 static constexpr int TOUCH_CLK_PIN=25, TOUCH_MISO_PIN=39, TOUCH_MOSI_PIN=32, TOUCH_IRQ_PIN=36;
 static bool touchWasDown=false; static uint8_t touchCalStep=0; static uint16_t touchCorners[8]={0};
+static void drawHeaderConnectionIcons();
 static constexpr int16_t calX[4]={18,302,18,302}, calY[4]={18,18,222,222};
 static uint16_t readXptChannel(uint8_t command){touchSPI.transfer(command);return (touchSPI.transfer16(0)>>3)&0x0FFF;}
 static uint16_t median3(uint16_t a,uint16_t b,uint16_t c){
@@ -355,6 +362,7 @@ static void showSplash(){
   TJpgDec.setSwapBytes(true);
   TJpgDec.setCallback(splashOutput);
   TJpgDec.drawJpg(0,0,splash_jpg,sizeof(splash_jpg));
+  // No connection badges on the splash screen.
   printGeometry("JPEG SPLASH VARIANT 4");
 }
 
@@ -530,10 +538,9 @@ static void showWifiSetup() {
     tft.fillCircle(14,13,5,TFT_CYAN);tft.fillCircle(14,13,2,TFT_WHITE);
     tft.setTextDatum(TL_DATUM);
     tft.setTextColor(TFT_WHITE,0x0862);tft.drawString("NETWORK CONFIG",26,5,2);
-    tft.setTextDatum(TR_DATUM);tft.setTextColor(MUTED,0x0862);tft.drawString("SPACE DARK",263,8,1);
+    // Keep the right side clear for the shared connection icons.
   }
   tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(russianLayout?"RU":"EN",275,6,2);
   drawField(37,"NETWORK / SSID",wifiName,!editingPassword,false);
   drawField(68,"PASSWORD",wifiPassword,editingPassword,true);
   tft.fillRoundRect(7,96,306,10,4,0x1028);
@@ -566,6 +573,7 @@ static void showWifiSetup() {
   }
   tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_WHITE,BG);
   tft.drawString(passwordVisible?"HIDE":"SHOW",315,91,1);
+  drawHeaderConnectionIcons();
   wifiScreenDrawn=true;
 }
 static void appendKeyUtf8(const char* value) {
@@ -718,13 +726,15 @@ static void drawSatelliteArtwork(int cx,int cy,int scale) {
 static void drawSelectedSatellitePhoto() {
   // Replace the fixed ISS artwork with the selected object's public photo.
   tft.fillRoundRect(8,34,175,80,6,0x0822);
-  if(selectedSatelliteImageData && selectedSatelliteImageSize>4) {
-    tft.setViewport(8,34,175,80,true);
+  if(selectedSatelliteImageData && selectedSatelliteImageSize>4 && selectedSatelliteImageNorad==selectedNoradId) {
+    // The JPEG is already center-cropped to 320x160 by the website and
+    // decoded at 1/2 scale to exactly 160x80. Draw it directly: TFT_eSPI's
+    // viewport origin is added to pushImage coordinates in uiImageOutput,
+    // which caused an extra (+8,+34) offset and shifted the photo down/right.
     TJpgDec.setJpgScale(2);
     TJpgDec.setSwapBytes(true);
     TJpgDec.setCallback(uiImageOutput);
-    TJpgDec.drawJpg(12,-35,selectedSatelliteImageData,selectedSatelliteImageSize); // center-crop square source into the 175x80 card
-    tft.resetViewport();
+    TJpgDec.drawJpg(15,34,selectedSatelliteImageData,selectedSatelliteImageSize);
   } else {
     drawSatelliteArtwork(96,74,2);
     tft.setTextDatum(MC_DATUM);
@@ -860,20 +870,15 @@ static void showDashboard() {
   tft.fillScreen(BG);
   // Premium Space Dark home: real ISS photo, luminous radar and live receiver telemetry.
   const bool wifi=WiFi.status()==WL_CONNECTED;
-  const uint16_t top=0x0010;
+  const uint16_t top=0x0862;
   tft.fillRect(0,0,320,27,top);
   tft.fillRect(0,26,320,2,0x03BF);
   tft.drawCircle(15,13,7,TFT_CYAN); tft.fillCircle(15,13,3,TFT_WHITE);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TFT_WHITE,top); tft.drawString("CYD",29,4,2);
   tft.setTextColor(0x8E7F,top); tft.drawString("SATELLITE TRACKER",65,8,1);
-  // Compact Wi-Fi glyph replaces the text badge; color reflects link state.
-  const uint16_t wifiColor=wifi?TFT_GREEN:TFT_ORANGE;
-  tft.drawLine(250,9,254,6,wifiColor); tft.drawLine(254,6,260,4,wifiColor);
-  tft.drawLine(260,4,266,6,wifiColor); tft.drawLine(266,6,270,9,wifiColor);
-  tft.drawLine(254,13,257,10,wifiColor); tft.drawLine(257,10,260,9,wifiColor);
-  tft.drawLine(260,9,263,10,wifiColor); tft.drawLine(263,10,266,13,wifiColor);
-  tft.fillCircle(260,17,2,wifiColor);
+  // Same live Wi-Fi and browser-link indicators as every other screen.
+  drawHeaderConnectionIcons();
   drawGpsPanel();
   drawNavigation(0);
   updateTargetTelemetry();
@@ -998,7 +1003,7 @@ static void beginWiFi() {
   WiFi.setAutoReconnect(false);
   WiFi.disconnect(false,false);
   WiFi.mode(WIFI_STA);
-  WiFi.setSleep(true);
+  WiFi.setSleep(false); // Keep touch-to-browser response latency low while serving the local API.
   WiFi.begin(wifiName.c_str(),wifiPassword.c_str());
   wifiAttemptAt=millis();
   screen=Screen::Connecting;
@@ -1175,114 +1180,133 @@ static void startOrbitTimeSync() {
   orbitDataMessage="Синхронизация времени UTC через NTP";
   Serial.println("[ORBIT] NTP synchronization started");
 }
-static bool fetchSelectedTle() {
-  if(WiFi.status()!=WL_CONNECTED) return false;
-  WiFiClientSecure client;
-  // Verify the CelesTrak certificate chain against trusted Sectigo RSA roots.
-  // The NTP gate in updateSelectedOrbit() ensures the clock is valid first.
-  client.setCACert(CELESTRAK_CA_BUNDLE);
-  HTTPClient http;
-  http.setTimeout(12000);
-  const String url="https://celestrak.org/NORAD/elements/gp.php?CATNR="+String(selectedNoradId)+"&FORMAT=TLE";
-  if(!http.begin(client,url.c_str())) { orbitDataMessage="Не удалось открыть HTTPS CelesTrak"; return false; }
-  const int code=http.GET();
-  if(code!=HTTP_CODE_OK) {
-    orbitDataMessage="CelesTrak HTTP "+String(code);
-    Serial.printf("[ORBIT] TLE HTTP error: %d\\n",code);
-    http.end();
-    return false;
-  }
-  String payload=http.getString();
-  http.end();
-  String rows[3];
-  uint8_t count=0;
-  int start=0;
-  while(start<(int)payload.length() && count<3) {
-    int end=payload.indexOf('\n',start);
-    if(end<0) end=payload.length();
-    String row=payload.substring(start,end);
-    row.trim();
-    if(row.length()) rows[count++]=row;
-    start=end+1;
-  }
-  String name=selectedSatelliteName,line1,line2;
-  if(count>=3 && rows[1].startsWith("1 ") && rows[2].startsWith("2 ")) {
-    name=rows[0]; line1=rows[1]; line2=rows[2];
-  } else if(count>=2 && rows[0].startsWith("1 ") && rows[1].startsWith("2 ")) {
-    line1=rows[0]; line2=rows[1];
+static void tleFetchWorker(void* parameter) {
+  TleFetchRequest* request=(TleFetchRequest*)parameter;
+  TleFetchResult result={};
+  result.norad=request->norad;
+  if(WiFi.status()!=WL_CONNECTED) {
+    snprintf(result.error,sizeof(result.error),"Wi-Fi disconnected");
   } else {
-    orbitDataMessage="CelesTrak вернул некорректный TLE";
-    Serial.println("[ORBIT] Invalid TLE response");
-    return false;
+    WiFiClientSecure client;
+    client.setCACert(CELESTRAK_CA_BUNDLE);
+    HTTPClient http;
+    http.setConnectTimeout(2500);
+    http.setTimeout(2500);
+    const String url="https://celestrak.org/NORAD/elements/gp.php?CATNR="+String(request->norad)+"&FORMAT=TLE";
+    if(!http.begin(client,url.c_str())) {
+      snprintf(result.error,sizeof(result.error),"Cannot open CelesTrak HTTPS");
+    } else {
+      const int code=http.GET();
+      if(code!=HTTP_CODE_OK) {
+        snprintf(result.error,sizeof(result.error),"CelesTrak HTTP %d",code);
+      } else {
+        String payload=http.getString();
+        String rows[3];
+        uint8_t count=0;
+        int offset=0;
+        while(offset<(int)payload.length() && count<3) {
+          int lineEnd=payload.indexOf('\n',offset);
+          if(lineEnd<0) lineEnd=payload.length();
+          String row=payload.substring(offset,lineEnd);
+          row.trim();
+          if(row.length()) rows[count++]=row;
+          offset=lineEnd+1;
+        }
+        String name=request->fallbackName,line1,line2;
+        if(count>=3 && rows[1].startsWith("1 ") && rows[2].startsWith("2 ")) {
+          name=rows[0]; line1=rows[1]; line2=rows[2];
+        } else if(count>=2 && rows[0].startsWith("1 ") && rows[1].startsWith("2 ")) {
+          line1=rows[0]; line2=rows[1];
+        }
+        if(line1.length() && line2.length()) {
+          name.toCharArray(result.name,sizeof(result.name));
+          line1.toCharArray(result.line1,sizeof(result.line1));
+          line2.toCharArray(result.line2,sizeof(result.line2));
+          result.ok=true;
+        } else {
+          snprintf(result.error,sizeof(result.error),"Invalid CelesTrak TLE response");
+        }
+      }
+      http.end();
+    }
   }
-  char tleName[24]={0},tle1[130]={0},tle2[130]={0};
-  name.toCharArray(tleName,sizeof(tleName));
-  line1.toCharArray(tle1,sizeof(tle1));
-  line2.toCharArray(tle2,sizeof(tle2));
-  const bool initialized=issSgp4.init(tleName,tle1,tle2);
+  portENTER_CRITICAL(&tleFetchMux);
+  tleFetchResult=result;
+  tleFetchResultReady=true;
+  tleFetchInProgress=false;
+  portEXIT_CRITICAL(&tleFetchMux);
+  Serial.printf("[ORBIT] background TLE fetch complete: NORAD %lu, ok=%u\\n",(unsigned long)request->norad,result.ok?1U:0U);
+  delete request;
+  vTaskDelete(nullptr);
+}
+static void startSelectedTleFetch() {
+  portENTER_CRITICAL(&tleFetchMux);
+  const bool busy=tleFetchInProgress;
+  if(!busy) tleFetchInProgress=true;
+  portEXIT_CRITICAL(&tleFetchMux);
+  if(busy) return;
+  TleFetchRequest* request=new TleFetchRequest();
+  if(!request) {
+    portENTER_CRITICAL(&tleFetchMux); tleFetchInProgress=false; portEXIT_CRITICAL(&tleFetchMux);
+    orbitDataMessage="Недостаточно памяти для запроса TLE";
+    return;
+  }
+  request->norad=selectedNoradId;
+  selectedSatelliteName.toCharArray(request->fallbackName,sizeof(request->fallbackName));
+  lastTleAttemptMs=millis();
+  orbitDataMessage="Получение TLE в фоновой задаче";
+  const BaseType_t created=xTaskCreatePinnedToCore(tleFetchWorker,"cyd_tle_fetch",12288,request,1,nullptr,0);
+  if(created!=pdPASS) {
+    delete request;
+    portENTER_CRITICAL(&tleFetchMux); tleFetchInProgress=false; portEXIT_CRITICAL(&tleFetchMux);
+    orbitDataMessage="Не удалось запустить фоновую задачу TLE";
+    Serial.println("[ORBIT] could not create TLE worker task");
+  }
+}
+static void consumeSelectedTleResult() {
+  TleFetchResult result={};
+  bool ready=false;
+  portENTER_CRITICAL(&tleFetchMux);
+  if(tleFetchResultReady) {
+    result=tleFetchResult;
+    tleFetchResultReady=false;
+    ready=true;
+  }
+  portEXIT_CRITICAL(&tleFetchMux);
+  if(!ready || result.norad!=selectedNoradId) return;
+  if(!result.ok) {
+    orbitDataMessage=String(result.error);
+    Serial.printf("[ORBIT] TLE fetch failed for NORAD %lu: %s\\n",(unsigned long)result.norad,result.error);
+    return;
+  }
+  const bool initialized=issSgp4.init(result.name,result.line1,result.line2);
   if(!initialized && !issTleValid) {
     orbitDataMessage="SGP4 отклонил TLE выбранного спутника";
     Serial.println("[ORBIT] SGP4 rejected selected satellite TLE");
-    return false;
+    return;
   }
   issTleValid=true;
-  selectedSatelliteName=name;
+  selectedSatelliteName=String(result.name);
   lastTleSuccessMs=millis();
   orbitDataMessage="TLE загружены: "+selectedSatelliteName;
-  Serial.printf("[ORBIT] TLE accepted NORAD %lu: %s\\n",(unsigned long)selectedNoradId,tleName);
-  return true;
-}
-static bool isAllowedSatelliteImageUrl(const String& url) {
-  // The Cloudflare Pages Function proxies approved public images and caps
-  // them to a compact JPEG. Keep the device allow-list on this single host.
-  return url.startsWith("https://cyd-satellite-tracker.pages.dev/api/satellite-image?norad=") &&
-         url.indexOf("download=1") >= 0;
-}
-static bool fetchSelectedSatelliteImage() {
-  if(!isAllowedSatelliteImageUrl(selectedSatelliteImageUrl) || WiFi.status()!=WL_CONNECTED) return false;
-  WiFiClientSecure client;
-  client.setCACert(CELESTRAK_CA_BUNDLE);
-  HTTPClient http;
-  http.setTimeout(9000);
-  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-  if(!http.begin(client,selectedSatelliteImageUrl)) return false;
-  const int code=http.GET();
-  const int length=http.getSize();
-  if(code!=HTTP_CODE_OK || length<4 || length>120000) {
-    http.end();
-    Serial.printf("[PHOTO] download rejected code=%d size=%d\\n",code,length);
-    return false;
-  }
-  uint8_t* buffer=(uint8_t*)malloc((size_t)length);
-  if(!buffer) { http.end(); return false; }
-  WiFiClient* stream=http.getStreamPtr();
-  const size_t received=stream->readBytes((char*)buffer,(size_t)length);
-  http.end();
-  if(received!=(size_t)length || buffer[0]!=0xFF || buffer[1]!=0xD8) {
-    free(buffer);
-    Serial.printf("[PHOTO] invalid JPEG bytes=%u/%d\\n",(unsigned)received,length);
-    return false;
-  }
-  if(selectedSatelliteImageData) free(selectedSatelliteImageData);
-  selectedSatelliteImageData=buffer;
-  selectedSatelliteImageSize=(uint32_t)length;
-  Serial.printf("[PHOTO] loaded %u bytes for NORAD %lu\\n",(unsigned)length,(unsigned long)selectedNoradId);
-  return true;
+  Serial.printf("[ORBIT] TLE accepted NORAD %lu: %s\\n",(unsigned long)selectedNoradId,result.name);
 }
 static void updateSelectedOrbit() {
-  if(WiFi.status()!=WL_CONNECTED) return;
+  // Give the local control page and touch UI a clean startup window before
+  // starting any blocking outbound HTTPS/TLE work.
+  if(WiFi.status()!=WL_CONNECTED || !localApiStarted || firstSiteClientAt==0 ||
+     millis()-firstSiteClientAt<15000) return;
   startOrbitTimeSync();
+  consumeSelectedTleResult();
   const time_t now=time(nullptr);
   if(now<1700000000) {
     orbitDataMessage="Ожидание точного времени NTP";
     return;
   }
-  if(!issTleValid && (lastTleAttemptMs==0 || millis()-lastTleAttemptMs>=60000)) {
-    lastTleAttemptMs=millis();
-    fetchSelectedTle();
-  } else if(issTleValid && millis()-lastTleSuccessMs>=6UL*60UL*60UL*1000UL) {
-    lastTleAttemptMs=millis();
-    fetchSelectedTle();
+  if(!tleFetchInProgress && !issTleValid && (lastTleAttemptMs==0 || millis()-lastTleAttemptMs>=60000)) {
+    startSelectedTleFetch();
+  } else if(!tleFetchInProgress && issTleValid && millis()-lastTleSuccessMs>=6UL*60UL*60UL*1000UL) {
+    startSelectedTleFetch();
   }
   if(!issTleValid || millis()-lastOrbitCalcMs<1000) return;
   lastOrbitCalcMs=millis();
@@ -1318,20 +1342,71 @@ static void updateSelectedOrbit() {
   if(screen==Screen::Satellite) updateOrbitTelemetry();
 }
 
+// V91.1: text-safe Base64 transport avoids binary request-body truncation.
+static int satelliteBase64Value(char c) {
+  if(c>='A' && c<='Z') return c-'A';
+  if(c>='a' && c<='z') return c-'a'+26;
+  if(c>='0' && c<='9') return c-'0'+52;
+  if(c=='+') return 62;
+  if(c=='/') return 63;
+  return -1;
+}
+static bool decodeSatelliteJpegBase64(const String& encoded,uint8_t*& output,size_t& outputLength) {
+  output=nullptr;
+  outputLength=0;
+  const size_t inputLength=encoded.length();
+  if(inputLength<8 || inputLength>48000 || (inputLength%4)!=0) return false;
+  size_t decodedLength=(inputLength/4)*3;
+  if(encoded.charAt(inputLength-1)=='=') decodedLength--;
+  if(encoded.charAt(inputLength-2)=='=') decodedLength--;
+  if(decodedLength<4 || decodedLength>36000) return false;
+  uint8_t* buffer=(uint8_t*)malloc(decodedLength);
+  if(!buffer) return false;
+  size_t written=0;
+  for(size_t i=0;i<inputLength;i+=4) {
+    const bool last=(i+4==inputLength);
+    const char c0=encoded.charAt(i),c1=encoded.charAt(i+1),c2=encoded.charAt(i+2),c3=encoded.charAt(i+3);
+    const int a=satelliteBase64Value(c0),b=satelliteBase64Value(c1);
+    const int c=(c2=='='?-1:satelliteBase64Value(c2));
+    const int d=(c3=='='?-1:satelliteBase64Value(c3));
+    if(a<0 || b<0 || (!last && (c<0 || d<0)) ||
+       (c2=='=' && (c3!='=' || !last)) || (c3=='=' && !last) ||
+       (c2!='=' && c<0) || (c3!='=' && d<0)) {
+      free(buffer); return false;
+    }
+    const uint32_t triple=((uint32_t)a<<18)|((uint32_t)b<<12)|
+      ((uint32_t)(c<0?0:c)<<6)|(uint32_t)(d<0?0:d);
+    if(written<decodedLength) buffer[written++]=(uint8_t)(triple>>16);
+    if(written<decodedLength) buffer[written++]=(uint8_t)(triple>>8);
+    if(written<decodedLength) buffer[written++]=(uint8_t)triple;
+  }
+  if(written!=decodedLength || buffer[0]!=0xFF || buffer[1]!=0xD8 ||
+     buffer[decodedLength-2]!=0xFF || buffer[decodedLength-1]!=0xD9) {
+    free(buffer); return false;
+  }
+  output=buffer;
+  outputLength=decodedLength;
+  return true;
+}
+
 static void sendLocalCorsHeaders() {
-  localServer.sendHeader("Access-Control-Allow-Origin","*");
+  // Echo the HTTPS page origin for Chromium Private Network Access preflights.
+  const String origin=localServer.header("Origin");
+  localServer.sendHeader("Access-Control-Allow-Origin",origin.length()?origin:"*");
   localServer.sendHeader("Access-Control-Allow-Methods","GET, POST, OPTIONS");
   localServer.sendHeader("Access-Control-Allow-Headers","Content-Type");
   localServer.sendHeader("Access-Control-Allow-Private-Network","true");
+  localServer.sendHeader("Access-Control-Max-Age","600");
   localServer.sendHeader("Vary","Origin");
 }
 
 static void sendLocalStatus() {
   lastSiteClientAt=millis();
+  if(firstSiteClientAt==0) firstSiteClientAt=lastSiteClientAt;
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V89";
+  doc["firmware"]="V91";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
@@ -1383,6 +1458,7 @@ static void startLocalApi() {
   if(localApiStarted || WiFi.status()!=WL_CONNECTED) return;
   localServer.on("/",HTTP_GET,[](){
     lastSiteClientAt=millis();
+    if(firstSiteClientAt==0) firstSiteClientAt=lastSiteClientAt;
     static const char page[] PROGMEM=R"HTML(<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071321"><title>CYD Satellite Tracker · Local</title>
 <style>
@@ -1434,9 +1510,36 @@ refreshStatus();setInterval(refreshStatus,1000);
   });
   localServer.on("/api/v1/status",HTTP_GET,sendLocalStatus);
   localServer.on("/api/v1/status",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
+  localServer.on("/api/v1/image",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
+  localServer.on("/api/v1/image",HTTP_POST,[](){
+    lastSiteClientAt=millis();
+    sendLocalCorsHeaders();
+    const uint32_t norad=localServer.arg("norad").toInt();
+    const String encoded=localServer.arg("plain");
+    if(norad==0 || norad!=selectedNoradId) {
+      localServer.send(409,"application/json","{\"ok\":false,\"error\":\"satellite_selection_mismatch\"}");
+      return;
+    }
+    uint8_t* image=nullptr;
+    size_t length=0;
+    if(!decodeSatelliteJpegBase64(encoded,image,length)) {
+      localServer.send(400,"application/json","{\"ok\":false,\"error\":\"invalid_base64_or_jpeg\"}");
+      Serial.printf("[PHOTO] rejected Base64 upload: NORAD %lu, encoded=%u chars\\n",(unsigned long)norad,(unsigned)encoded.length());
+      return;
+    }
+    if(selectedSatelliteImageData) free(selectedSatelliteImageData);
+    selectedSatelliteImageData=image;
+    selectedSatelliteImageSize=(uint32_t)length;
+    selectedSatelliteImageNorad=norad;
+    if(screen==Screen::Dashboard) drawSelectedSatellitePhoto();
+    localServer.sendHeader("Cache-Control","no-store");
+    localServer.send(200,"application/json","{\"ok\":true,\"image_received\":true}");
+    Serial.printf("[PHOTO] local JPEG received: NORAD %lu, %u bytes\\n",(unsigned long)norad,(unsigned)length);
+  });
   localServer.on("/api/v1/command",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
   localServer.on("/api/v1/command",HTTP_POST,[](){
     lastSiteClientAt=millis();
+    if(firstSiteClientAt==0) firstSiteClientAt=lastSiteClientAt;
     sendLocalCorsHeaders();
     JsonDocument req; JsonDocument out;
     if(deserializeJson(req,localServer.arg("plain"))!=DeserializationError::Ok) {
@@ -1473,13 +1576,10 @@ refreshStatus();setInterval(refreshStatus,1000);
       selectedNoradId=norad;
       const String requestedName=req["name"]| "";
       selectedSatelliteName=requestedName.length()?requestedName:("NORAD "+String(norad));
-      selectedSatelliteImageUrl=req["image_url"]|"";
-      if(!isAllowedSatelliteImageUrl(selectedSatelliteImageUrl)) selectedSatelliteImageUrl="";
-      selectedSatelliteImagePending=selectedSatelliteImageUrl.length()>0;
-      selectedSatelliteImageAttempts=0;
-      selectedSatelliteImageLastAttemptMs=0;
+      // The browser sends a cached, pre-sized JPEG over local Wi-Fi. No cloud image fetch in loop.
       if(selectedSatelliteImageData) { free(selectedSatelliteImageData); selectedSatelliteImageData=nullptr; }
       selectedSatelliteImageSize=0;
+      selectedSatelliteImageNorad=0;
       if(screen==Screen::Dashboard) drawSelectedSatellitePhoto();
       issTleValid=false; issPositionValid=false;
       lastTleAttemptMs=0; lastTleSuccessMs=0; lastOrbitCalcMs=0;
@@ -1511,6 +1611,8 @@ refreshStatus();setInterval(refreshStatus,1000);
   localServer.onNotFound([](){
     localServer.send(404,"application/json","{\"ok\":false,\"error\":\"not_found\"}");
   });
+  const char* requestHeaders[]={"Origin","Access-Control-Request-Private-Network","Access-Control-Request-Headers"};
+  localServer.collectHeaders(requestHeaders,3);
   localServer.begin();
   if(MDNS.begin("cyd-tracker")) MDNS.addService("http","tcp",80);
   localApiStarted=true;
@@ -1574,6 +1676,8 @@ void loop() {
     else { setupMessage="Enter your router details"; showWifiSetup(); }
   } else if(!displayDiagnosticActive && screen==Screen::Connecting) {
     if(WiFi.status()==WL_CONNECTED) {
+      // Start the local HTTP API immediately on link-up, before optional cloud work.
+      startLocalApi();
       screen=Screen::Connected;
       screenStartedAt=now;
       showConnected();
@@ -1585,26 +1689,13 @@ void loop() {
     }
   }
   if(!displayDiagnosticActive) handleTouch();
-  if(!displayDiagnosticActive && screen!=Screen::Splash && screen!=Screen::TouchTest && screen!=Screen::WifiSetup &&
-     now-lastHeaderIconsAt>=500) {
+  if(!displayDiagnosticActive && screen!=Screen::Splash && screen!=Screen::TouchTest && now-lastHeaderIconsAt>=500) {
     drawHeaderConnectionIcons();
     lastHeaderIconsAt=now;
   }
-  if(!displayDiagnosticActive) { serviceLocalApi(); } // Browser and CYD communicate only over the local network.
+  // Service local requests before optional outbound HTTPS work.
+  if(!displayDiagnosticActive) serviceLocalApi();
   if(!displayDiagnosticActive) updateSelectedOrbit();
-  if(!displayDiagnosticActive && selectedSatelliteImagePending && WiFi.status()==WL_CONNECTED &&
-     selectedSatelliteImageAttempts<3 &&
-     (selectedSatelliteImageLastAttemptMs==0 || now-selectedSatelliteImageLastAttemptMs>=30000)) {
-    selectedSatelliteImageLastAttemptMs=now;
-    ++selectedSatelliteImageAttempts;
-    if(fetchSelectedSatelliteImage()) {
-      selectedSatelliteImagePending=false;
-      if(screen==Screen::Dashboard) drawSelectedSatellitePhoto();
-    } else if(selectedSatelliteImageAttempts>=3) {
-      selectedSatelliteImagePending=false;
-      Serial.println("[PHOTO] no public image available after 3 attempts");
-    }
-  }
   // Refresh only dynamic telemetry; keep artwork and navigation static.
   if(!displayDiagnosticActive && now-lastDashboardRefreshAt>=1000) {
     if(screen==Screen::Dashboard) { updateGpsTelemetry(); updateTargetTelemetry(); }

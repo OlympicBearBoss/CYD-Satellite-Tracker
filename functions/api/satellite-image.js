@@ -1,22 +1,26 @@
 const KNOWN_IMAGES = {
-  // NASA image library, public-domain ISS photograph (small rendition).
-  "25544": "https://images-assets.nasa.gov/image/iss056e201248/iss056e201248~small.jpg",
-  // Wikimedia Commons thumbnail of NOAA-19.
-  "33591": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/NOAA-19.jpg/320px-NOAA-19.jpg",
-  // AMSAT-NA's public Fox-1B mission image.
-  "43017": "https://www.amsat.org/wordpress/wp-content/uploads/2017/11/Fox-1B.jpg"
+  // NASA Johnson photograph of the ISS, Oct. 4, 2018 (NASA/Roscosmos credit).
+  "25544": "https://db-satnogs.freetls.fastly.net/media/satellites/ISS.jpg"
 };
 
-const MAX_JPEG_BYTES = 120000;
+// The browser downsizes and recompresses this image before sending it to the
+// ESP32. Do not reject a valid NASA source merely because its original JPEG
+// rendition is larger than the final on-device payload.
+const MAX_JPEG_BYTES = 2 * 1024 * 1024;
 const CACHE_HEADERS = {
-  "Cache-Control": "public, max-age=300, s-maxage=3600",
+  "Cache-Control": "public, max-age=86400, s-maxage=31536000, stale-while-revalidate=604800",
   "X-Content-Type-Options": "nosniff"
 };
 
 function normalizeSource(value) {
   if (typeof value !== "string" || !value.trim()) return "";
   try {
-    const candidate = new URL(value.trim(), "https://db.satnogs.org");
+    const raw = value.trim();
+    // SatNOGS API returns image paths relative to /media/, e.g. satellites/NOAA-19.jpg.
+    const normalized = /^\/?satellites\//.test(raw)
+      ? "https://db.satnogs.org/media/" + raw.replace(/^\//, "")
+      : raw;
+    const candidate = new URL(normalized, "https://db.satnogs.org");
     const allowedHosts = new Set([
       "images-assets.nasa.gov",
       "upload.wikimedia.org",
@@ -42,7 +46,7 @@ async function resolveImageSources(norad) {
     apiUrl.searchParams.set("norad_cat_id", String(norad));
     const upstream = await fetch(apiUrl.toString(), {
       headers: { Accept: "application/json" },
-      cf: { cacheTtl: 3600, cacheEverything: true }
+      cf: { cacheTtl: 31536000, cacheEverything: true }
     });
     if (upstream.ok) {
       const payload = await upstream.json();
@@ -61,7 +65,7 @@ async function resolveImageSources(norad) {
 async function fetchCompactJpeg(source) {
   const response = await fetch(source, {
     headers: { Accept: "image/jpeg,image/*;q=0.8" },
-    cf: { cacheTtl: 3600, cacheEverything: true }
+    cf: { cacheTtl: 31536000, cacheEverything: true }
   });
   if (!response.ok) throw new Error("image_upstream_" + response.status);
   const contentType = (response.headers.get("content-type") || "").toLowerCase();
@@ -85,16 +89,25 @@ export async function onRequestGet({ request }) {
     return Response.json({ ok: false, error: "invalid_norad_id" }, { status: 400 });
   }
 
+  const isDownload = url.searchParams.get("download") === "1";
+  // Bump the cache namespace so stale negative photo lookups are not reused.
+  const cacheKey = new Request(new URL("/api/satellite-image?v=4&norad=" + norad + "&download=" + (isDownload ? "1" : "0"), url.origin).toString(), { method: "GET" });
+  const edgeCache = caches.default;
+  const cached = await edgeCache.match(cacheKey);
+  if (cached) return cached;
+
   try {
     const sources = await resolveImageSources(norad);
     if (!sources.length) {
-      return Response.json(
+      const missing = Response.json(
         { ok: true, norad_id: norad, image: "", error: "photo_not_found" },
-        { headers: CACHE_HEADERS }
+        { headers: { ...CACHE_HEADERS, "Cache-Control": "public, max-age=3600, s-maxage=86400" } }
       );
+      await edgeCache.put(cacheKey, missing.clone());
+      return missing;
     }
 
-    if (url.searchParams.get("download") === "1") {
+    if (isDownload) {
       let bytes = null;
       let selectedSource = "";
       for (const source of sources) {
@@ -103,11 +116,11 @@ export async function onRequestGet({ request }) {
           selectedSource = source;
           break;
         } catch (_) {
-          // Try the next approved source, e.g. SatNOGS when a known image is too large.
+          // Try the next approved source, e.g. SatNOGS when a known image fails.
         }
       }
       if (!bytes) throw new Error("no_usable_jpeg_source");
-      return new Response(bytes, {
+      const imageResponse = new Response(bytes, {
         status: 200,
         headers: {
           ...CACHE_HEADERS,
@@ -117,15 +130,18 @@ export async function onRequestGet({ request }) {
           "X-Satellite-Image-Source": new URL(selectedSource).hostname
         }
       });
+      await edgeCache.put(cacheKey, imageResponse.clone());
+      return imageResponse;
     }
 
-    // Verify at least one source is a real, compact JPEG before advertising
-    // a photo to the browser and the ESP32.
+    // Verify at least one source is a valid JPEG before advertising it.
     let usableSource = false;
+    let selectedSource = "";
     for (const source of sources) {
       try {
         await fetchCompactJpeg(source);
         usableSource = true;
+        selectedSource = source;
         break;
       } catch (_) {
         // Continue through the approved source list.
@@ -143,10 +159,12 @@ export async function onRequestGet({ request }) {
     const imageUrl = new URL("https://cyd-satellite-tracker.pages.dev/api/satellite-image");
     imageUrl.searchParams.set("norad", String(norad));
     imageUrl.searchParams.set("download", "1");
-    return Response.json(
-      { ok: true, norad_id: norad, image: imageUrl.toString(), sources: sources.length },
+    const metadata = Response.json(
+      { ok: true, norad_id: norad, image: imageUrl.toString(), sources: sources.length, source: new URL(selectedSource).hostname },
       { headers: CACHE_HEADERS }
     );
+    await edgeCache.put(cacheKey, metadata.clone());
+    return metadata;
   } catch (error) {
     return Response.json(
       { ok: false, error: error.message || "satellite_image_unavailable" },

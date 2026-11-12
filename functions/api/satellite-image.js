@@ -1,6 +1,6 @@
 const KNOWN_IMAGES = {
   // NASA Johnson photograph of the ISS, Oct. 4, 2018 (NASA/Roscosmos credit).
-  "25544": "https://images-assets.nasa.gov/image/iss056e201248/iss056e201248~small.jpg"
+  "25544": "https://db-satnogs.freetls.fastly.net/media/satellites/ISS.jpg"
 };
 
 // The browser downsizes and recompresses this image before sending it to the

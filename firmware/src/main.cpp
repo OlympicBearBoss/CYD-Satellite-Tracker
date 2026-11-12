@@ -19,8 +19,8 @@
 #include "BoardConfig.h"
 #include "WifiConfig.h"
 
-// Trust anchors for CelesTrak HTTPS. Both certificates are public roots
-// from Mozilla's current CA store: legacy USERTrust RSA and Sectigo R46.
+// Trust anchors for CelesTrak HTTPS: USERTrust RSA Certification Authority
+// and Sectigo Public Server Authentication Root R46, both from Mozilla's CA store.
 // setCACert() validates the server certificate chain and hostname; no bypass.
 static const char CELESTRAK_CA_BUNDLE[] = R"PEM(-----BEGIN CERTIFICATE-----
 MIIF3jCCA8agAwIBAgIQAf1tMPyjylGoG7xkDjUDLTANBgkqhkiG9w0BAQwFADCB

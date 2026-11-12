@@ -1,4 +1,4 @@
-name: CYD firmware build # V82 local-only browser control API
+name: CYD firmware build # V83 local-only browser control API
 
 on:
   pull_request:
@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.12.82"
+          FW_VERSION="v2026.11.12.83"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 

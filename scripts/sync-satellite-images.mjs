@@ -6,13 +6,15 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
+import sharp from "sharp";
 
 const ROOT = process.cwd();
 const OUT = path.join(ROOT, "satellite-images");
 const MANIFEST_PATH = path.join(OUT, "manifest.json");
 const GROUPS = ["stations", "weather", "amateur", "gnss", "science", "cubesat", "visual"];
 const MAX_CHECKS = Math.max(1, Number(process.env.MAX_IMAGE_CHECKS || 300));
-const MAX_BYTES = 1_200_000;
+const MAX_BYTES = 5_000_000;
+const MAX_STORED_BYTES = 250_000;
 const MISS_TTL = 30 * 24 * 60 * 60 * 1000;
 const ALLOWED_HOSTS = new Set([
   "db.satnogs.org",
@@ -71,12 +73,26 @@ async function fetchPhoto(url) {
   const type = response.headers.get("content-type") || "";
   const ext = extensionFor(type);
   if (!ext) throw new Error("unsupported image type: " + type);
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (!bytes.length || bytes.length > MAX_BYTES) throw new Error("image size outside allowed range");
-  if (ext === "jpg" && (bytes[0] !== 0xff || bytes[1] !== 0xd8)) throw new Error("invalid JPEG");
-  if (ext === "png" && !(bytes[0] === 0x89 && bytes.toString("ascii", 1, 4) === "PNG")) throw new Error("invalid PNG");
-  if (ext === "webp" && bytes.toString("ascii", 0, 4) !== "RIFF") throw new Error("invalid WebP");
-  return { bytes, ext, type };
+  const original = Buffer.from(await response.arrayBuffer());
+  if (!original.length || original.length > MAX_BYTES) throw new Error("source image size outside allowed range");
+  if (ext === "jpg" && (original[0] !== 0xff || original[1] !== 0xd8)) throw new Error("invalid JPEG");
+  if (ext === "png" && !(original[0] === 0x89 && original.toString("ascii", 1, 4) === "PNG")) throw new Error("invalid PNG");
+  if (ext === "webp" && original.toString("ascii", 0, 4) !== "RIFF") throw new Error("invalid WebP");
+  // Store compact, consistently sized JPEG thumbnails to keep the Git repository small.
+  let bytes = await sharp(original, { limitInputPixels: 40000000 })
+    .rotate()
+    .resize({ width: 640, height: 360, fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 72, mozjpeg: true })
+    .toBuffer();
+  if (bytes.length > MAX_STORED_BYTES) {
+    bytes = await sharp(original, { limitInputPixels: 40000000 })
+      .rotate()
+      .resize({ width: 640, height: 360, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 55, mozjpeg: true })
+      .toBuffer();
+  }
+  if (!bytes.length || bytes.length > MAX_STORED_BYTES) throw new Error("optimized image exceeds repository size budget");
+  return { bytes, ext: "jpg", type: "image/jpeg" };
 }
 
 await fs.mkdir(OUT, { recursive: true });

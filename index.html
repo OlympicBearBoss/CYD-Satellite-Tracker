@@ -617,6 +617,7 @@ function setRuntimeMode(connected,status=null){
  put("liveVoltageValue","—");put("liveVoltageGauge","—");put("liveVoltageNote","API CYD не передаёт напряжение питания");
  put("liveAzCurrent","—");put("liveElCurrent","—");put("liveTemperature","—");put("liveAzCurrentKpi","—");put("azDriverStatus",connected&&status.hardware&&status.hardware.motor_drivers_connected?"ПОДКЛЮЧЁН":"НЕ ПОДКЛЮЧЁН");put("elDriverStatus",connected&&status.hardware&&status.hardware.motor_drivers_connected?"ПОДКЛЮЧЁН":"НЕ ПОДКЛЮЧЁН");put("liveSupplyVoltage","—");put("telemetryWifiRssi",connected&&status.wifi_rssi!=null?status.wifi_rssi+" dBm":"—");const wifiBar=$("telemetryWifiBar");if(wifiBar)wifiBar.style.width=connected?Math.max(0,Math.min(100,(Number(status.wifi_rssi)+100)*2))+"%":"0%";const telemetryBadge=$("telemetryModeBadge");if(telemetryBadge)telemetryBadge.textContent=connected?"CYD LIVE · ЧАСТИЧНЫЕ ДАННЫЕ":"NO LIVE DATA";
  const telem=$("telemetryRuntimeNote");if(telem)telem.textContent=connected?"Реальные данные CYD: GPS и Wi-Fi. Напряжение, токи, температура и фактические углы осей API не передаёт. Датчики угла/компас, драйверы и концевики не подключены; моторы заблокированы.":"Телеметрия CYD недоступна. Неподтверждённые показания не отображаются.";
+ Object.assign(objectData.iss,{az:132.4,el:67.8,real:false});Object.assign(objectData.noaa,{az:218.6,el:34.2,real:false});Object.assign(objectData.ao91,{az:74.2,el:21.5,real:false});Object.assign(objectData.starlink,{az:305,el:18,real:false});
  if(connected&&status.orbit&&status.orbit.position_valid===true){
   const norad=String(status.orbit.norad_id||"");
   const id=norad==="25544"?"iss":norad==="33591"?"noaa":norad==="43017"?"ao91":"";
@@ -624,7 +625,7 @@ function setRuntimeMode(connected,status=null){
    objectData[id].az=Number(status.orbit.azimuth_deg);objectData[id].el=Number(status.orbit.elevation_deg);objectData[id].real=true;renderRadarObjects();
   }
   put("radarTargetBearing",Number(status.orbit.azimuth_deg).toFixed(1)+"°");
- }else if(!connected){Object.values(objectData).forEach(o=>o.real=false);renderRadarObjects();put("radarTargetBearing","—");}
+ }else{renderRadarObjects();put("radarTargetBearing","—");if(!connected)setAxes(132.4,67.8);}
  const badge=$("liveDeviceBadge");if(badge){const label=badge.querySelector("span");if(label)label.textContent=connected?"CYD на связи":"Нет подключённого устройства";}
  put("liveDeviceInfo",connected?"Локальная телеметрия · прошивка "+(status.firmware||"—"):"Устройство не отвечает.");
  put("liveDeviceIp",connected?(status.ip||cydDeviceBaseUrl):"—");

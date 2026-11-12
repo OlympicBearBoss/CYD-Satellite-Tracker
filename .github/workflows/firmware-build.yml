@@ -1,4 +1,4 @@
-name: CYD firmware build # V85 generic satellite selection and on-device SGP4
+name: CYD firmware build # V86 live SGP4 target telemetry
 
 on:
   pull_request:
@@ -51,7 +51,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.12.85"
+          FW_VERSION="v2026.11.12.86"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 
@@ -112,7 +112,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CYD-Satellite-Tracker-firmware-v2026.11.12.85
+          name: CYD-Satellite-Tracker-firmware-v2026.11.12.86
           path: release/
           if-no-files-found: error
           retention-days: 30

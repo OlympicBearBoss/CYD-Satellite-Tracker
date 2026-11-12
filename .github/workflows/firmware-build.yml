@@ -68,14 +68,16 @@ jobs:
           fi
           cp "$BOOT_APP0" release/CYD-Satellite-Tracker-${FW_VERSION}-boot_app0.bin
 
-          ESPTOOL="$(find "$HOME/.platformio/packages/tool-esptool" -type f -name esptool -perm -u+x -print -quit)"
-          if [[ -z "$ESPTOOL" || ! -x "$ESPTOOL" ]]; then
-            echo "::error::esptool executable was not found in PlatformIO tool-esptool"
-            find "$HOME/.platformio/packages" -maxdepth 4 -type f -name 'esptool*' -print || true
+          # PlatformIO installs esptool under tool-esptoolpy (not tool-esptool).
+          # Locate the Python entry point independently of the package directory name.
+          ESPTOOL_SCRIPT="$(find "$HOME/.platformio/packages" -type f \\( -name esptool.py -o -name esptool \\) -print -quit)"
+          if [[ -z "$ESPTOOL_SCRIPT" || ! -f "$ESPTOOL_SCRIPT" ]]; then
+            echo "::error::esptool Python entry point was not found in PlatformIO packages"
+            find "$HOME/.platformio/packages" -maxdepth 5 -type f -iname '*esptool*' -print || true
             exit 1
           fi
-
-          "$ESPTOOL" --chip esp32 merge-bin \
+          echo "Using esptool: $ESPTOOL_SCRIPT"
+          python "$ESPTOOL_SCRIPT" --chip esp32 merge_bin \
             --flash-mode dio --flash-freq 40m --flash-size 4MB \
             -o release/CYD-Satellite-Tracker-${FW_VERSION}-full-flash.bin \
             0x1000 "$BUILD_DIR/bootloader.bin" \

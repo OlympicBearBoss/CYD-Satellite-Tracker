@@ -446,7 +446,7 @@ body[data-theme="terminal"] .content:before{opacity:.28}
 <div class="sidebar-bottom"><span class="live-dot"></span><span data-i18n="demo_active">Демо-режим активен</span><small>FIRMWARE V91 · CYD ESP32</small></div>
 </aside>
 <main class="main">
-<header class="topbar"><div class="mobile-brand">◉ CYD TRACKER</div><div class="crumb"><span data-i18n="station">НАЗЕМНАЯ СТАНЦИЯ</span><b>/</b><strong id="crumbTitle">Обзор</strong></div><div class="top-actions"><span class="connection-chip"><i></i><span data-i18n="offline_demo">Симуляция</span></span><span class="clock" id="clock">--:--:--</span><select id="themePicker" class="theme-picker" aria-label="Оформление сайта" title="Оформление сайта"><option value="midnight">Midnight</option><option value="arctic">Arctic</option><option value="terminal">Terminal</option></select><button class="language" id="language">EN</button><button type="button" class="account-trigger" id="accountTrigger" aria-haspopup="dialog"><span class="account-avatar">◉</span><span id="accountTriggerLabel">Войти</span></button></div></header>
+<header class="topbar"><div class="mobile-brand">◉ CYD TRACKER</div><div class="crumb"><span data-i18n="station">НАЗЕМНАЯ СТАНЦИЯ</span><b>/</b><strong id="crumbTitle">Обзор</strong></div><div class="top-actions"><span class="connection-chip" id="headerConnectionChip"><i></i><span id="headerConnectionText" data-i18n="offline_demo">Симуляция</span></span><span class="clock" id="clock">--:--:--</span><select id="themePicker" class="theme-picker" aria-label="Оформление сайта" title="Оформление сайта"><option value="midnight">Midnight</option><option value="arctic">Arctic</option><option value="terminal">Terminal</option></select><button class="language" id="language">EN</button><button type="button" class="account-trigger" id="accountTrigger" aria-haspopup="dialog"><span class="account-avatar">◉</span><span id="accountTriggerLabel">Войти</span></button></div></header>
 <div class="content">
 <div class="demo-warning" id="runtimeModeBanner"><span id="runtimeModeIcon">◆</span><div><b id="runtimeModeTitle" data-i18n="demo_title">Демонстрационный режим</b><small id="runtimeModeDescription" data-i18n="demo_desc">Все данные синтетические. Реальное оборудование не подключено, команды на ESP32 не отправляются.</small></div><span class="demo-tag" id="runtimeModeTag">DEMO</span></div>
 <section class="view active" id="view-overview">
@@ -596,6 +596,8 @@ function setCydDeviceStatus(message,ok=false){
 }
 function setRuntimeMode(connected,status=null){
  cydLiveConnected=connected;cydLiveStatus=connected?status:null;
+ const headerConnection=$("headerConnectionText");if(headerConnection)headerConnection.textContent=connected?(lang==="en"?"CYD LIVE":"CYD ПОДКЛЮЧЁН"):(lang==="en"?"SIMULATION":"СИМУЛЯЦИЯ");
+ const headerChip=$("headerConnectionChip");if(headerChip){headerChip.style.color=connected?"#9fdac2":"#ffbf83";headerChip.setAttribute("aria-label",connected?"CYD connected":"Simulation mode");}
  const banner=$("runtimeModeBanner"),title=$("runtimeModeTitle"),desc=$("runtimeModeDescription"),tag=$("runtimeModeTag");
  if(banner){banner.style.borderColor=connected?"#24644f":"#87612e66";banner.style.background=connected?"#103a3226":"#5b3d171c";banner.style.color=connected?"#9be7c4":"#e9c78d";}
  if(title)title.textContent=connected?"РЕАЛЬНОЕ УСТРОЙСТВО ПОДКЛЮЧЕНО":"Демонстрационный режим";

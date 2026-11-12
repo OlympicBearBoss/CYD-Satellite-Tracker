@@ -160,7 +160,7 @@ TFT_eSPI tft;
 static U8g2_for_TFT_eSPI uiFont;
 static uint8_t uiLanguage = 1; // 0=English, 1=Russian, 2=Simplified Chinese
 static uint16_t uiTextFg = TFT_WHITE;
-static uint16_t uiTextBg = BG;
+static uint16_t uiTextBg = TFT_BLACK;
 static uint8_t uiTextDatum = TL_DATUM;
 SPIClass touchSPI(VSPI);
 TinyGPSPlus gps;

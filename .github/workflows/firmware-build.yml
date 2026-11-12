@@ -1,4 +1,4 @@
-name: CYD firmware build # V87 selected satellite public photo
+name: CYD firmware build # V88 same-origin satellite photo proxy
 
 on:
   pull_request:
@@ -42,6 +42,7 @@ jobs:
           grep -q 'client.setCACert(CELESTRAK_CA_BUNDLE)' src/main.cpp
           grep -q 'USERTrust RSA Certification Authority' src/main.cpp
           grep -q 'Sectigo Public Server Authentication Root R46' src/main.cpp
+          grep -q 'GTS Root R1' src/main.cpp
 
       - name: Build CYD firmware
         working-directory: firmware
@@ -51,7 +52,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.12.87"
+          FW_VERSION="v2026.11.12.88"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 
@@ -112,7 +113,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CYD-Satellite-Tracker-firmware-v2026.11.12.87
+          name: CYD-Satellite-Tracker-firmware-v2026.11.12.88
           path: release/
           if-no-files-found: error
           retention-days: 30

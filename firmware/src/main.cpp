@@ -11,6 +11,8 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <math.h>
 #include <Sgp4.h>
 #include <TJpg_Decoder.h>
@@ -207,6 +209,12 @@ static constexpr double DEMO_OBSERVER_ALT_M=250.0;
 static Sgp4 issSgp4;
 static bool ntpStarted=false,issTleValid=false,issPositionValid=false,observerUsesGps=false;
 static uint32_t lastTleAttemptMs=0,lastTleSuccessMs=0,lastOrbitCalcMs=0;
+struct TleFetchRequest { uint32_t norad; char fallbackName[32]; };
+struct TleFetchResult { uint32_t norad; bool ok; char name[32]; char line1[130]; char line2[130]; char error[96]; };
+static volatile bool tleFetchInProgress=false;
+static volatile bool tleFetchResultReady=false;
+static portMUX_TYPE tleFetchMux=portMUX_INITIALIZER_UNLOCKED;
+static TleFetchResult tleFetchResult={};
 static time_t orbitUtcEpoch=0;
 static double observerLatitude=DEMO_OBSERVER_LAT,observerLongitude=DEMO_OBSERVER_LON,observerAltitudeM=DEMO_OBSERVER_ALT_M;
 static double issAzimuthDeg=0,issElevationDeg=0,issRangeKm=0;
@@ -1170,63 +1178,116 @@ static void startOrbitTimeSync() {
   orbitDataMessage="Синхронизация времени UTC через NTP";
   Serial.println("[ORBIT] NTP synchronization started");
 }
-static bool fetchSelectedTle() {
-  if(WiFi.status()!=WL_CONNECTED) return false;
-  WiFiClientSecure client;
-  // Verify the CelesTrak certificate chain against trusted Sectigo RSA roots.
-  // The NTP gate in updateSelectedOrbit() ensures the clock is valid first.
-  client.setCACert(CELESTRAK_CA_BUNDLE);
-  HTTPClient http;
-  http.setConnectTimeout(2500);
-  http.setTimeout(2500);
-  const String url="https://celestrak.org/NORAD/elements/gp.php?CATNR="+String(selectedNoradId)+"&FORMAT=TLE";
-  if(!http.begin(client,url.c_str())) { orbitDataMessage="Не удалось открыть HTTPS CelesTrak"; return false; }
-  const int code=http.GET();
-  if(code!=HTTP_CODE_OK) {
-    orbitDataMessage="CelesTrak HTTP "+String(code);
-    Serial.printf("[ORBIT] TLE HTTP error: %d\\n",code);
-    http.end();
-    return false;
-  }
-  String payload=http.getString();
-  http.end();
-  String rows[3];
-  uint8_t count=0;
-  int start=0;
-  while(start<(int)payload.length() && count<3) {
-    int end=payload.indexOf('\n',start);
-    if(end<0) end=payload.length();
-    String row=payload.substring(start,end);
-    row.trim();
-    if(row.length()) rows[count++]=row;
-    start=end+1;
-  }
-  String name=selectedSatelliteName,line1,line2;
-  if(count>=3 && rows[1].startsWith("1 ") && rows[2].startsWith("2 ")) {
-    name=rows[0]; line1=rows[1]; line2=rows[2];
-  } else if(count>=2 && rows[0].startsWith("1 ") && rows[1].startsWith("2 ")) {
-    line1=rows[0]; line2=rows[1];
+static void tleFetchWorker(void* parameter) {
+  TleFetchRequest* request=(TleFetchRequest*)parameter;
+  TleFetchResult result={};
+  result.norad=request->norad;
+  if(WiFi.status()!=WL_CONNECTED) {
+    snprintf(result.error,sizeof(result.error),"Wi-Fi disconnected");
   } else {
-    orbitDataMessage="CelesTrak вернул некорректный TLE";
-    Serial.println("[ORBIT] Invalid TLE response");
-    return false;
+    WiFiClientSecure client;
+    client.setCACert(CELESTRAK_CA_BUNDLE);
+    HTTPClient http;
+    http.setConnectTimeout(2500);
+    http.setTimeout(2500);
+    const String url="https://celestrak.org/NORAD/elements/gp.php?CATNR="+String(request->norad)+"&FORMAT=TLE";
+    if(!http.begin(client,url.c_str())) {
+      snprintf(result.error,sizeof(result.error),"Cannot open CelesTrak HTTPS");
+    } else {
+      const int code=http.GET();
+      if(code!=HTTP_CODE_OK) {
+        snprintf(result.error,sizeof(result.error),"CelesTrak HTTP %d",code);
+      } else {
+        String payload=http.getString();
+        String rows[3];
+        uint8_t count=0;
+        int offset=0;
+        while(offset<(int)payload.length() && count<3) {
+          int lineEnd=payload.indexOf('\n',offset);
+          if(lineEnd<0) lineEnd=payload.length();
+          String row=payload.substring(offset,lineEnd);
+          row.trim();
+          if(row.length()) rows[count++]=row;
+          offset=lineEnd+1;
+        }
+        String name=request->fallbackName,line1,line2;
+        if(count>=3 && rows[1].startsWith("1 ") && rows[2].startsWith("2 ")) {
+          name=rows[0]; line1=rows[1]; line2=rows[2];
+        } else if(count>=2 && rows[0].startsWith("1 ") && rows[1].startsWith("2 ")) {
+          line1=rows[0]; line2=rows[1];
+        }
+        if(line1.length() && line2.length()) {
+          name.toCharArray(result.name,sizeof(result.name));
+          line1.toCharArray(result.line1,sizeof(result.line1));
+          line2.toCharArray(result.line2,sizeof(result.line2));
+          result.ok=true;
+        } else {
+          snprintf(result.error,sizeof(result.error),"Invalid CelesTrak TLE response");
+        }
+      }
+      http.end();
+    }
   }
-  char tleName[24]={0},tle1[130]={0},tle2[130]={0};
-  name.toCharArray(tleName,sizeof(tleName));
-  line1.toCharArray(tle1,sizeof(tle1));
-  line2.toCharArray(tle2,sizeof(tle2));
-  const bool initialized=issSgp4.init(tleName,tle1,tle2);
+  portENTER_CRITICAL(&tleFetchMux);
+  tleFetchResult=result;
+  tleFetchResultReady=true;
+  tleFetchInProgress=false;
+  portEXIT_CRITICAL(&tleFetchMux);
+  Serial.printf("[ORBIT] background TLE fetch complete: NORAD %lu, ok=%u\\n",(unsigned long)request->norad,result.ok?1U:0U);
+  delete request;
+  vTaskDelete(nullptr);
+}
+static void startSelectedTleFetch() {
+  portENTER_CRITICAL(&tleFetchMux);
+  const bool busy=tleFetchInProgress;
+  if(!busy) tleFetchInProgress=true;
+  portEXIT_CRITICAL(&tleFetchMux);
+  if(busy) return;
+  TleFetchRequest* request=new TleFetchRequest();
+  if(!request) {
+    portENTER_CRITICAL(&tleFetchMux); tleFetchInProgress=false; portEXIT_CRITICAL(&tleFetchMux);
+    orbitDataMessage="Недостаточно памяти для запроса TLE";
+    return;
+  }
+  request->norad=selectedNoradId;
+  selectedSatelliteName.toCharArray(request->fallbackName,sizeof(request->fallbackName));
+  lastTleAttemptMs=millis();
+  orbitDataMessage="Получение TLE в фоновой задаче";
+  const BaseType_t created=xTaskCreatePinnedToCore(tleFetchWorker,"cyd_tle_fetch",12288,request,1,nullptr,0);
+  if(created!=pdPASS) {
+    delete request;
+    portENTER_CRITICAL(&tleFetchMux); tleFetchInProgress=false; portEXIT_CRITICAL(&tleFetchMux);
+    orbitDataMessage="Не удалось запустить фоновую задачу TLE";
+    Serial.println("[ORBIT] could not create TLE worker task");
+  }
+}
+static void consumeSelectedTleResult() {
+  TleFetchResult result={};
+  bool ready=false;
+  portENTER_CRITICAL(&tleFetchMux);
+  if(tleFetchResultReady) {
+    result=tleFetchResult;
+    tleFetchResultReady=false;
+    ready=true;
+  }
+  portEXIT_CRITICAL(&tleFetchMux);
+  if(!ready || result.norad!=selectedNoradId) return;
+  if(!result.ok) {
+    orbitDataMessage=String(result.error);
+    Serial.printf("[ORBIT] TLE fetch failed for NORAD %lu: %s\\n",(unsigned long)result.norad,result.error);
+    return;
+  }
+  const bool initialized=issSgp4.init(result.name,result.line1,result.line2);
   if(!initialized && !issTleValid) {
     orbitDataMessage="SGP4 отклонил TLE выбранного спутника";
     Serial.println("[ORBIT] SGP4 rejected selected satellite TLE");
-    return false;
+    return;
   }
   issTleValid=true;
-  selectedSatelliteName=name;
+  selectedSatelliteName=String(result.name);
   lastTleSuccessMs=millis();
   orbitDataMessage="TLE загружены: "+selectedSatelliteName;
-  Serial.printf("[ORBIT] TLE accepted NORAD %lu: %s\\n",(unsigned long)selectedNoradId,tleName);
-  return true;
+  Serial.printf("[ORBIT] TLE accepted NORAD %lu: %s\\n",(unsigned long)selectedNoradId,result.name);
 }
 static void updateSelectedOrbit() {
   // Give the local control page and touch UI a clean startup window before
@@ -1234,17 +1295,16 @@ static void updateSelectedOrbit() {
   if(WiFi.status()!=WL_CONNECTED || !localApiStarted || firstSiteClientAt==0 ||
      millis()-firstSiteClientAt<15000) return;
   startOrbitTimeSync();
+  consumeSelectedTleResult();
   const time_t now=time(nullptr);
   if(now<1700000000) {
     orbitDataMessage="Ожидание точного времени NTP";
     return;
   }
-  if(!issTleValid && (lastTleAttemptMs==0 || millis()-lastTleAttemptMs>=60000)) {
-    lastTleAttemptMs=millis();
-    fetchSelectedTle();
-  } else if(issTleValid && millis()-lastTleSuccessMs>=6UL*60UL*60UL*1000UL) {
-    lastTleAttemptMs=millis();
-    fetchSelectedTle();
+  if(!tleFetchInProgress && !issTleValid && (lastTleAttemptMs==0 || millis()-lastTleAttemptMs>=60000)) {
+    startSelectedTleFetch();
+  } else if(!tleFetchInProgress && issTleValid && millis()-lastTleSuccessMs>=6UL*60UL*60UL*1000UL) {
+    startSelectedTleFetch();
   }
   if(!issTleValid || millis()-lastOrbitCalcMs<1000) return;
   lastOrbitCalcMs=millis();

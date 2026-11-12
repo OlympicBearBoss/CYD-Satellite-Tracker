@@ -1340,6 +1340,52 @@ static void updateSelectedOrbit() {
   if(screen==Screen::Satellite) updateOrbitTelemetry();
 }
 
+static int satelliteBase64Value(char c) {
+  if(c>='A' && c<='Z') return c-'A';
+  if(c>='a' && c<='z') return c-'a'+26;
+  if(c>='0' && c<='9') return c-'0'+52;
+  if(c=='+') return 62;
+  if(c=='/') return 63;
+  return -1;
+}
+static bool decodeSatelliteJpegBase64(const String& encoded,uint8_t*& output,size_t& outputLength) {
+  output=nullptr;
+  outputLength=0;
+  const size_t inputLength=encoded.length();
+  if(inputLength<8 || inputLength>48000 || (inputLength%4)!=0) return false;
+  size_t decodedLength=(inputLength/4)*3;
+  if(encoded.charAt(inputLength-1)=='=') decodedLength--;
+  if(encoded.charAt(inputLength-2)=='=') decodedLength--;
+  if(decodedLength<4 || decodedLength>36000) return false;
+  uint8_t* buffer=(uint8_t*)malloc(decodedLength);
+  if(!buffer) return false;
+  size_t written=0;
+  for(size_t i=0;i<inputLength;i+=4) {
+    const bool last=(i+4==inputLength);
+    const char c0=encoded.charAt(i),c1=encoded.charAt(i+1),c2=encoded.charAt(i+2),c3=encoded.charAt(i+3);
+    const int a=satelliteBase64Value(c0),b=satelliteBase64Value(c1);
+    const int c=(c2=='='?-1:satelliteBase64Value(c2));
+    const int d=(c3=='='?-1:satelliteBase64Value(c3));
+    if(a<0 || b<0 || (!last && (c<0 || d<0)) ||
+       (c2=='=' && (c3!='=' || !last)) || (c3=='=' && !last) ||
+       (c2!='=' && c<0) || (c3!='=' && d<0)) {
+      free(buffer); return false;
+    }
+    const uint32_t triple=((uint32_t)a<<18)|((uint32_t)b<<12)|
+      ((uint32_t)(c<0?0:c)<<6)|(uint32_t)(d<0?0:d);
+    if(written<decodedLength) buffer[written++]=(uint8_t)(triple>>16);
+    if(written<decodedLength) buffer[written++]=(uint8_t)(triple>>8);
+    if(written<decodedLength) buffer[written++]=(uint8_t)triple;
+  }
+  if(written!=decodedLength || buffer[0]!=0xFF || buffer[1]!=0xD8 ||
+     buffer[decodedLength-2]!=0xFF || buffer[decodedLength-1]!=0xD9) {
+    free(buffer); return false;
+  }
+  output=buffer;
+  outputLength=decodedLength;
+  return true;
+}
+
 static void sendLocalCorsHeaders() {
   // Echo the HTTPS page origin for Chromium Private Network Access preflights.
   const String origin=localServer.header("Origin");
@@ -1466,27 +1512,18 @@ refreshStatus();setInterval(refreshStatus,1000);
     lastSiteClientAt=millis();
     sendLocalCorsHeaders();
     const uint32_t norad=localServer.arg("norad").toInt();
-    String payload=localServer.arg("plain");
-    const size_t length=payload.length();
+    const String encoded=localServer.arg("plain");
     if(norad==0 || norad!=selectedNoradId) {
       localServer.send(409,"application/json","{\"ok\":false,\"error\":\"satellite_selection_mismatch\"}");
       return;
     }
-    if(length<4 || length>36000) {
-      localServer.send(413,"application/json","{\"ok\":false,\"error\":\"jpeg_size_out_of_range\"}");
+    uint8_t* image=nullptr;
+    size_t length=0;
+    if(!decodeSatelliteJpegBase64(encoded,image,length)) {
+      localServer.send(400,"application/json","{\"ok\":false,\"error\":\"invalid_base64_or_jpeg\"}");
+      Serial.printf("[PHOTO] rejected Base64 upload: NORAD %lu, encoded=%u chars\\n",(unsigned long)norad,(unsigned)encoded.length());
       return;
     }
-    const uint8_t* source=(const uint8_t*)payload.c_str();
-    if(source[0]!=0xFF || source[1]!=0xD8 || source[length-2]!=0xFF || source[length-1]!=0xD9) {
-      localServer.send(400,"application/json","{\"ok\":false,\"error\":\"invalid_jpeg\"}");
-      return;
-    }
-    uint8_t* image=(uint8_t*)malloc(length);
-    if(!image) {
-      localServer.send(503,"application/json","{\"ok\":false,\"error\":\"insufficient_memory\"}");
-      return;
-    }
-    memcpy(image,source,length);
     if(selectedSatelliteImageData) free(selectedSatelliteImageData);
     selectedSatelliteImageData=image;
     selectedSatelliteImageSize=(uint32_t)length;

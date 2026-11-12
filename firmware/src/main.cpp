@@ -314,7 +314,6 @@ static void drawCalibrationTarget(uint8_t n){
   tft.fillCircle(x,y,3,TFT_YELLOW);
   tft.drawFastHLine(x-20,y,40,TFT_CYAN);tft.drawFastVLine(x,y-20,40,TFT_CYAN);
   tft.drawCircle(x,y,19,0x2A69);
-  drawHeaderConnectionIcons();
 }
 
 static void printGeometry(const char* stage) {
@@ -357,7 +356,7 @@ static void showSplash(){
   TJpgDec.setSwapBytes(true);
   TJpgDec.setCallback(splashOutput);
   TJpgDec.drawJpg(0,0,splash_jpg,sizeof(splash_jpg));
-  drawHeaderConnectionIcons();
+  // No connection badges on the splash screen.
   printGeometry("JPEG SPLASH VARIANT 4");
 }
 
@@ -536,7 +535,6 @@ static void showWifiSetup() {
     tft.setTextDatum(TR_DATUM);tft.setTextColor(MUTED,0x0862);tft.drawString("WI-FI SETUP",263,8,1);
   }
   tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(russianLayout?"RU":"EN",250,6,2);
   drawField(37,"NETWORK / SSID",wifiName,!editingPassword,false);
   drawField(68,"PASSWORD",wifiPassword,editingPassword,true);
   tft.fillRoundRect(7,96,306,10,4,0x1028);
@@ -1335,7 +1333,7 @@ static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V89";
+  doc["firmware"]="V90";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
@@ -1580,6 +1578,8 @@ void loop() {
     else { setupMessage="Enter your router details"; showWifiSetup(); }
   } else if(!displayDiagnosticActive && screen==Screen::Connecting) {
     if(WiFi.status()==WL_CONNECTED) {
+      // Start the local HTTP API immediately on link-up, before optional cloud work.
+      startLocalApi();
       screen=Screen::Connected;
       screenStartedAt=now;
       showConnected();
@@ -1591,7 +1591,7 @@ void loop() {
     }
   }
   if(!displayDiagnosticActive) handleTouch();
-  if(!displayDiagnosticActive && now-lastHeaderIconsAt>=500) {
+  if(!displayDiagnosticActive && screen!=Screen::Splash && screen!=Screen::TouchTest && now-lastHeaderIconsAt>=500) {
     drawHeaderConnectionIcons();
     lastHeaderIconsAt=now;
   }

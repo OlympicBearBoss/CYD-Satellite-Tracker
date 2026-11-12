@@ -154,6 +154,33 @@
     return category === "all" || item._category === category;
   }
 
+  // Images are served as static repository assets; the API remains a fallback
+  // for objects not yet included in the checked-in image library.
+  let satelliteImageManifest = {};
+  const satelliteImageManifestReady = fetch("/satellite-images/manifest.json", {cache:"no-store"})
+    .then(response => response.ok ? response.json() : null)
+    .then(data => {
+      satelliteImageManifest = data && data.images && typeof data.images === "object" ? data.images : {};
+      if (records.length) render();
+    })
+    .catch(() => {});
+  function satelliteImageUrl(norad) {
+    const entry = satelliteImageManifest[String(norad)];
+    return entry && entry.status === "available" && typeof entry.path === "string"
+      ? entry.path
+      : "/api/satellite-image?norad=" + encodeURIComponent(norad) + "&download=1";
+  }
+  function satelliteImageFallback(norad) {
+    const entry = satelliteImageManifest[String(norad)];
+    return entry && entry.status === "available" && typeof entry.path === "string"
+      ? "/api/satellite-image?norad=" + encodeURIComponent(norad) + "&download=1"
+      : "/satellite-placeholder.svg";
+  }
+  function satelliteImageError(norad) {
+    const fallback = satelliteImageFallback(norad);
+    return "if(this.dataset.fallback!=='1'){this.dataset.fallback='1';this.src='" + fallback + "';}else{this.onerror=null;this.src='/satellite-placeholder.svg';}";
+  }
+
   const satelliteInfo = {
     "25544": {title:"Международная космическая станция · ISS",image:"/api/satellite-image?norad=25544&download=1",history:"Первый модуль выведен на орбиту в 1998 году. Постоянно обитаемый международный комплекс для научных экспериментов и наблюдения Земли.",tech:"Пилотируемый орбитальный комплекс на низкой околоземной орбите. Идентификатор каталога NORAD 25544. Массу не приводим: она меняется по мере стыковки кораблей и конфигурации станции.",frequencies:"Голос: приём 145.800 MHz FM; передача в ITU Region 1 — 145.200 MHz FM. Пакетный режим VHF: 145.825 MHz. Радиолюбительский FM-репитер: uplink 145.990 MHz (CTCSS 67 Hz) / downlink 437.800 MHz. Частоты и доступность радиостанций меняются; перед передачей сверяйтесь со статусом ARISS.",source:"https://www.ariss.org/contact-the-iss.html"},
     "43017": {title:"AO-91 · Fox-1B",image:"/api/satellite-image?norad=43017&download=1",history:"Любительский CubeSat AMSAT-NA, запущен в 2017 году для экспериментов и радиолюбительской связи.",tech:"CubeSat 1U с FM ретранслятором типа bent-pipe. NORAD 43017.",frequencies:"Uplink 435.250 MHz FM; downlink 145.960 MHz FM. По данным AMSAT работа ограничена состоянием аккумулятора и солнечным освещением; проверьте текущий статус.",source:"https://www.amsat.org/two-way-satellites/ao-91/"},

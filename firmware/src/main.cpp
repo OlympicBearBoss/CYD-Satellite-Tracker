@@ -172,6 +172,9 @@ static uint32_t screenStartedAt = 0;
 static uint32_t wifiAttemptAt = 0;
 static uint32_t lastTouchAt = 0;
 static uint32_t lastDashboardRefreshAt = 0;
+static uint32_t lastHeaderIconsAt = 0;
+static uint32_t lastSiteClientAt = 0;
+static constexpr uint32_t SITE_CLIENT_TIMEOUT_MS = 8000;
 static bool wifiScreenDrawn = false;
 static bool keyboardNeedsRedraw = true;
 static bool gpsSeen = false;
@@ -355,6 +358,23 @@ static void showSplash(){
   printGeometry("JPEG SPLASH VARIANT 4");
 }
 
+static bool localSiteClientConnected() {
+  return lastSiteClientAt != 0 && millis() - lastSiteClientAt < SITE_CLIENT_TIMEOUT_MS;
+}
+static void drawHeaderConnectionIcons() {
+  const uint16_t wifiColor = WiFi.status()==WL_CONNECTED ? TFT_GREEN : TFT_ORANGE;
+  const uint16_t siteColor = localSiteClientConnected() ? TFT_GREEN : MUTED;
+  tft.fillRect(276,3,44,24,0x0862);
+  tft.drawLine(279,10,286,6,wifiColor);
+  tft.drawLine(286,6,293,10,wifiColor);
+  tft.drawLine(282,14,286,11,wifiColor);
+  tft.drawLine(286,11,290,14,wifiColor);
+  tft.fillCircle(286,18,1,wifiColor);
+  tft.drawCircle(307,14,6,siteColor);
+  tft.drawFastVLine(307,9,11,siteColor);
+  tft.drawFastHLine(302,14,11,siteColor);
+  tft.drawEllipse(307,14,3,6,siteColor);
+}
 static void header(const char* title, const char* subtitle) {
   tft.fillScreen(BG);
   // Restrained starfield and layered top chrome; no full-screen animation.
@@ -364,10 +384,7 @@ static void header(const char* title, const char* subtitle) {
   tft.fillCircle(16,15,8,0x03B9);tft.fillCircle(16,15,4,TFT_WHITE);
   tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x0862);tft.drawString("CYD",30,5,2);
   tft.setTextColor(MUTED,0x0862);tft.drawString("SATELLITE TRACKER",64,9,1);
-  tft.fillRoundRect(275,7,35,16,7,WiFi.status()==WL_CONNECTED?0x0320:0x4000);
-  tft.fillCircle(283,15,3,WiFi.status()==WL_CONNECTED?TFT_GREEN:TFT_ORANGE);
-  tft.setTextDatum(MR_DATUM);tft.setTextColor(TFT_WHITE,WiFi.status()==WL_CONNECTED?0x0320:0x4000);
-  tft.drawString(WiFi.status()==WL_CONNECTED?"LINK":"OFF",306,15,1);
+  drawHeaderConnectionIcons();
   tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,BG);tft.drawString(title,11,38,4);
   tft.setTextColor(MUTED,BG);tft.drawString(subtitle,13,73,1);
   tft.drawFastHLine(10,83,300,0x2A69);
@@ -628,12 +645,13 @@ static void showConnecting() {
   header("WI-FI CONNECTION","Connecting to the selected network");
   String shortName=wifiName;
   if(shortName.length()>18) shortName=shortName.substring(0,18)+"...";
-  statusRow(120,"NETWORK",shortName.c_str(),TFT_CYAN);
-  statusRow(155,"STATUS","CONNECTING...",TFT_YELLOW);
-  tft.drawRoundRect(14,202,tft.width()-28,10,4,0x3151);
-  tft.fillRoundRect(16,204,((millis()/35)%(tft.width()-32)),6,3,BLUE);
+  statusRow(112,"NETWORK",shortName.c_str(),TFT_CYAN);
+  statusRow(148,"STATUS","CONNECTING...",TFT_YELLOW);
+  tft.drawRoundRect(169,199,137,10,4,0x3151);
+  tft.fillRoundRect(171,201,((millis()/35)%133),6,3,BLUE);
+  drawButton(14,190,143,30,"BACK / EDIT",BLUE);
   tft.setTextDatum(BC_DATUM); tft.setTextColor(MUTED,BG);
-  tft.drawString("Please wait",tft.width()/2,tft.height()-7,1);
+  tft.drawString("Cancel connection",86,232,1);
 }
 
 
@@ -976,9 +994,11 @@ static void beginWiFi() {
     return;
   }
   saveCredentials();
-  WiFi.disconnect(true,false);
+  // Stop the previous station attempt without powering the radio off.
+  WiFi.setAutoReconnect(false);
+  WiFi.disconnect(false,false);
   WiFi.mode(WIFI_STA);
-  WiFi.setAutoReconnect(true);
+  WiFi.setSleep(true);
   WiFi.begin(wifiName.c_str(),wifiPassword.c_str());
   wifiAttemptAt=millis();
   screen=Screen::Connecting;
@@ -1062,6 +1082,14 @@ static void handleTouch(){
      WiFi.disconnect(false,false); editingPassword=false; setupMessage="Edit network, then press CONNECT";
      wifiScreenDrawn=false; showWifiSetup();
    } else { Serial.printf("[LOCAL] API address: http://%s/\\n",WiFi.localIP().toString().c_str()); showSystemScreen(); }
+ }
+ else if(screen==Screen::Connecting && y>=190 && y<=235 && x>=14 && x<=157) {
+   WiFi.disconnect(false,false);
+   WiFi.mode(WIFI_OFF);
+   setupMessage="Edit network name or password";
+   wifiScreenDrawn=false;
+   keyboardNeedsRedraw=true;
+   showWifiSetup();
  }
  else if(screen==Screen::Dashboard && y>=160 && y<200) {
    showSatelliteScreen();
@@ -1299,10 +1327,11 @@ static void sendLocalCorsHeaders() {
 }
 
 static void sendLocalStatus() {
+  lastSiteClientAt=millis();
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V88";
+  doc["firmware"]="V89";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
@@ -1353,6 +1382,7 @@ static void sendLocalStatus() {
 static void startLocalApi() {
   if(localApiStarted || WiFi.status()!=WL_CONNECTED) return;
   localServer.on("/",HTTP_GET,[](){
+    lastSiteClientAt=millis();
     static const char page[] PROGMEM=R"HTML(<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071321"><title>CYD Satellite Tracker · Local</title>
 <style>
@@ -1406,6 +1436,7 @@ refreshStatus();setInterval(refreshStatus,1000);
   localServer.on("/api/v1/status",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
   localServer.on("/api/v1/command",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
   localServer.on("/api/v1/command",HTTP_POST,[](){
+    lastSiteClientAt=millis();
     sendLocalCorsHeaders();
     JsonDocument req; JsonDocument out;
     if(deserializeJson(req,localServer.arg("plain"))!=DeserializationError::Ok) {
@@ -1548,11 +1579,17 @@ void loop() {
       showConnected();
       Serial.printf("Wi-Fi connected. IP=%s\n",WiFi.localIP().toString().c_str());
     } else if(now-wifiAttemptAt>=WIFI_TIMEOUT_MS) {
+      WiFi.disconnect(false,false);
       screen=Screen::Failed;
       showFailed();
     }
   }
   if(!displayDiagnosticActive) handleTouch();
+  if(!displayDiagnosticActive && screen!=Screen::Splash && screen!=Screen::TouchTest && screen!=Screen::WifiSetup &&
+     now-lastHeaderIconsAt>=500) {
+    drawHeaderConnectionIcons();
+    lastHeaderIconsAt=now;
+  }
   if(!displayDiagnosticActive) { serviceLocalApi(); } // Browser and CYD communicate only over the local network.
   if(!displayDiagnosticActive) updateSelectedOrbit();
   if(!displayDiagnosticActive && selectedSatelliteImagePending && WiFi.status()==WL_CONNECTED &&

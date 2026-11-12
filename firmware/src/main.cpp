@@ -1088,6 +1088,14 @@ static void updateSelectedOrbit() {
   if(screen==Screen::Satellite) updateOrbitTelemetry();
 }
 
+static void sendLocalCorsHeaders() {
+  localServer.sendHeader("Access-Control-Allow-Origin","*");
+  localServer.sendHeader("Access-Control-Allow-Methods","GET, POST, OPTIONS");
+  localServer.sendHeader("Access-Control-Allow-Headers","Content-Type");
+  localServer.sendHeader("Access-Control-Allow-Private-Network","true");
+  localServer.sendHeader("Vary","Origin");
+}
+
 static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
@@ -1135,6 +1143,7 @@ static void sendLocalStatus() {
   doc["control"]["motors_enabled"]=false;
   doc["last_command_sequence"]=localCommandSequence;
   String body; serializeJson(doc,body);
+  sendLocalCorsHeaders();
   localServer.sendHeader("Cache-Control","no-store");
   localServer.send(200,"application/json; charset=utf-8",body);
 }
@@ -1191,7 +1200,10 @@ refreshStatus();setInterval(refreshStatus,1000);
     Serial.printf("[LOCAL] GET / sent | free_heap=%u min_heap=%u\\n", ESP.getFreeHeap(), ESP.getMinFreeHeap());
   });
   localServer.on("/api/v1/status",HTTP_GET,sendLocalStatus);
+  localServer.on("/api/v1/status",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
+  localServer.on("/api/v1/command",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
   localServer.on("/api/v1/command",HTTP_POST,[](){
+    sendLocalCorsHeaders();
     JsonDocument req; JsonDocument out;
     if(deserializeJson(req,localServer.arg("plain"))!=DeserializationError::Ok) {
       out["ok"]=false; out["error"]="invalid_json";

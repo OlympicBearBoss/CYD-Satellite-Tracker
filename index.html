@@ -573,17 +573,21 @@ async function connectCydDevice(){
  }
 }
 async function findPublicSatelliteImage(norad,record){
- // SatNOGS DB is an open satellite catalogue; photos are optional.
+ // Use the same-origin Pages Function because SatNOGS DB's API does not
+ // currently send Access-Control-Allow-Origin for browser-side requests.
  const direct=record&&(record.image_url||record.IMAGE_URL||record.image);
  if(typeof direct==="string"&&direct.trim())return new URL(direct,"https://db.satnogs.org").href;
  try{
-  const response=await fetch("https://db.satnogs.org/api/satellites/?format=json&norad_cat_id="+encodeURIComponent(norad),{cache:"no-store"});
+  if(location.protocol==="file:")return "";
+  const response=await fetch("/api/satellite-image?norad="+encodeURIComponent(norad),{cache:"no-store"});
   if(!response.ok)return "";
   const payload=await response.json();
-  const sat=Array.isArray(payload)?payload[0]:(payload.results||[])[0];
-  const image=sat&&(sat.image_url||sat.image);
-  if(typeof image==="string"&&image.trim())return new URL(image,"https://db.satnogs.org").href;
-  if(image&&typeof image==="object"&&(image.url||image.image))return new URL(image.url||image.image,"https://db.satnogs.org").href;
+  const image=payload&&payload.image;
+  if(typeof image==="string"&&image.trim()){
+   if(/^https:\/\//i.test(image))return image;
+   if(image.startsWith("/"))return new URL(image,"https://db.satnogs.org").href;
+   return new URL(image,"https://db-satnogs.freetls.fastly.net/media/").href;
+  }
  }catch(error){console.warn("SatNOGS image lookup failed:",error);}
  return "";
 }

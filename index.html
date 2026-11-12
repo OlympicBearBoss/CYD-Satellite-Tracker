@@ -572,21 +572,29 @@ async function connectCydDevice(){
   setCydDeviceStatus("Нет связи с CYD: "+error.message+". Проверьте IP, Wi-Fi и разрешение браузера на доступ к локальной сети.");
  }
 }
+function isAllowedSatellitePhotoUrl(value){
+ try{
+  const url=new URL(value,"https://db.satnogs.org");
+  return url.protocol==="https:"&&
+   ((url.hostname==="db.satnogs.org"||url.hostname==="db-satnogs.freetls.fastly.net")&&url.pathname.startsWith("/media/"));
+ }catch(error){return false;}
+}
 async function findPublicSatelliteImage(norad,record){
- // Use the same-origin Pages Function because SatNOGS DB's API does not
- // currently send Access-Control-Allow-Origin for browser-side requests.
+ // Only send URLs that the ESP32 firmware is explicitly allowed to download.
+ // The local catalog may contain NASA/Wikimedia URLs; those must not bypass
+ // the SatNOGS host allow-list enforced by the firmware.
  const direct=record&&(record.image_url||record.IMAGE_URL||record.image);
- if(typeof direct==="string"&&direct.trim())return new URL(direct,"https://db.satnogs.org").href;
+ if(typeof direct==="string"&&direct.trim()&&isAllowedSatellitePhotoUrl(direct)){
+  return new URL(direct,"https://db.satnogs.org").href;
+ }
  try{
   if(location.protocol==="file:")return "";
   const response=await fetch("/api/satellite-image?norad="+encodeURIComponent(norad),{cache:"no-store"});
   if(!response.ok)return "";
   const payload=await response.json();
   const image=payload&&payload.image;
-  if(typeof image==="string"&&image.trim()){
-   if(/^https:\/\//i.test(image))return image;
-   if(image.startsWith("/"))return new URL(image,"https://db.satnogs.org").href;
-   return new URL(image,"https://db-satnogs.freetls.fastly.net/media/").href;
+  if(typeof image==="string"&&image.trim()&&isAllowedSatellitePhotoUrl(image)){
+   return new URL(image,"https://db.satnogs.org").href;
   }
  }catch(error){console.warn("SatNOGS image lookup failed:",error);}
  return "";

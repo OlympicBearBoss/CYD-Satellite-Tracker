@@ -448,7 +448,7 @@ body[data-theme="terminal"] .content:before{opacity:.28}
 <main class="main">
 <header class="topbar"><div class="mobile-brand">◉ CYD TRACKER</div><div class="crumb"><span data-i18n="station">НАЗЕМНАЯ СТАНЦИЯ</span><b>/</b><strong id="crumbTitle">Обзор</strong></div><div class="top-actions"><span class="connection-chip"><i></i><span data-i18n="offline_demo">Симуляция</span></span><span class="clock" id="clock">--:--:--</span><select id="themePicker" class="theme-picker" aria-label="Оформление сайта" title="Оформление сайта"><option value="midnight">Midnight</option><option value="arctic">Arctic</option><option value="terminal">Terminal</option></select><button class="language" id="language">EN</button><button type="button" class="account-trigger" id="accountTrigger" aria-haspopup="dialog"><span class="account-avatar">◉</span><span id="accountTriggerLabel">Войти</span></button></div></header>
 <div class="content">
-<div class="demo-warning"><span>◆</span><div><b data-i18n="demo_title">Демонстрационный режим</b><small data-i18n="demo_desc">Все данные синтетические. Реальное оборудование не подключено, команды на ESP32 не отправляются.</small></div><span class="demo-tag">DEMO</span></div>
+<div class="demo-warning" id="runtimeModeBanner"><span id="runtimeModeIcon">◆</span><div><b id="runtimeModeTitle" data-i18n="demo_title">Демонстрационный режим</b><small id="runtimeModeDescription" data-i18n="demo_desc">Все данные синтетические. Реальное оборудование не подключено, команды на ESP32 не отправляются.</small></div><span class="demo-tag" id="runtimeModeTag">DEMO</span></div>
 <section class="view active" id="view-overview">
 <div class="page-heading"><div><div class="eyebrow" data-i18n="eyebrow">ЦЕНТР УПРАВЛЕНИЯ · CYD ESP32</div><h1 data-i18n="welcome">Добро пожаловать на станцию</h1><p data-i18n="welcome_desc">Мониторинг спутников, положение антенны и состояние оборудования.</p></div><div class="heading-actions"><span class="date-label" id="today"></span><button class="btn btn-primary" data-go="control" data-i18n="open_control">Открыть управление ↗</button></div></div>
 <div class="overview-grid">
@@ -517,7 +517,7 @@ body[data-theme="terminal"] .content:before{opacity:.28}
 <section class="view" id="view-telemetry">
 <div class="page-heading"><div><div class="eyebrow" data-i18n="telemetry_eyebrow">МОНИТОРИНГ ОБОРУДОВАНИЯ</div><h1 data-i18n="telemetry_heading">Телеметрия и диагностика</h1><p data-i18n="telemetry_desc">Пример показаний питания, приводов и вычислительного модуля.</p></div><span class="status-pill"><i></i>DEMO DATA</span></div>
 <div class="telemetry-grid"><div class="panel gauge"><span data-i18n="voltage">НАПРЯЖЕНИЕ</span><b>12.1 <em>V</em></b><div class="gauge-ring green-ring"><span>12.1</span></div><small data-i18n="voltage_ok">В пределах демонстрационной нормы</small></div><div class="panel gauge"><span data-i18n="az_current">ТОК ДВИГАТЕЛЯ AZ</span><b>0.82 <em>A</em></b><div class="gauge-ring blue-ring"><span>0.82</span></div><small>NEMA17 · TMC2209</small></div><div class="panel gauge"><span data-i18n="el_current">ТОК ДВИГАТЕЛЯ EL</span><b>0.76 <em>A</em></b><div class="gauge-ring purple-ring"><span>0.76</span></div><small>NEMA17 · TMC2209</small></div><div class="panel gauge"><span data-i18n="temperature">ТЕМПЕРАТУРА</span><b>42 <em>°C</em></b><div class="gauge-ring orange-ring"><span>42°</span></div><small data-i18n="temp_demo">Условный датчик</small></div></div>
-<div class="bottom-grid"><article class="panel"><div class="panel-title"><h2 data-i18n="compute_load">Нагрузка контроллера</h2></div><div class="health-list"><div><span>CPU</span><b>18%</b><div class="progress"><i style="width:18%"></i></div></div><div><span data-i18n="memory">Память</span><b>62%</b><div class="progress"><i style="width:62%"></i></div></div><div><span>Wi-Fi RSSI</span><b>−48 dBm</b><div class="progress"><i style="width:82%"></i></div></div></div></article><article class="panel"><div class="panel-title"><h2 data-i18n="motor_status">Состояние приводов</h2></div><div class="driver-row"><span class="driver-icon">AZ</span><div><b data-i18n="az_driver">Азимутальный привод</b><small>NEMA17 · TMC2209</small></div><span class="status-pill"><i></i><span data-i18n="normal">НОРМА</span></span></div><div class="driver-row"><span class="driver-icon">EL</span><div><b data-i18n="el_driver">Элевационный привод</b><small>NEMA17 · TMC2209</small></div><span class="status-pill"><i></i><span data-i18n="normal">НОРМА</span></span></div></article></div><div class="note" data-i18n="telemetry_note">Все значения телеметрии являются тестовыми и не считываются с реального CYD или драйверов.</div>
+<div class="bottom-grid"><article class="panel"><div class="panel-title"><h2 data-i18n="compute_load">Нагрузка контроллера</h2></div><div class="health-list"><div><span>CPU</span><b>18%</b><div class="progress"><i style="width:18%"></i></div></div><div><span data-i18n="memory">Память</span><b>62%</b><div class="progress"><i style="width:62%"></i></div></div><div><span>Wi-Fi RSSI</span><b>−48 dBm</b><div class="progress"><i style="width:82%"></i></div></div></div></article><article class="panel"><div class="panel-title"><h2 data-i18n="motor_status">Состояние приводов</h2></div><div class="driver-row"><span class="driver-icon">AZ</span><div><b data-i18n="az_driver">Азимутальный привод</b><small>NEMA17 · TMC2209</small></div><span class="status-pill"><i></i><span data-i18n="normal">НОРМА</span></span></div><div class="driver-row"><span class="driver-icon">EL</span><div><b data-i18n="el_driver">Элевационный привод</b><small>NEMA17 · TMC2209</small></div><span class="status-pill"><i></i><span data-i18n="normal">НОРМА</span></span></div></article></div><div class="note" id="telemetryRuntimeNote" data-i18n="telemetry_note">Все значения телеметрии являются тестовыми и не считываются с реального CYD или драйверов.</div>
 </section>
 <section class="view" id="view-connection">
 <div class="page-heading"><div><div class="eyebrow" data-i18n="network_eyebrow">СЕТЕВОЙ ИНТЕРФЕЙС</div><h1 data-i18n="connection_heading">Подключение к CYD</h1><p data-i18n="connection_desc">Макет панели сетевого соединения с контроллером ESP32.</p></div></div>
@@ -546,7 +546,7 @@ body[data-theme="terminal"] .content:before{opacity:.28}
 </section>
 <section class="view" id="view-settings">
 <div class="page-heading"><div><div class="eyebrow" data-i18n="preferences">ПРЕДПОЧТЕНИЯ</div><h1 data-i18n="settings_heading">Настройки интерфейса</h1><p data-i18n="settings_desc">Язык и параметры демонстрационной панели.</p></div></div>
-<div class="settings-grid"><article class="panel"><div class="panel-title"><h2 data-i18n="language_settings">Язык интерфейса</h2></div><p class="muted" data-i18n="language_desc">Выберите язык всех разделов панели.</p><div class="choice-row"><button class="choice selected" data-lang="ru">🇷🇺 Русский</button><button class="choice" data-lang="en">🇬🇧 English</button></div></article><article class="panel"><div class="panel-title"><h2 data-i18n="demo_settings">Демонстрационный режим</h2></div><div class="setting-row"><div><b data-i18n="synthetic_data">Синтетические данные</b><small data-i18n="synthetic_desc">Использовать тестовые показания и положения спутников.</small></div><span class="toggle on">ON</span></div><div class="setting-row"><div><b data-i18n="safe_mode">Безопасный режим</b><small data-i18n="safe_desc">Не отправлять команды реальному оборудованию.</small></div><span class="toggle on">ON</span></div></article>
+<div class="settings-grid"><article class="panel"><div class="panel-title"><h2 data-i18n="language_settings">Язык интерфейса</h2></div><p class="muted" data-i18n="language_desc">Выберите язык всех разделов панели.</p><div class="choice-row"><button class="choice selected" data-lang="ru">🇷🇺 Русский</button><button class="choice" data-lang="en">🇬🇧 English</button></div></article><article class="panel"><div class="panel-title"><h2 data-i18n="demo_settings">Демонстрационный режим</h2></div><div class="setting-row"><div><b data-i18n="synthetic_data">Синтетические данные</b><small data-i18n="synthetic_desc">Использовать тестовые показания и положения спутников.</small></div><span class="toggle on" id="syntheticDataState">ON</span></div><div class="setting-row"><div><b data-i18n="safe_mode">Безопасный режим</b><small data-i18n="safe_desc">Не отправлять команды реальному оборудованию.</small></div><span class="toggle on" id="safeModeState">ON</span></div></article>
 <article class="panel"><div class="panel-title"><h2 data-i18n="device_link">Связь с CYD</h2><span class="subtle">LOCAL WI-FI</span></div>
 <p class="muted" data-i18n="device_link_desc">Укажите локальный адрес платы. После этого кнопка «Следить» в каталоге передаст выбранный NORAD ID на CYD.</p>
 <label class="field-label" for="cydDeviceAddress" data-i18n="device_address">Локальный адрес CYD</label>
@@ -588,11 +588,50 @@ function setAxes(az,el){az=Number(az);el=Number(el);$("azRange").value=az;$("elR
 $("azRange").addEventListener("input",()=>setAxes($("azRange").value,$("elRange").value));
 $("elRange").addEventListener("input",()=>setAxes($("azRange").value,$("elRange").value));
 let cydDeviceBaseUrl="";
-let cydDevicePollTimer=0,cydDevicePollBusy=false;
+let cydDevicePollTimer=0,cydDevicePollBusy=false,cydLiveStatus=null,cydLiveConnected=false;
 try{cydDeviceBaseUrl=localStorage.getItem("cyd-device-url")||"";}catch(_){}
 function setCydDeviceStatus(message,ok=false){
  const node=$("cydDeviceStatus");if(!node)return;
  node.textContent=message;node.style.color=ok?"#80e5b8":"#ffbf83";
+}
+function setRuntimeMode(connected,status=null){
+ cydLiveConnected=connected;cydLiveStatus=connected?status:null;
+ const banner=$("runtimeModeBanner"),title=$("runtimeModeTitle"),desc=$("runtimeModeDescription"),tag=$("runtimeModeTag");
+ if(banner){banner.style.borderColor=connected?"#24644f":"#87612e66";banner.style.background=connected?"#103a3226":"#5b3d171c";banner.style.color=connected?"#9be7c4":"#e9c78d";}
+ if(title)title.textContent=connected?"РЕАЛЬНОЕ УСТРОЙСТВО ПОДКЛЮЧЕНО":"Демонстрационный режим";
+ if(desc)desc.textContent=connected?"CYD на связи. Показаны только поля, реально переданные платой; отсутствующие датчики и телеметрия не подменяются демо-значениями.":"Связь с CYD отсутствует. Используются демонстрационные значения.";
+ if(tag)tag.textContent=connected?"CYD LIVE":"DEMO";
+ const synthetic=$("syntheticDataState");if(synthetic){synthetic.textContent=connected?"OFF":"ON";synthetic.classList.toggle("on",!connected);}
+ const safe=$("safeModeState");if(safe){safe.textContent="ON";safe.classList.add("on");}
+ const put=(id,value)=>{const n=$(id);if(n)n.textContent=value;};
+ const gps=!!(status&&status.gps_valid===true);
+ const gpsBadge=$("gpsStatus");if(gpsBadge){gpsBadge.innerHTML="<i></i>"+(gps?"GPS FIX":"GPS НЕТ FIX");gpsBadge.style.color=gps?"#7fe1b7":"#ffbf83";}
+ put("gpsLat",gps?Number(status.latitude).toFixed(5)+"°":"—");
+ put("gpsLon",gps?Number(status.longitude).toFixed(5)+"°":"—");
+ put("gpsAlt",status&&Number.isFinite(Number(status.altitude_m))?Number(status.altitude_m).toFixed(0)+" м":"—");
+ put("gpsAccuracy","—");
+ put("gpsSatCount",status&&status.gps_satellites!=null?String(status.gps_satellites):"—");
+ put("gpsTime",gps&&status.time_valid?"UTC "+new Date(Number(status.utc_epoch)*1000).toLocaleTimeString():"—");
+ const sensorNote=$("deviceSensorNote");if(sensorNote)sensorNote.textContent=connected?"GPS: данные непосредственно от CYD. Точность и компас API прошивки не передаёт.":"Нет связи с CYD: данные GPS от платы недоступны.";
+ ["kpiAz","kpiEl","overviewAz","overviewEl","azOut","elOut","dishAz","dishEl"].forEach(id=>put(id,"—"));
+ put("liveVoltageValue","—");put("liveVoltageGauge","—");put("liveVoltageNote","API CYD не передаёт напряжение питания");
+ put("liveAzCurrent","—");put("liveElCurrent","—");put("liveTemperature","—");
+ const telem=$("telemetryRuntimeNote");if(telem)telem.textContent=connected?"Реальные данные CYD: GPS и Wi-Fi. Напряжение, токи, температура и фактические углы осей API не передаёт. Датчики угла/компас, драйверы и концевики не подключены; моторы заблокированы.":"Телеметрия CYD недоступна. Неподтверждённые показания не отображаются.";
+ if(connected&&status.orbit&&status.orbit.position_valid===true){
+  const norad=String(status.orbit.norad_id||"");
+  const id=norad==="25544"?"iss":norad==="33591"?"noaa":norad==="43017"?"ao91":"";
+  if(id&&Number.isFinite(Number(status.orbit.azimuth_deg))&&Number.isFinite(Number(status.orbit.elevation_deg))){
+   objectData[id].az=Number(status.orbit.azimuth_deg);objectData[id].el=Number(status.orbit.elevation_deg);objectData[id].real=true;renderRadarObjects();
+  }
+  put("radarTargetBearing",Number(status.orbit.azimuth_deg).toFixed(1)+"°");
+ }else if(!connected){Object.values(objectData).forEach(o=>o.real=false);renderRadarObjects();put("radarTargetBearing","—");}
+ const badge=$("liveDeviceBadge");if(badge){const label=badge.querySelector("span");if(label)label.textContent=connected?"CYD на связи":"Нет подключённого устройства";}
+ put("liveDeviceInfo",connected?"Локальная телеметрия · прошивка "+(status.firmware||"—"):"Устройство не отвечает.");
+ put("liveDeviceIp",connected?(status.ip||cydDeviceBaseUrl):"—");
+ put("liveDeviceRssi",connected&&status.wifi_rssi!=null?status.wifi_rssi+" dBm":"—");
+ put("liveDeviceGps",connected?(gps?"FIX":"Нет FIX"):"—");
+ put("liveDeviceCoords",gps?Number(status.latitude).toFixed(5)+", "+Number(status.longitude).toFixed(5):"—");
+ put("liveDeviceSeen",connected?new Date().toLocaleTimeString():"—");
 }
 async function refreshCydDeviceLink(){
  if(!cydDeviceBaseUrl||cydDevicePollBusy)return;
@@ -602,18 +641,21 @@ async function refreshCydDeviceLink(){
   if(!response.ok)throw new Error("HTTP "+response.status);
   const status=await response.json();
   if(!status.ok)throw new Error("Контроллер не подтвердил статус");
+  setRuntimeMode(true,status);
   setCydDeviceStatus("CYD на связи · "+(status.ip||cydDeviceBaseUrl)+" · прошивка "+(status.firmware||"неизвестна"),true);
  }catch(error){
+  setRuntimeMode(false);
   setCydDeviceStatus("Связь с CYD потеряна: "+error.message+". Проверьте локальную сеть и разрешение браузера.",false);
  }finally{cydDevicePollBusy=false;}
 }
 function startCydDevicePolling(){
  if(cydDevicePollTimer)clearInterval(cydDevicePollTimer);
+ refreshCydDeviceLink();
  cydDevicePollTimer=setInterval(refreshCydDeviceLink,3000);
 }
 const cydAddressInput=$("cydDeviceAddress");
 if(cydAddressInput&&cydDeviceBaseUrl)cydAddressInput.value=cydDeviceBaseUrl;
-if(cydDeviceBaseUrl)setCydDeviceStatus("Адрес сохранён: "+cydDeviceBaseUrl+" · нажмите «Подключить CYD» для проверки.",true);
+if(cydDeviceBaseUrl){setCydDeviceStatus("Сохранён адрес CYD: "+cydDeviceBaseUrl+" · проверяю связь…",true);startCydDevicePolling();}
 async function connectCydDevice(){
  const raw=(cydAddressInput?.value||"").trim();
  if(!raw){setCydDeviceStatus("Введите локальный адрес платы, например http://192.168.1.50");return;}
@@ -624,19 +666,13 @@ async function connectCydDevice(){
   base=parsed.origin;
  }catch(error){setCydDeviceStatus("Некорректный адрес: "+error.message);return;}
  setCydDeviceStatus("Проверяю связь с CYD…");
- try{
-  const response=await fetch(base+"/api/v1/status",{cache:"no-store",mode:"cors"});
-  if(!response.ok)throw new Error("HTTP "+response.status);
-  const status=await response.json();
-  if(!status.ok)throw new Error("Контроллер не подтвердил статус");
-  cydDeviceBaseUrl=base;
-  try{localStorage.setItem("cyd-device-url",base);}catch(_){}
-  setCydDeviceStatus("CYD подключён · "+(status.ip||base)+" · прошивка "+(status.firmware||"неизвестна"),true);
-  startCydDevicePolling();
- }catch(error){
-  setCydDeviceStatus("Нет связи с CYD: "+error.message+". Проверьте IP, Wi-Fi и разрешение браузера на доступ к локальной сети.");
- }
+ cydDeviceBaseUrl=base;
+ try{localStorage.setItem("cyd-device-url",base);}catch(_){}
+ if(cydDevicePollTimer)clearInterval(cydDevicePollTimer);
+ await refreshCydDeviceLink();
+ if(cydLiveConnected)startCydDevicePolling();
 }
+if($("connectCydDevice"))$("connectCydDevice").addEventListener("click",connectCydDevice);
 async function fetchSatelliteImageBlob(norad){
  const apiUrl="/api/satellite-image?norad="+encodeURIComponent(norad)+"&download=1";
  let imageUrl=apiUrl;

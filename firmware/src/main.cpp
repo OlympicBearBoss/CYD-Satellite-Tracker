@@ -610,7 +610,7 @@ static void drawButton(int x,int y,int w,int h,const char* label,uint16_t color)
   tft.fillRoundRect(x,y,w,h,5,color);
   tft.drawRoundRect(x,y,w,h,5,TFT_WHITE);
   setUiTextDatum(MC_DATUM);
-  setUiTextColor((color==0x07FF||color==0xFFE0)?TFT_BLACK:TFT_WHITE,color);
+  setUiTextColor(TFT_WHITE,color);
   drawUiString(label,x+w/2,y+h/2,2);
 }
 
@@ -1046,10 +1046,11 @@ static void updateTargetTelemetry() {
     drawDialNeedle(cx,cy,19,targetAzimuthDeg,TFT_ORANGE);
 
     // Keep the motor-lock warning visible alongside the latest target values.
-    tft.fillRect(10,186,300,9,0x4000);
-    snprintf(line,sizeof(line),"LOCKED  AZ %.1f%c  EL %.1f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
+    tft.fillRoundRect(8,181,304,18,5,0x4000);
+    tft.drawRoundRect(8,181,304,18,5,TFT_ORANGE);
+    snprintf(line,sizeof(line),"DRIVE LOCKED  AZ %.0f%c  EL %.0f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
     setUiTextDatum(MC_DATUM);
-    setUiTextColor(TFT_YELLOW,0x4000);
+    setUiTextColor(TFT_WHITE,0x4000);
     drawUiString(line,160,190,1);
     tft.fillRect(184,139,106,25,0x0822);
     snprintf(line,sizeof(line),"%.1f%c",targetElevationDeg,(char)247);
@@ -1161,7 +1162,7 @@ static void showSystemScreen() {
   setUiTextColor(MUTED,0x0822);drawUiString(wifi?WiFi.localIP().toString():"NO NETWORK",17,132,1);
   drawUiString(gps.satellites.isValid()?"SATELLITES RECEIVED":"WAITING FOR DATA",173,132,1);
   setUiTextDatum(TL_DATUM);setUiTextColor(TFT_CYAN,BG);drawUiString("LANGUAGE",10,150,1);
-  const uint16_t active=0x07FF,idle=0x001F;
+  const uint16_t active=0x03B9,idle=0x001F;
   drawButton(7,160,98,21,"RU",uiLanguage==1?active:idle);
   drawButton(111,160,98,21,"EN",uiLanguage==0?active:idle);
   drawButton(215,160,98,21,"ZH",uiLanguage==2?active:idle);

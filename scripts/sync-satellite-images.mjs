@@ -108,6 +108,8 @@ const CLASS_QUERIES = {
   visual: "Earth observation satellite spacecraft"
 };
 const satelliteWords = /\b(satellite|spacecraft|space station|cubesat|orbiter|weather satellite|navigation satellite|communications satellite|earth observation)\b/i;
+// Reuse one class-representative image across matching catalog entries.
+const representativePhotoCache = new Map();
 
 function cleanSearchText(value) {
   return String(value || "").replace(/[^\p{L}\p{N} ._()-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 100);
@@ -126,6 +128,10 @@ async function fetchAlternativePhoto(name, group) {
   for (let queryIndex = 0; queryIndex < queries.length; queryIndex++) {
     const query = queries[queryIndex];
     const matchType = queryIndex === 0 && safeName ? "name-related" : "class-representative";
+    const cacheKey = group || "visual";
+    if (matchType === "class-representative" && representativePhotoCache.has(cacheKey)) {
+      return { ...representativePhotoCache.get(cacheKey), matchType };
+    }
     const candidates = [];
     try {
       const nasa = await json("https://images-api.nasa.gov/search?q=" + encodeURIComponent(query) + "&media_type=image&page_size=12");
@@ -162,8 +168,10 @@ async function fetchAlternativePhoto(name, group) {
     for (const candidate of candidates.slice(0, 8)) {
       try {
         const photo = await fetchPhoto(candidate.href);
-        return { ...photo, source: candidate.href, provider: candidate.provider,
+        const result = { ...photo, source: candidate.href, provider: candidate.provider,
           matchedTitle: candidate.title.slice(0, 180), matchType };
+        if (matchType === "class-representative") representativePhotoCache.set(cacheKey, result);
+        return result;
       } catch (error) {
         console.warn("Alternative image rejected (" + candidate.provider + "): " + error.message);
       }

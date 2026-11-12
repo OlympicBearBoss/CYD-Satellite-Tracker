@@ -727,12 +727,14 @@ static void drawSelectedSatellitePhoto() {
   // Replace the fixed ISS artwork with the selected object's public photo.
   tft.fillRoundRect(8,34,175,80,6,0x0822);
   if(selectedSatelliteImageData && selectedSatelliteImageSize>4 && selectedSatelliteImageNorad==selectedNoradId) {
-    tft.setViewport(8,34,175,80,true);
+    // The JPEG is already center-cropped to 320x160 by the website and
+    // decoded at 1/2 scale to exactly 160x80. Draw it directly: TFT_eSPI's
+    // viewport origin is added to pushImage coordinates in uiImageOutput,
+    // which caused an extra (+8,+34) offset and shifted the photo down/right.
     TJpgDec.setJpgScale(2);
     TJpgDec.setSwapBytes(true);
     TJpgDec.setCallback(uiImageOutput);
-    TJpgDec.drawJpg(15,34,selectedSatelliteImageData,selectedSatelliteImageSize); // pre-cropped 320x160 JPEG fits the card without extra crop
-    tft.resetViewport();
+    TJpgDec.drawJpg(15,34,selectedSatelliteImageData,selectedSatelliteImageSize);
   } else {
     drawSatelliteArtwork(96,74,2);
     tft.setTextDatum(MC_DATUM);

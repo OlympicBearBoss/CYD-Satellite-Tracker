@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
+#include <U8g2_for_TFT_eSPI.h>
 #include <SPI.h>
 #include <WiFi.h>
 #include <WebServer.h>
@@ -156,6 +157,11 @@ bP6MvPJwNQzcmRk13NfIRmPVNnGuV/u3gm3c
 )PEM";
 
 TFT_eSPI tft;
+static U8g2_for_TFT_eSPI uiFont;
+static uint8_t uiLanguage = 1; // 0=English, 1=Russian, 2=Simplified Chinese
+static uint16_t uiTextFg = TFT_WHITE;
+static uint16_t uiTextBg = BG;
+static uint8_t uiTextDatum = TL_DATUM;
 SPIClass touchSPI(VSPI);
 TinyGPSPlus gps;
 Preferences prefs;
@@ -297,6 +303,126 @@ static bool loadTouchCalibration() {
   return true;
 }
 
+
+// Multilingual text renderer. U8g2 fonts provide UTF-8 Cyrillic and GB2312 Chinese.
+struct UiTextEntry { const char* source; const char* ru; const char* zh; };
+static const UiTextEntry UI_TEXT[] = {
+ {"TOUCH SETUP","НАСТРОЙКА СЕНСОРА","触摸设置"},
+ {"Touch the target","Коснитесь метки","触摸目标点"},
+ {"Keep finger steady","Не двигайте пальцем","保持手指稳定"},
+ {"4-CORNER PRECISION CALIBRATION","ТОЧНАЯ КАЛИБРОВКА ПО 4 УГЛАМ","四角精确校准"},
+ {"Motors remain disabled during startup","Двигатели заблокированы при запуске","启动期间电机保持禁用"},
+ {"NETWORK CONFIG","НАСТРОЙКА СЕТИ","网络配置"},
+ {"Cancel connection","Отменить подключение","取消连接"},
+ {"PHOTO NOT FOUND","ФОТО НЕ НАЙДЕНО","未找到照片"},
+ {"INTERNATIONAL","МЕЖДУНАРОДНАЯ","国际"},
+ {"SPACE STATION","КОСМИЧЕСКАЯ СТАНЦИЯ","空间站"},
+ {"PRIMARY","ОСНОВНОЙ","主目标"},
+ {"OTHER OBJECTS","ДРУГИЕ ОБЪЕКТЫ","其他目标"},
+ {"AZIMUTH","АЗИМУТ","方位角"},
+ {"ELEVATION","УГОЛ МЕСТА","仰角"},
+ {"DRIVE LOCKED  /  TARGET PENDING","ПРИВОД ЗАБЛОКИРОВАН / ОЖИДАНИЕ ЦЕЛИ","驱动已锁定 / 等待目标"},
+ {"WI-FI CONNECTION","ПОДКЛЮЧЕНИЕ WI-FI","无线网络连接"},
+ {"GPS RECEIVER","ПРИЁМНИК GPS","GPS 接收器"},
+ {"LOCAL API READY","ЛОКАЛЬНЫЙ API ГОТОВ","本地 API 已就绪"},
+ {"QUICK ACTIONS","БЫСТРЫЕ ДЕЙСТВИЯ","快捷操作"},
+ {"INITIALIZATION","ИНИЦИАЛИЗАЦИЯ","初始化"},
+ {"Hardware and service checks","Проверка оборудования и служб","硬件与服务检查"},
+ {"Connecting to the selected network","Подключение к выбранной сети","正在连接所选网络"},
+ {"SATELLITES","СПУТНИКИ","卫星"},
+ {"OBJECT CATALOG  /  TRACKING TARGETS","КАТАЛОГ ОБЪЕКТОВ / ЦЕЛИ СЛЕЖЕНИЯ","目标目录 / 跟踪目标"},
+ {"ROTATOR","РОТАТОР","转台"},
+ {"VHF 145 MHz  /  CIRCULAR YAGI","VHF 145 МГц / КРУГОВАЯ YAGI","VHF 145 MHz / 圆极化八木天线"},
+ {"SYSTEM","СИСТЕМА","系统"},
+ {"DEVICE HEALTH  /  CONFIGURATION","СОСТОЯНИЕ УСТРОЙСТВА / НАСТРОЙКА","设备状态 / 配置"},
+ {"CONNECTION FAILED","ОШИБКА ПОДКЛЮЧЕНИЯ","连接失败"},
+ {"Check the network name and password","Проверьте имя сети и пароль","请检查网络名称和密码"},
+ {"CONNECT","ПОДКЛЮЧИТЬ","连接"},
+ {"BACK / EDIT","НАЗАД / ИЗМЕНИТЬ","返回 / 编辑"},
+ {"HOME","ГЛАВНАЯ","主页"},
+ {"SAT","СПУТНИКИ","卫星"},
+ {"ANT","АНТЕННА","天线"},
+ {"TOUCH","СЕНСОР","触摸"},
+ {"WI-FI","WI-FI","无线网络"},
+ {"API","API","API"},
+ {"EDIT WI-FI","ИЗМЕНИТЬ WI-FI","编辑 Wi-Fi"},
+ {"DISPLAY","ДИСПЛЕЙ","显示屏"},
+ {"ESP32","ESP32","ESP32"},
+ {"GPS MODULE","МОДУЛЬ GPS","GPS 模块"},
+ {"MOTOR DRIVERS","ДРАЙВЕРЫ МОТОРОВ","电机驱动器"},
+ {"NETWORK","СЕТЬ","网络"},
+ {"STATUS","СТАТУС","状态"},
+ {"ONLINE","В СЕТИ","在线"},
+ {"OFFLINE","НЕ В СЕТИ","离线"},
+ {"FIX","ФИКСАЦИЯ","已定位"},
+ {"SEARCH","ПОИСК","搜索中"},
+ {"NO NETWORK","НЕТ СЕТИ","无网络"},
+ {"SATELLITES RECEIVED","СПУТНИКИ ПОЛУЧЕНЫ","已接收卫星数据"},
+ {"WAITING FOR DATA","ОЖИДАНИЕ ДАННЫХ","等待数据"},
+ {"LANGUAGE","ЯЗЫК","语言"},
+ {"LANGUAGE / ЯЗЫК","ЯЗЫК / LANGUAGE","语言"},
+ {"TOUCH TEST / XPT2046","ТЕСТ СЕНСОРА / XPT2046","触摸测试 / XPT2046"},
+ {"Tap once to start calibration","Коснитесь для начала калибровки","点击开始校准"},
+ {"Raw touch controller check","Проверка контроллера касания","触摸控制器检查"},
+ {"Touch anywhere to start","Коснитесь экрана для начала","触摸屏幕任意位置开始"},
+ {"calibration","калибровка","校准"},
+ {"GPS","GPS","GPS"},
+ {"SATELLITES","СПУТНИКИ","卫星"},
+ {"LINK","СВЯЗЬ","连接"},
+ {"DRIVE LOCKED","ПРИВОД ЗАБЛОКИРОВАН","驱动已锁定"},
+ {"TRACKING","СЛЕЖЕНИЕ","跟踪中"},
+ {"TLE PENDING","ОЖИДАНИЕ TLE","等待 TLE"},
+ {"WEATHER  /  APT","ПОГОДНЫЙ / APT","气象 / APT"},
+ {"UTC --:--","UTC --:--","UTC --:--"}
+};
+static const char* translateUi(const char* source) {
+  if(!source || uiLanguage==0) return source ? source : "";
+  for(const auto& item:UI_TEXT) {
+    if(strcmp(source,item.source)==0) return uiLanguage==1?item.ru:item.zh;
+  }
+  return source;
+}
+static void setUiTextColor(uint16_t fg,uint16_t bg) {
+  uiTextFg=fg; uiTextBg=bg; tft.setTextColor(fg,bg);
+}
+static void setUiTextDatum(uint8_t datum) {
+  uiTextDatum=datum; tft.setTextDatum(datum);
+}
+static void drawUiString(const String& original,int16_t x,int16_t y,uint8_t font) {
+  const char* source=original.c_str();
+  const char* value=translateUi(source);
+  // Keep large instrument numerals on the original TFT font; they are ASCII-only.
+  if(font>=4) { tft.drawString(value,x,y,font); return; }
+  uiFont.setFontMode(1);
+  uiFont.setForegroundColor(uiTextFg);
+  if(uiLanguage==2) uiFont.setFont(font>=2?u8g2_font_wqy14_t_gb2312:u8g2_font_wqy12_t_gb2312);
+  else if(uiLanguage==1) uiFont.setFont(font>=2?u8g2_font_7x13_t_cyrillic:u8g2_font_6x12_t_cyrillic);
+  else uiFont.setFont(font>=2?u8g2_font_7x14_tf:u8g2_font_6x12_tf);
+  const int16_t width=uiFont.getUTF8Width(value);
+  const int16_t ascent=uiFont.getFontAscent();
+  const int16_t descent=uiFont.getFontDescent();
+  int16_t px=x, baseline=y+ascent;
+  switch(uiTextDatum) {
+    case TC_DATUM: px=x-width/2; break;
+    case TR_DATUM: px=x-width; break;
+    case ML_DATUM: baseline=y+(ascent-descent)/2; break;
+    case MC_DATUM: px=x-width/2; baseline=y+(ascent-descent)/2; break;
+    case MR_DATUM: px=x-width; baseline=y+(ascent-descent)/2; break;
+    case BL_DATUM: baseline=y; break;
+    case BC_DATUM: px=x-width/2; baseline=y; break;
+    case BR_DATUM: px=x-width; baseline=y; break;
+    default: break;
+  }
+  uiFont.setCursor(px,baseline);
+  uiFont.print(value);
+}
+static void selectUiLanguage(uint8_t language) {
+  if(language>2) language=1;
+  uiLanguage=language;
+  prefs.putUChar("uilang",uiLanguage);
+  if(screen==Screen::SystemInfo) showSystemScreen();
+}
+
 static void drawCalibrationTarget(uint8_t n){
   // Calibration keeps the exact four raw sampling coordinates, but now uses
   // the same Space Dark visual language as the rest of the interface.
@@ -304,21 +430,21 @@ static void drawCalibrationTarget(uint8_t n){
   for(int i=0;i<18;i++){int sx=(i*47+19)%320, sy=(i*31+13)%240;tft.drawPixel(sx,sy,0x19A5);}
   tft.fillRect(0,0,320,35,0x0862); tft.fillRect(0,35,320,2,TFT_CYAN);
   tft.fillCircle(15,17,6,TFT_CYAN); tft.fillCircle(15,17,2,TFT_WHITE);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x0862);
-  tft.drawString("TOUCH SETUP",28,8,2);
-  tft.setTextDatum(TR_DATUM);tft.setTextColor(MUTED,0x0862);
-  tft.drawString("XPT2046",309,11,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_WHITE,0x0862);
+  drawUiString("TOUCH SETUP",28,8,2);
+  setUiTextDatum(TR_DATUM);setUiTextColor(MUTED,0x0862);
+  drawUiString("XPT2046",309,11,1);
   tft.drawRoundRect(54,78,212,88,12,0x2A69);
   tft.fillRoundRect(59,83,202,78,9,0x1028);
   char msg[32];snprintf(msg,sizeof(msg),"POINT %u / 4",n+1);
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_CYAN,0x1028);
-  tft.drawString(msg,160,103,2);
-  tft.setTextColor(TFT_WHITE,0x1028);tft.drawString("Touch the target",160,128,2);
-  tft.setTextColor(MUTED,0x1028);tft.drawString("Keep finger steady",160,148,1);
+  setUiTextDatum(MC_DATUM);setUiTextColor(TFT_CYAN,0x1028);
+  drawUiString(msg,160,103,2);
+  setUiTextColor(TFT_WHITE,0x1028);drawUiString("Touch the target",160,128,2);
+  setUiTextColor(MUTED,0x1028);drawUiString("Keep finger steady",160,148,1);
   tft.drawRoundRect(65,187,190,9,4,0x2A69);
   tft.fillRoundRect(67,189,(uint16_t)(186*(n+1)/4),5,2,TFT_CYAN);
-  tft.setTextDatum(BC_DATUM);tft.setTextColor(MUTED,BG);
-  tft.drawString("4-CORNER PRECISION CALIBRATION",160,222,1);
+  setUiTextDatum(BC_DATUM);setUiTextColor(MUTED,BG);
+  drawUiString("4-CORNER PRECISION CALIBRATION",160,222,1);
   int x=calX[n],y=calY[n];
   tft.drawCircle(x,y,14,TFT_WHITE);tft.drawCircle(x,y,9,TFT_CYAN);
   tft.fillCircle(x,y,3,TFT_YELLOW);
@@ -394,15 +520,15 @@ static void header(const char* title, const char* subtitle) {
   tft.fillRect(0,0,320,30,0x0862);
   tft.fillRect(0,29,320,1,0x2A69);tft.fillRect(0,30,320,2,TFT_CYAN);
   tft.fillCircle(16,15,8,0x03B9);tft.fillCircle(16,15,4,TFT_WHITE);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x0862);tft.drawString("CYD",30,5,2);
-  tft.setTextColor(MUTED,0x0862);tft.drawString("SATELLITE TRACKER",64,9,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_WHITE,0x0862);drawUiString("CYD",30,5,2);
+  setUiTextColor(MUTED,0x0862);drawUiString("SATELLITE TRACKER",64,9,1);
   drawHeaderConnectionIcons();
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,BG);tft.drawString(title,11,38,4);
-  tft.setTextColor(MUTED,BG);tft.drawString(subtitle,13,73,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_WHITE,BG);drawUiString(title,11,38,4);
+  setUiTextColor(MUTED,BG);drawUiString(subtitle,13,73,1);
   tft.drawFastHLine(10,83,300,0x2A69);
 }
 static void drawSectionLabel(const char* label,int x,int y,int w) {
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_CYAN,PANEL); tft.drawString(label,x,y,1);
+  setUiTextDatum(TL_DATUM); setUiTextColor(TFT_CYAN,PANEL); drawUiString(label,x,y,1);
   tft.drawFastHLine(x,y+13,w,0x2A69);
 }
 static void drawAzimuthDial(int cx,int cy,int r) {
@@ -413,24 +539,24 @@ static void drawAzimuthDial(int cx,int cy,int r) {
     int x2=cx+(int)((r-(a%90==0?10:6))*cosf(rad)), y2=cy+(int)((r-(a%90==0?10:6))*sinf(rad));
     tft.drawLine(x1,y1,x2,y2,a%90==0?TFT_CYAN:0x2A69);
   }
-  tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,PANEL);
-  tft.drawString("N",cx,cy-r+8,1); tft.drawString("E",cx+r-8,cy,1);
-  tft.drawString("S",cx,cy+r-8,1); tft.drawString("W",cx-r+8,cy,1);
+  setUiTextDatum(MC_DATUM); setUiTextColor(TFT_WHITE,PANEL);
+  drawUiString("N",cx,cy-r+8,1); drawUiString("E",cx+r-8,cy,1);
+  drawUiString("S",cx,cy+r-8,1); drawUiString("W",cx-r+8,cy,1);
   tft.fillCircle(cx,cy,3,TFT_CYAN);
 }
 static void drawElevationArc(int x,int y,int w) {
   tft.drawRoundRect(x,y,w,50,7,0x2A69); tft.drawFastHLine(x+10,y+37,w-20,0x2A69);
   for(int i=0;i<=6;i++){int px=x+12+i*(w-24)/6;tft.drawFastVLine(px,y+32,8,i==3?TFT_CYAN:0x2A69);}
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(MUTED,PANEL);
-  tft.drawString("0",x+10,y+39,1); tft.drawString("90",x+w-23,y+39,1);
+  setUiTextDatum(TL_DATUM); setUiTextColor(MUTED,PANEL);
+  drawUiString("0",x+10,y+39,1); drawUiString("90",x+w-23,y+39,1);
 }
 
 static void statusRow(int y, const char* label, const char* value, uint16_t color) {
   tft.fillRoundRect(10,y,tft.width()-20,27,5,PANEL);
-  tft.setTextDatum(ML_DATUM);
-  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(label,18,y+14,2);
-  tft.setTextDatum(MR_DATUM);
-  tft.setTextColor(color,PANEL); tft.drawString(value,tft.width()-18,y+14,2);
+  setUiTextDatum(ML_DATUM);
+  setUiTextColor(TFT_WHITE,PANEL); drawUiString(label,18,y+14,2);
+  setUiTextDatum(MR_DATUM);
+  setUiTextColor(color,PANEL); drawUiString(value,tft.width()-18,y+14,2);
 }
 
 static void showInitialization() {
@@ -439,22 +565,22 @@ static void showInitialization() {
   statusRow(145,"ESP32","OK",TFT_GREEN);
   statusRow(178,"GPS MODULE",gpsSeen?"DATA":"SEARCHING",gpsSeen?TFT_GREEN:TFT_YELLOW);
   statusRow(211,"MOTOR DRIVERS","LOCKED",TFT_ORANGE);
-  tft.setTextDatum(BC_DATUM);
-  tft.setTextColor(MUTED,BG);
-  tft.drawString("Motors remain disabled during startup",tft.width()/2,tft.height()-3,1);
+  setUiTextDatum(BC_DATUM);
+  setUiTextColor(MUTED,BG);
+  drawUiString("Motors remain disabled during startup",tft.width()/2,tft.height()-3,1);
 }
 
 static void drawButton(int x,int y,int w,int h,const char* label,uint16_t color) {
   tft.fillRoundRect(x,y,w,h,5,color);
   tft.drawRoundRect(x,y,w,h,5,TFT_WHITE);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor((color==0x07FF||color==0xFFE0)?TFT_BLACK:TFT_WHITE,color);
-  tft.drawString(label,x+w/2,y+h/2,2);
+  setUiTextDatum(MC_DATUM);
+  setUiTextColor((color==0x07FF||color==0xFFE0)?TFT_BLACK:TFT_WHITE,color);
+  drawUiString(label,x+w/2,y+h/2,2);
 }
 
 static void drawField(int y,const char* label,const String& value,bool selected,bool mask) {
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(selected?TFT_CYAN:MUTED,BG);tft.drawString(label,10,y-12,1);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(selected?TFT_CYAN:MUTED,BG);drawUiString(label,10,y-12,1);
   const uint16_t fill=selected?0x123B:0x0C63;
   tft.fillRoundRect(7,y,306,25,5,fill);
   tft.drawRoundRect(7,y,306,25,5,selected?TFT_CYAN:0x3151);
@@ -463,7 +589,7 @@ static void drawField(int y,const char* label,const String& value,bool selected,
   if(mask && !passwordVisible) {for(size_t i=0;i<value.length();++i) shown += '*';}
   else shown=value;
   if(shown.length()>36) shown="..."+shown.substring(shown.length()-33);
-  tft.setTextDatum(ML_DATUM);tft.setTextColor(TFT_WHITE,fill);tft.drawString(shown,19,y+13,2);
+  setUiTextDatum(ML_DATUM);setUiTextColor(TFT_WHITE,fill);drawUiString(shown,19,y+13,2);
 }
 
 static bool readStableTouch(uint16_t &rawX,uint16_t &rawY,uint16_t &screenX,uint16_t &screenY) {
@@ -492,9 +618,9 @@ static void drawKey(int x,int y,int w,int h,const char* label, uint16_t fill=0x0
   tft.fillRoundRect(x,y,w,h,4,fill);
   tft.drawRoundRect(x,y,w,h,4,edge);
   tft.drawFastHLine(x+4,y+1,w-8,fill==KEY_NUM?0x5DFF:0x2E9F);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(fill==0x07FF?TFT_BLACK:TFT_WHITE,fill);
-  tft.drawString(label,x+w/2,y+h/2,2);
+  setUiTextDatum(MC_DATUM);
+  setUiTextColor(fill==0x07FF?TFT_BLACK:TFT_WHITE,fill);
+  drawUiString(label,x+w/2,y+h/2,2);
 }
 static void drawLetterRow(const char* keys,int y,int x,int keyW,int gap) {
   for(int i=0;keys[i];++i) {
@@ -540,17 +666,17 @@ static void showWifiSetup() {
     for(int i=0;i<12;i++){int sx=(i*59+23)%320,sy=(i*37+7)%100;tft.drawPixel(sx,sy,0x19A5);}
     tft.fillRect(0,0,320,27,0x0862);tft.fillRect(0,27,320,2,TFT_CYAN);
     tft.fillCircle(14,13,5,TFT_CYAN);tft.fillCircle(14,13,2,TFT_WHITE);
-    tft.setTextDatum(TL_DATUM);
-    tft.setTextColor(TFT_WHITE,0x0862);tft.drawString("NETWORK CONFIG",26,5,2);
+    setUiTextDatum(TL_DATUM);
+    setUiTextColor(TFT_WHITE,0x0862);drawUiString("NETWORK CONFIG",26,5,2);
     // Keep the right side clear for the shared connection icons.
   }
-  tft.setTextDatum(TL_DATUM);
+  setUiTextDatum(TL_DATUM);
   drawField(37,"NETWORK / SSID",wifiName,!editingPassword,false);
   drawField(68,"PASSWORD",wifiPassword,editingPassword,true);
   tft.fillRoundRect(7,96,306,10,4,0x1028);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(setupMessage.length()?TFT_YELLOW:MUTED,0x1028);
-  tft.drawString(setupMessage.length()?setupMessage.c_str():"SELECT A FIELD  /  TYPE YOUR WI-FI DETAILS",12,97,1);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(setupMessage.length()?TFT_YELLOW:MUTED,0x1028);
+  drawUiString(setupMessage.length()?setupMessage.c_str():"SELECT A FIELD  /  TYPE YOUR WI-FI DETAILS",12,97,1);
   if(firstDraw || keyboardNeedsRedraw) {
     if(!symbolsPage) {
       drawLetterRow("qwertyuiop",108,5,21,1);
@@ -575,8 +701,8 @@ static void showWifiSetup() {
   
     keyboardNeedsRedraw=false;
   }
-  tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_WHITE,BG);
-  tft.drawString(passwordVisible?"HIDE":"SHOW",315,91,1);
+  setUiTextDatum(MR_DATUM); setUiTextColor(TFT_WHITE,BG);
+  drawUiString(passwordVisible?"HIDE":"SHOW",315,91,1);
   drawHeaderConnectionIcons();
   wifiScreenDrawn=true;
 }
@@ -662,8 +788,8 @@ static void showConnecting() {
   tft.drawRoundRect(169,199,137,10,4,0x3151);
   tft.fillRoundRect(171,201,((millis()/35)%133),6,3,BLUE);
   drawButton(14,190,143,30,"BACK / EDIT",BLUE);
-  tft.setTextDatum(BC_DATUM); tft.setTextColor(MUTED,BG);
-  tft.drawString("Cancel connection",86,232,1);
+  setUiTextDatum(BC_DATUM); setUiTextColor(MUTED,BG);
+  drawUiString("Cancel connection",86,232,1);
 }
 
 
@@ -742,16 +868,16 @@ static void drawSelectedSatellitePhoto() {
     TJpgDec.drawJpg(15,49,selectedSatelliteImageData,selectedSatelliteImageSize);
   } else {
     drawSatelliteArtwork(96,89,2);
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_YELLOW,0x0822);
-    tft.drawString("PHOTO NOT FOUND",96,120,1);
+    setUiTextDatum(MC_DATUM);
+    setUiTextColor(TFT_YELLOW,0x0822);
+    drawUiString("PHOTO NOT FOUND",96,120,1);
   }
   tft.fillRect(8,129,175,13,0x0010);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_WHITE,0x0010);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(TFT_WHITE,0x0010);
   String label=selectedSatelliteName;
   if(label.length()>25) label=label.substring(0,25);
-  tft.drawString(label,14,130,1);
+  drawUiString(label,14,130,1);
 }
 static void drawDialNeedle(int cx,int cy,int length,float degrees,uint16_t color) {
   const float a=(degrees-90.0f)*0.0174532925f;
@@ -778,9 +904,9 @@ static void drawRadarDisplay() {
     tft.drawLine(cx+(int)(r1*cosf(q)),cy+(int)(r1*sinf(q)),
                  cx+(int)(r2*cosf(q)),cy+(int)(r2*sinf(q)),c);
   }
-  tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,BG);
-  tft.drawString("N",cx,cy-r-2,2); tft.drawString("E",cx+r+2,cy,2);
-  tft.drawString("S",cx,cy+r+2,2); tft.drawString("W",cx-r-2,cy,2);
+  setUiTextDatum(MC_DATUM); setUiTextColor(TFT_WHITE,BG);
+  drawUiString("N",cx,cy-r-2,2); drawUiString("E",cx+r+2,cy,2);
+  drawUiString("S",cx,cy+r+2,2); drawUiString("W",cx-r-2,cy,2);
   if(issPositionValid) drawDialNeedle(cx,cy,32,(float)issAzimuthDeg,TFT_CYAN);
   else tft.fillCircle(cx,cy,3,TFT_WHITE);
   // Amber point on the rim = azimuth of the next horizon rise.
@@ -808,10 +934,10 @@ static void drawGpsPanel() {
     tft.fillRoundRect(xs[i]+2,151,ws[i]-4,46,5,panelHi);
     tft.drawRoundRect(xs[i],149,ws[i],50,7,i==0?edge:0x2A69);
   }
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_CYAN,panelHi); tft.drawString("GPS",11,155,1);
-  tft.setTextColor(TFT_CYAN,panelHi); tft.drawString("SATELLITES",117,155,1);
-  tft.setTextColor(TFT_CYAN,panelHi); tft.drawString("LINK",223,155,1);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(TFT_CYAN,panelHi); drawUiString("GPS",11,155,1);
+  setUiTextColor(TFT_CYAN,panelHi); drawUiString("SATELLITES",117,155,1);
+  setUiTextColor(TFT_CYAN,panelHi); drawUiString("LINK",223,155,1);
   updateGpsTelemetry();
   updatePassCountdown();
 }
@@ -821,29 +947,29 @@ static void updateGpsTelemetry() {
   char line[32];
   // GPS fix and altitude.
   tft.fillRect(10,169,91,25,0x1045);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,0x1045);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(fix?TFT_GREEN:TFT_YELLOW,0x1045);
   if(fix) snprintf(line,sizeof(line),"%.2f %.2f",gps.location.lat(),gps.location.lng());
   else snprintf(line,sizeof(line),"SEARCHING");
-  tft.drawString(line,11,169,1);
+  drawUiString(line,11,169,1);
   if(fix) snprintf(line,sizeof(line),"ALT %.0fm",gps.altitude.meters());
   else snprintf(line,sizeof(line),"ALT ---");
-  tft.setTextColor(TFT_WHITE,0x1045); tft.drawString(line,11,183,1);
+  setUiTextColor(TFT_WHITE,0x1045); drawUiString(line,11,183,1);
   // This is the GNSS receiver's satellite count, not the orbital catalog.
   tft.fillRect(116,169,91,25,0x1045);
-  tft.setTextDatum(MC_DATUM);
+  setUiTextDatum(MC_DATUM);
   snprintf(line,sizeof(line),"%02lu",(unsigned long)(gps.satellites.isValid()?gps.satellites.value():0));
-  tft.setTextColor(TFT_WHITE,0x1045); tft.drawString(line,161,182,4);
+  setUiTextColor(TFT_WHITE,0x1045); drawUiString(line,161,182,4);
   // Wi-Fi state and UTC clock.
   tft.fillRect(222,169,90,25,0x1045);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(wifi?TFT_GREEN:TFT_ORANGE,0x1045);
-  tft.drawString(wifi?"CONNECTED":"OFFLINE",266,174,1);
-  tft.setTextColor(TFT_WHITE,0x1045);
+  setUiTextDatum(MC_DATUM);
+  setUiTextColor(wifi?TFT_GREEN:TFT_ORANGE,0x1045);
+  drawUiString(wifi?"CONNECTED":"OFFLINE",266,174,1);
+  setUiTextColor(TFT_WHITE,0x1045);
   if(gps.time.isValid()) {
     snprintf(line,sizeof(line),"%02u:%02u:%02u",gps.time.hour(),gps.time.minute(),gps.time.second());
-    tft.drawString(line,266,188,1);
-  } else tft.drawString("UTC --:--",266,188,1);
+    drawUiString(line,266,188,1);
+  } else drawUiString("UTC --:--",266,188,1);
 }
 static void updatePassCountdown() {
   if(screen!=Screen::Dashboard) return;
@@ -853,7 +979,7 @@ static void updatePassCountdown() {
   const time_t now=time(nullptr);
   if(!passPredictionValid || nextPassEventEpoch<=now) {
     snprintf(line,sizeof(line),"WAITING FOR ORBIT PASS");
-    tft.setTextColor(TFT_YELLOW,0x0010);
+    setUiTextColor(TFT_YELLOW,0x0010);
   } else {
     const uint32_t remaining=(uint32_t)(nextPassEventEpoch-now);
     snprintf(line,sizeof(line),"%s %02lu:%02lu:%02lu",
@@ -861,10 +987,10 @@ static void updatePassCountdown() {
       (unsigned long)(remaining/3600),
       (unsigned long)((remaining/60)%60),
       (unsigned long)(remaining%60));
-    tft.setTextColor(satelliteCurrentlyVisible?TFT_ORANGE:TFT_CYAN,0x0010);
+    setUiTextColor(satelliteCurrentlyVisible?TFT_ORANGE:TFT_CYAN,0x0010);
   }
-  tft.setTextDatum(MC_DATUM);
-  tft.drawString(line,160,36,2);
+  setUiTextDatum(MC_DATUM);
+  drawUiString(line,160,36,2);
 }
 static void updateTargetTelemetry() {
   char line[40];
@@ -876,9 +1002,9 @@ static void updateTargetTelemetry() {
     // without repainting the compass rose, labels, panels, or whole screen.
     tft.fillRect(15,93,132,16,0x0822);
     snprintf(line,sizeof(line),"AZ %.1f%c",targetAzimuthDeg,(char)247);
-    tft.setTextDatum(TL_DATUM);
-    tft.setTextColor(TFT_CYAN,0x0822);
-    tft.drawString(line,17,95,2);
+    setUiTextDatum(TL_DATUM);
+    setUiTextColor(TFT_CYAN,0x0822);
+    drawUiString(line,17,95,2);
     const int cx=81, cy=150;
     tft.fillCircle(cx,cy,22,0x0822);
     drawDialNeedle(cx,cy,19,targetAzimuthDeg,TFT_ORANGE);
@@ -886,14 +1012,14 @@ static void updateTargetTelemetry() {
     // Keep the motor-lock warning visible alongside the latest target values.
     tft.fillRect(10,186,300,9,0x4000);
     snprintf(line,sizeof(line),"LOCKED  AZ %.1f%c  EL %.1f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_YELLOW,0x4000);
-    tft.drawString(line,160,190,1);
+    setUiTextDatum(MC_DATUM);
+    setUiTextColor(TFT_YELLOW,0x4000);
+    drawUiString(line,160,190,1);
     tft.fillRect(184,139,106,25,0x0822);
     snprintf(line,sizeof(line),"%.1f%c",targetElevationDeg,(char)247);
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_WHITE,0x0822);
-    tft.drawString(line,237,151,4);
+    setUiTextDatum(MC_DATUM);
+    setUiTextColor(TFT_WHITE,0x0822);
+    drawUiString(line,237,151,4);
   }
 }
 static void showDashboard() {
@@ -905,9 +1031,9 @@ static void showDashboard() {
   tft.fillRect(0,0,320,27,top);
   tft.fillRect(0,26,320,2,0x03BF);
   tft.drawCircle(15,13,7,TFT_CYAN); tft.fillCircle(15,13,3,TFT_WHITE);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_WHITE,top); tft.drawString("CYD",29,4,2);
-  tft.setTextColor(0x8E7F,top); tft.drawString("SATELLITE TRACKER",65,8,1);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(TFT_WHITE,top); drawUiString("CYD",29,4,2);
+  setUiTextColor(0x8E7F,top); drawUiString("SATELLITE TRACKER",65,8,1);
   // Same live Wi-Fi and browser-link indicators as every other screen.
   drawHeaderConnectionIcons();
   drawGpsPanel();
@@ -921,10 +1047,10 @@ static void satelliteRow(int y,const char* name,const char* type,bool selected) 
   tft.fillRoundRect(9,y,302,19,5,fill);
   tft.drawRoundRect(9,y,302,19,5,selected?TFT_CYAN:0x2A69);
   tft.fillCircle(19,y+9,3,selected?TFT_GREEN:TFT_CYAN);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,fill);tft.drawString(name,29,y+2,1);
-  tft.setTextColor(MUTED,fill);tft.drawString(type,100,y+3,1);
-  tft.setTextDatum(MR_DATUM);tft.setTextColor(TFT_YELLOW,fill);
-  tft.drawString(selected?"TRACKING":"TLE PENDING",302,y+9,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_WHITE,fill);drawUiString(name,29,y+2,1);
+  setUiTextColor(MUTED,fill);drawUiString(type,100,y+3,1);
+  setUiTextDatum(MR_DATUM);setUiTextColor(TFT_YELLOW,fill);
+  drawUiString(selected?"TRACKING":"TLE PENDING",302,y+9,1);
 }
 
 static void showSatelliteScreen() {
@@ -935,15 +1061,15 @@ static void showSatelliteScreen() {
   tft.drawRoundRect(8,88,304,65,9,0x07FF);
   tft.fillRoundRect(13,93,76,55,6,0x0010);
   drawUiImage(19,96,ui_iss_jpg,sizeof(ui_iss_jpg));
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x0822);
-  tft.drawString("INTERNATIONAL",99,96,1);
-  tft.drawString("SPACE STATION",99,108,2);
-  tft.setTextColor(TFT_CYAN,0x0822);tft.drawString("ISS  /  ZARYA",99,132,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_WHITE,0x0822);
+  drawUiString("INTERNATIONAL",99,96,1);
+  drawUiString("SPACE STATION",99,108,2);
+  setUiTextColor(TFT_CYAN,0x0822);drawUiString("ISS  /  ZARYA",99,132,1);
   tft.fillRoundRect(242,96,60,17,7,0x0320);
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_GREEN,0x0320);
-  tft.drawString("PRIMARY",272,104,1);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(MUTED,BG);
-  tft.drawString("OTHER OBJECTS",11,157,1);
+  setUiTextDatum(MC_DATUM);setUiTextColor(TFT_GREEN,0x0320);
+  drawUiString("PRIMARY",272,104,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(MUTED,BG);
+  drawUiString("OTHER OBJECTS",11,157,1);
   satelliteRow(169,"NOAA-18","WEATHER  /  APT",false);
   satelliteRow(190,"NOAA-19","WEATHER  /  APT",false);
   drawNavigation(1);
@@ -954,7 +1080,7 @@ static void showAntennaScreen() {
   // Instrument console with a compass rose and elevation arc.
   tft.fillRoundRect(8,88,147,109,9,0x0822);tft.drawRoundRect(8,88,147,109,9,0x2A69);
   tft.fillRoundRect(163,88,149,109,9,0x0822);tft.drawRoundRect(163,88,149,109,9,0x2A69);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,0x0822);tft.drawString("AZIMUTH",17,95,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_CYAN,0x0822);drawUiString("AZIMUTH",17,95,1);
   const int cx=81,cy=150,rr=38;
   tft.drawCircle(cx,cy,rr,0x07FF);tft.drawCircle(cx,cy,rr-3,0x2A69);
   for(int a=0;a<360;a+=5) {
@@ -964,12 +1090,12 @@ static void showAntennaScreen() {
                  cx+(int)(r2*cosf(rad)),cy+(int)(r2*sinf(rad)),
                  a%30==0?TFT_CYAN:0x2A69);
   }
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,0x0822);
-  tft.drawString("N",cx,cy-26,1);tft.drawString("E",cx+26,cy,1);
-  tft.drawString("S",cx,cy+26,1);tft.drawString("W",cx-26,cy,1);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,0x0822);tft.drawString("ELEVATION",173,95,1);
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(MUTED,0x0822);tft.drawString("0°",180,181,1);
-  tft.drawString("45°",237,181,1);tft.drawString("90°",294,181,1);
+  setUiTextDatum(MC_DATUM);setUiTextColor(TFT_WHITE,0x0822);
+  drawUiString("N",cx,cy-26,1);drawUiString("E",cx+26,cy,1);
+  drawUiString("S",cx,cy+26,1);drawUiString("W",cx-26,cy,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_CYAN,0x0822);drawUiString("ELEVATION",173,95,1);
+  setUiTextDatum(MC_DATUM);setUiTextColor(MUTED,0x0822);drawUiString("0°",180,181,1);
+  drawUiString("45°",237,181,1);drawUiString("90°",294,181,1);
   tft.drawArc(237,151,48,39,180,360,0x2A69,0x0822,true);
   tft.drawArc(237,151,43,35,180,360,TFT_CYAN,0x0822,true);
   for(int a=180;a<=360;a+=15) {
@@ -978,10 +1104,10 @@ static void showAntennaScreen() {
                  237+(int)(37*cosf(rad)),151+(int)(37*sinf(rad)),
                  a%45==0?TFT_WHITE:0x2A69);
   }
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,0x0822);
-  tft.drawString("--.-°",237,151,4);
+  setUiTextDatum(MC_DATUM);setUiTextColor(TFT_WHITE,0x0822);
+  drawUiString("--.-°",237,151,4);
   tft.fillRoundRect(8,184,304,13,5,0x4000);tft.drawRoundRect(8,184,304,13,5,TFT_ORANGE);
-  tft.setTextColor(TFT_YELLOW,0x4000);tft.drawString("DRIVE LOCKED  /  TARGET PENDING",160,190,1);
+  setUiTextColor(TFT_YELLOW,0x4000);drawUiString("DRIVE LOCKED  /  TARGET PENDING",160,190,1);
   drawNavigation(2);
   updateTargetTelemetry();
 }
@@ -990,21 +1116,22 @@ static void showSystemScreen() {
   header("SYSTEM","DEVICE HEALTH  /  CONFIGURATION");
   const bool wifi=WiFi.status()==WL_CONNECTED;
   const bool fix=gps.location.isValid() && gps.location.age()<10000;
-  // Two status panels with clear state hierarchy.
-  tft.fillRoundRect(8,89,148,65,8,0x0822);tft.drawRoundRect(8,89,148,65,8,0x2A69);
-  tft.fillRoundRect(164,89,148,65,8,0x0822);tft.drawRoundRect(164,89,148,65,8,0x2A69);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(MUTED,0x0822);
-  tft.drawString("WI-FI CONNECTION",17,97,1);tft.drawString("GPS RECEIVER",173,97,1);
-  tft.setTextColor(wifi?TFT_GREEN:TFT_ORANGE,0x0822);tft.drawString(wifi?"ONLINE":"OFFLINE",17,114,4);
-  tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,0x0822);tft.drawString(fix?"FIX":"SEARCH",173,114,4);
-  tft.setTextColor(MUTED,0x0822);tft.drawString(wifi?WiFi.localIP().toString().c_str():"NO NETWORK",17,140,1);
-  tft.drawString(gps.satellites.isValid()?"SATELLITES RECEIVED":"WAITING FOR DATA",173,140,1);
-  tft.setTextColor(TFT_CYAN,0x0822);
-  tft.drawString("LOCAL API READY",173,151,1);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,BG);tft.drawString("QUICK ACTIONS",10,160,1);
-  drawButton(7,174,98,26,"TOUCH",0x035F);
-  drawButton(111,174,98,26,"WI-FI",0x03B9);
-  drawButton(215,174,98,26,"API",0x03B9);
+  tft.fillRoundRect(8,89,148,57,8,0x0822);tft.drawRoundRect(8,89,148,57,8,0x2A69);
+  tft.fillRoundRect(164,89,148,57,8,0x0822);tft.drawRoundRect(164,89,148,57,8,0x2A69);
+  setUiTextDatum(TL_DATUM);setUiTextColor(MUTED,0x0822);
+  drawUiString("WI-FI CONNECTION",17,95,1);drawUiString("GPS RECEIVER",173,95,1);
+  setUiTextColor(wifi?TFT_GREEN:TFT_ORANGE,0x0822);drawUiString(wifi?"ONLINE":"OFFLINE",17,109,2);
+  setUiTextColor(fix?TFT_GREEN:TFT_YELLOW,0x0822);drawUiString(fix?"FIX":"SEARCH",173,109,2);
+  setUiTextColor(MUTED,0x0822);drawUiString(wifi?WiFi.localIP().toString():"NO NETWORK",17,132,1);
+  drawUiString(gps.satellites.isValid()?"SATELLITES RECEIVED":"WAITING FOR DATA",173,132,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_CYAN,BG);drawUiString("LANGUAGE",10,150,1);
+  const uint16_t active=0x07FF,idle=0x001F;
+  drawButton(7,160,98,21,"RU",uiLanguage==1?active:idle);
+  drawButton(111,160,98,21,"EN",uiLanguage==0?active:idle);
+  drawButton(215,160,98,21,"ZH",uiLanguage==2?active:idle);
+  drawButton(7,183,98,21,"TOUCH",0x035F);
+  drawButton(111,183,98,21,"WI-FI",0x03B9);
+  drawButton(215,183,98,21,"API",0x03B9);
   drawNavigation(3);
 }
 
@@ -1047,15 +1174,15 @@ static void showTouchDiagnostic() {
   screen=Screen::TouchTest;
   tft.fillScreen(TFT_BLACK);
   tft.fillRect(0,0,tft.width(),42,0x3186);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_YELLOW,0x3186); tft.drawString("TOUCH TEST / XPT2046",8,7,2);
-  tft.setTextColor(TFT_WHITE,0x3186); tft.drawString("Tap once to start calibration",8,26,1);
-  tft.setTextColor(TFT_WHITE,TFT_BLACK);
-  tft.drawString("Raw touch controller check",12,68,2);
-  tft.drawString("X:",18,112,2); tft.drawString("Y:",18,145,2);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(TFT_YELLOW,0x3186); drawUiString("TOUCH TEST / XPT2046",8,7,2);
+  setUiTextColor(TFT_WHITE,0x3186); drawUiString("Tap once to start calibration",8,26,1);
+  setUiTextColor(TFT_WHITE,TFT_BLACK);
+  drawUiString("Raw touch controller check",12,68,2);
+  drawUiString("X:",18,112,2); drawUiString("Y:",18,145,2);
   tft.drawRoundRect(10,190,220,54,6,TFT_CYAN);
-  tft.setTextColor(TFT_YELLOW,TFT_BLACK); tft.drawString("Touch anywhere to start",16,207,2);
-  tft.setTextColor(TFT_WHITE,TFT_BLACK); tft.drawString("calibration",16,229,2);
+  setUiTextColor(TFT_YELLOW,TFT_BLACK); drawUiString("Touch anywhere to start",16,207,2);
+  setUiTextColor(TFT_WHITE,TFT_BLACK); drawUiString("calibration",16,229,2);
   rawTouchDetected=false;
 }
 
@@ -1110,8 +1237,12 @@ static void handleTouch(){
  rawTouchX=rx; rawTouchY=ry;
  Serial.printf("Touch stable raw=%u,%u mapped=%u,%u rot=%u screen=%u\\n",rx,ry,x,y,tft.getRotation(),(unsigned)screen);
  if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
- else if(screen==Screen::SystemInfo && y>=170 && y<=203) {
-   if(x<108) {
+ else if(screen==Screen::SystemInfo && y>=158 && y<=204) {
+   if(y<=181) {
+     if(x<108) selectUiLanguage(1);
+     else if(x<212) selectUiLanguage(0);
+     else selectUiLanguage(2);
+   } else if(x<108) {
      calibrationFromSystem=true; touchCalibrated=false; touchCalStep=1;
      screen=Screen::TouchTest; touchWasDown=false; drawCalibrationTarget(0);
    } else if(x<212) {
@@ -1152,9 +1283,9 @@ static void drawDisplayColorTest() {
     const int y=8+i*37;
     tft.fillRect(8,y,304,30,colors[i]);
     tft.drawRect(8,y,304,30,TFT_WHITE);
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor((i==3||i==4)?TFT_BLACK:TFT_WHITE,colors[i]);
-    tft.drawString(labels[i],160,y+15,2);
+    setUiTextDatum(MC_DATUM);
+    setUiTextColor((i==3||i==4)?TFT_BLACK:TFT_WHITE,colors[i]);
+    drawUiString(labels[i],160,y+15,2);
   }
   Serial.printf("DISPLAY COLOR TEST | rotation=%u | size=%dx%d | RGB565: F800/07E0/001F/FFFF/07FF/F81F\n",
                 tft.getRotation(),tft.width(),tft.height());
@@ -1186,22 +1317,22 @@ static void handleSerialDisplayDiagnostics() {
 static void updateOrbitTelemetry() {
   if(screen!=Screen::Satellite) return;
   tft.fillRect(10,88,300,105,BG);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_CYAN,BG);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(TFT_CYAN,BG);
   String label=selectedSatelliteName;
   if(label.length()>25) label=label.substring(0,25);
-  tft.drawString(label,14,91,2);
+  drawUiString(label,14,91,2);
   char norad[32]; snprintf(norad,sizeof(norad),"NORAD %lu",(unsigned long)selectedNoradId);
-  tft.setTextColor(MUTED,BG); tft.drawString(norad,14,111,1);
-  tft.setTextColor(issTleValid?TFT_GREEN:TFT_YELLOW,BG);
-  tft.drawString(issTleValid?"TLE OK":"TLE WAIT",220,111,1);
+  setUiTextColor(MUTED,BG); drawUiString(norad,14,111,1);
+  setUiTextColor(issTleValid?TFT_GREEN:TFT_YELLOW,BG);
+  drawUiString(issTleValid?"TLE OK":"TLE WAIT",220,111,1);
   char line[40];
-  tft.setTextColor(TFT_WHITE,BG);
-  snprintf(line,sizeof(line),"AZ  %6.1f deg",issAzimuthDeg); tft.drawString(line,14,132,2);
-  snprintf(line,sizeof(line),"EL  %6.1f deg",issElevationDeg); tft.drawString(line,14,153,2);
-  snprintf(line,sizeof(line),"RANGE %7.1f km",issRangeKm); tft.drawString(line,164,153,1);
-  tft.setTextColor(MUTED,BG);
-  tft.drawString(observerUsesGps?"GPS FIX":"DEMO: YEKATERINBURG",14,178,1);
+  setUiTextColor(TFT_WHITE,BG);
+  snprintf(line,sizeof(line),"AZ  %6.1f deg",issAzimuthDeg); drawUiString(line,14,132,2);
+  snprintf(line,sizeof(line),"EL  %6.1f deg",issElevationDeg); drawUiString(line,14,153,2);
+  snprintf(line,sizeof(line),"RANGE %7.1f km",issRangeKm); drawUiString(line,164,153,1);
+  setUiTextColor(MUTED,BG);
+  drawUiString(observerUsesGps?"GPS FIX":"DEMO: YEKATERINBURG",14,178,1);
 }
 
 static void startOrbitTimeSync() {
@@ -1711,6 +1842,7 @@ void setup() {
   pinMode(Pins::TFT_BACKLIGHT,OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT,HIGH); // Constant backlight; no PWM/fade in firmware.
   tft.init();
+  uiFont.begin(tft);
   tft.invertDisplay(true);
   pinMode(TOUCH_CS,OUTPUT);digitalWrite(TOUCH_CS,HIGH);
   pinMode(TOUCH_IRQ_PIN,INPUT);
@@ -1719,6 +1851,7 @@ void setup() {
   tft.fillScreen(TFT_BLACK);
   Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1);
   prefs.begin("cyd-tracker",false);
+  uiLanguage=prefs.getUChar("uilang",1); if(uiLanguage>2) uiLanguage=1;
   char hardwareIdBuffer[20];
   snprintf(hardwareIdBuffer,sizeof(hardwareIdBuffer),"CYD-%012llX",(unsigned long long)ESP.getEfuseMac());
   deviceHardwareId=hardwareIdBuffer;

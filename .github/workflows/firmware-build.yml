@@ -1,6 +1,11 @@
-name: CYD firmware build # V79 split TCP socket and TLS handshake diagnostics
+name: CYD firmware build # V80 local browser command API
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware-build.yml"
   push:
     branches: [main]
     paths:
@@ -54,7 +59,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.11.79"
+          FW_VERSION="v2026.11.12.80"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 

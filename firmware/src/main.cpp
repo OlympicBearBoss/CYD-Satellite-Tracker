@@ -1151,7 +1151,13 @@ static void updateSelectedOrbit() {
     issElevationDeg=issSgp4.satEl;
     issRangeKm=issSgp4.satDist;
     issPositionValid=true;
+    // Feed the live SGP4 solution into the same target values rendered by
+    // the dashboard and rotator screens. These are display/setpoint values;
+    // motor outputs remain physically and logically disabled.
+    targetAzimuthDeg=(float)issAzimuthDeg;
+    targetElevationDeg=(float)issElevationDeg;
     orbitDataMessage="SGP4: рассчитано положение "+selectedSatelliteName;
+    if(screen==Screen::Dashboard || screen==Screen::Antenna) updateTargetTelemetry();
   } else {
     issPositionValid=false;
     orbitDataMessage="SGP4 не вернул координаты выбранного спутника";
@@ -1171,7 +1177,7 @@ static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V84";
+  doc["firmware"]="V86";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
@@ -1211,6 +1217,7 @@ static void sendLocalStatus() {
   doc["control"]["target_azimuth_deg"]=targetAzimuthDeg;
   doc["control"]["target_elevation_deg"]=targetElevationDeg;
   doc["control"]["tracking_requested"]=trackingRequested;
+  doc["control"]["target_source"]=issPositionValid?"sgp4":"pending";
   doc["control"]["motors_enabled"]=false;
   doc["last_command_sequence"]=localCommandSequence;
   String body; serializeJson(doc,body);
@@ -1312,7 +1319,9 @@ refreshStatus();setInterval(refreshStatus,1000);
       selectedSatelliteName=requestedName.length()?requestedName:("NORAD "+String(norad));
       issTleValid=false; issPositionValid=false;
       lastTleAttemptMs=0; lastTleSuccessMs=0; lastOrbitCalcMs=0;
-      trackingRequested=false;
+      targetAzimuthDeg=0.0f;
+      targetElevationDeg=0.0f;
+      trackingRequested=true;
       orbitDataMessage="Загрузка орбиты выбранного спутника";
       message="Выбран "+selectedSatelliteName+" · NORAD "+String(selectedNoradId)+". Загружаю TLE и рассчитываю SGP4.";
     } else if(command=="tracking") {
@@ -1415,7 +1424,7 @@ void loop() {
   if(!displayDiagnosticActive) updateSelectedOrbit();
   // Refresh only dynamic telemetry; keep artwork and navigation static.
   if(!displayDiagnosticActive && now-lastDashboardRefreshAt>=1000) {
-    if(screen==Screen::Dashboard) updateGpsTelemetry();
+    if(screen==Screen::Dashboard) { updateGpsTelemetry(); updateTargetTelemetry(); }
     if(screen==Screen::Antenna) updateTargetTelemetry();
     if(screen==Screen::Satellite) updateOrbitTelemetry();
     lastDashboardRefreshAt=now;

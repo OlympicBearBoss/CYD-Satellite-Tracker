@@ -831,7 +831,7 @@ function renderRadarObjects(){
  renderRadarPassOverlay();
 }
 
-window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.entries(positions).forEach(([id,p])=>{if(!objectData[id])return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;if(selected===id){$("overviewAz").textContent=p.az.toFixed(1)+"°";$("overviewEl").textContent=p.el.toFixed(1)+"°";setAxes(p.az,p.el);}});renderRadarObjects();});
+window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.entries(positions).forEach(([id,p])=>{if(!objectData[id])return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;});renderRadarObjects();});
 window.addEventListener("cyd-pass-prediction-update",renderRadarPassOverlay);
 window.addEventListener("cyd-selected-target-change",renderRadarPassOverlay);
 function addLog(code,message){const d=new Date();logItems.unshift([d.toLocaleTimeString("ru-RU"),code,message,message]);logItems=logItems.slice(0,30);renderLog();}

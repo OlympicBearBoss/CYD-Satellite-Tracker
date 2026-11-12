@@ -1,15 +1,80 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-12T08:01:13.878Z",
+  "generatedAt": "2026-11-12T08:15:22.262Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
-    "checked": 300,
-    "downloaded": 93,
-    "missing": 202,
-    "failed": 5,
-    "maxChecks": 300
+    "checked": 319,
+    "downloaded": 28,
+    "missing": 285,
+    "failed": 6,
+    "maxChecks": 600
   },
   "images": {
+    "694": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:32.832Z",
+      "name": ""
+    },
+    "733": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:33.158Z",
+      "name": ""
+    },
+    "877": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:33.477Z",
+      "name": ""
+    },
+    "2802": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:33.787Z",
+      "name": ""
+    },
+    "3230": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:34.106Z",
+      "name": ""
+    },
+    "3597": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:34.418Z",
+      "name": ""
+    },
+    "3669": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:34.734Z",
+      "name": "ISIS-1"
+    },
+    "4327": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:35.047Z",
+      "name": ""
+    },
+    "5118": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:35.361Z",
+      "name": ""
+    },
+    "5560": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:35.684Z",
+      "name": "ASTEX 1"
+    },
+    "5730": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:36.002Z",
+      "name": ""
+    },
+    "6153": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:36.313Z",
+      "name": ""
+    },
+    "6155": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:36.625Z",
+      "name": ""
+    },
     "7530": {
       "status": "available",
       "path": "/satellite-images/7530.jpg",
@@ -18,6 +83,76 @@
       "bytes": 4191,
       "checkedAt": "2026-11-12T07:59:56.866Z",
       "name": "OSCAR 7"
+    },
+    "8459": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:36.937Z",
+      "name": ""
+    },
+    "10114": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:37.258Z",
+      "name": ""
+    },
+    "10967": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:37.578Z",
+      "name": ""
+    },
+    "11267": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:37.898Z",
+      "name": ""
+    },
+    "11574": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:38.222Z",
+      "name": ""
+    },
+    "11672": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:38.545Z",
+      "name": ""
+    },
+    "12139": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:38.864Z",
+      "name": ""
+    },
+    "12465": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:39.186Z",
+      "name": ""
+    },
+    "12904": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:39.499Z",
+      "name": ""
+    },
+    "13068": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:39.820Z",
+      "name": ""
+    },
+    "13154": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:40.145Z",
+      "name": ""
+    },
+    "13403": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:40.461Z",
+      "name": ""
+    },
+    "13553": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:40.779Z",
+      "name": ""
+    },
+    "13819": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:41.090Z",
+      "name": ""
     },
     "14129": {
       "status": "available",
@@ -28,6 +163,16 @@
       "checkedAt": "2026-11-12T07:59:57.351Z",
       "name": "Phase 3-B"
     },
+    "14208": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:41.404Z",
+      "name": ""
+    },
+    "14699": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:41.717Z",
+      "name": ""
+    },
     "14781": {
       "status": "available",
       "path": "/satellite-images/14781.jpg",
@@ -37,10 +182,290 @@
       "checkedAt": "2026-11-12T07:59:57.743Z",
       "name": "UOSAT 2"
     },
+    "14820": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:42.033Z",
+      "name": ""
+    },
+    "15483": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:42.347Z",
+      "name": ""
+    },
+    "15772": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:42.659Z",
+      "name": ""
+    },
+    "15945": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:42.978Z",
+      "name": ""
+    },
+    "16182": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:43.298Z",
+      "name": ""
+    },
+    "16496": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:43.609Z",
+      "name": ""
+    },
+    "16719": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:43.919Z",
+      "name": ""
+    },
+    "16792": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:44.234Z",
+      "name": ""
+    },
+    "16882": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:44.556Z",
+      "name": ""
+    },
+    "16908": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:44.876Z",
+      "name": ""
+    },
+    "17567": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:45.198Z",
+      "name": ""
+    },
+    "17589": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:45.515Z",
+      "name": ""
+    },
+    "17590": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:45.829Z",
+      "name": ""
+    },
+    "17912": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:46.142Z",
+      "name": ""
+    },
+    "17973": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:46.471Z",
+      "name": ""
+    },
+    "18153": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:46.794Z",
+      "name": ""
+    },
+    "18187": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:47.113Z",
+      "name": ""
+    },
+    "18749": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:47.426Z",
+      "name": ""
+    },
+    "18958": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:47.739Z",
+      "name": ""
+    },
+    "19046": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:48.052Z",
+      "name": ""
+    },
+    "19120": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:48.366Z",
+      "name": ""
+    },
+    "19210": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:48.676Z",
+      "name": ""
+    },
+    "19257": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:48.998Z",
+      "name": ""
+    },
+    "19573": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:49.312Z",
+      "name": ""
+    },
+    "19574": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:49.629Z",
+      "name": ""
+    },
+    "19650": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:49.954Z",
+      "name": ""
+    },
+    "20261": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:50.266Z",
+      "name": ""
+    },
+    "20262": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:50.589Z",
+      "name": ""
+    },
+    "20323": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:50.908Z",
+      "name": ""
+    },
     "20442": {
       "status": "error",
-      "checkedAt": "2026-11-12T07:59:58.127Z",
+      "checkedAt": "2026-11-12T08:13:30.237Z",
       "error": "unsupported image type: image/gif"
+    },
+    "20443": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:51.230Z",
+      "name": ""
+    },
+    "20465": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:51.544Z",
+      "name": ""
+    },
+    "20466": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:51.863Z",
+      "name": ""
+    },
+    "20511": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:52.188Z",
+      "name": ""
+    },
+    "20580": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:52.370Z",
+      "name": ""
+    },
+    "20625": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:52.510Z",
+      "name": ""
+    },
+    "20663": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:52.832Z",
+      "name": ""
+    },
+    "20666": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:53.154Z",
+      "name": ""
+    },
+    "20775": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:53.486Z",
+      "name": ""
+    },
+    "21088": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:53.807Z",
+      "name": ""
+    },
+    "21397": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:54.127Z",
+      "name": ""
+    },
+    "21422": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:54.449Z",
+      "name": ""
+    },
+    "21423": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:54.765Z",
+      "name": ""
+    },
+    "21574": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:55.080Z",
+      "name": ""
+    },
+    "21610": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:55.404Z",
+      "name": ""
+    },
+    "21819": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:55.719Z",
+      "name": ""
+    },
+    "21876": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:56.034Z",
+      "name": ""
+    },
+    "21938": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:56.348Z",
+      "name": ""
+    },
+    "21949": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:56.670Z",
+      "name": ""
+    },
+    "22219": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:56.981Z",
+      "name": ""
+    },
+    "22220": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:57.295Z",
+      "name": ""
+    },
+    "22236": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:57.609Z",
+      "name": ""
+    },
+    "22285": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:57.928Z",
+      "name": ""
+    },
+    "22286": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:58.241Z",
+      "name": ""
+    },
+    "22566": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:58.563Z",
+      "name": ""
+    },
+    "22626": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:58.879Z",
+      "name": ""
+    },
+    "22803": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:59.194Z",
+      "name": ""
     },
     "22825": {
       "status": "available",
@@ -60,6 +485,31 @@
       "checkedAt": "2026-11-12T07:59:59.209Z",
       "name": "ITAMSAT"
     },
+    "22830": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:59.516Z",
+      "name": ""
+    },
+    "23087": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:59.835Z",
+      "name": ""
+    },
+    "23088": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:00.157Z",
+      "name": ""
+    },
+    "23343": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:00.469Z",
+      "name": ""
+    },
+    "23405": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:00.785Z",
+      "name": ""
+    },
     "23439": {
       "status": "available",
       "path": "/satellite-images/23439.jpg",
@@ -69,15 +519,50 @@
       "checkedAt": "2026-11-12T07:59:59.617Z",
       "name": "RADIO ROSTO"
     },
+    "23561": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:01.105Z",
+      "name": ""
+    },
+    "23705": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:01.429Z",
+      "name": ""
+    },
+    "23802": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:52.699Z",
+      "name": "POLAR"
+    },
     "24278": {
       "status": "error",
-      "checkedAt": "2026-11-12T08:00:00.011Z",
+      "checkedAt": "2026-11-12T08:13:30.675Z",
       "error": "unsupported image type: image/gif"
+    },
+    "24298": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:01.745Z",
+      "name": ""
+    },
+    "24883": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:02.055Z",
+      "name": ""
     },
     "25397": {
       "status": "error",
-      "checkedAt": "2026-11-12T08:00:00.493Z",
+      "checkedAt": "2026-11-12T08:13:31.242Z",
       "error": "unsupported image type: image/gif"
+    },
+    "25400": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:02.378Z",
+      "name": ""
+    },
+    "25407": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:02.692Z",
+      "name": ""
     },
     "25544": {
       "status": "available",
@@ -88,15 +573,109 @@
       "checkedAt": "2026-11-12T07:59:25.745Z",
       "name": "ISS"
     },
+    "25560": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:53.017Z",
+      "name": ""
+    },
+    "25732": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:03.005Z",
+      "name": ""
+    },
+    "25860": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:03.321Z",
+      "name": ""
+    },
+    "25861": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:03.641Z",
+      "name": ""
+    },
+    "25867": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:53.333Z",
+      "name": ""
+    },
+    "25876": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:03.960Z",
+      "name": ""
+    },
+    "25977": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:04.276Z",
+      "name": ""
+    },
+    "25989": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:53.650Z",
+      "name": ""
+    },
+    "25994": {
+      "status": "available",
+      "path": "/satellite-images/25994.jpg",
+      "source": "https://db.satnogs.org/media/satellites/PostPropLeakW_small.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 10226,
+      "checkedAt": "2026-11-12T08:13:54.454Z",
+      "name": "TERRA"
+    },
+    "26070": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:04.586Z",
+      "name": ""
+    },
     "26407": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:00:41.681Z",
       "name": ""
     },
+    "26474": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:04.905Z",
+      "name": ""
+    },
     "26931": {
       "status": "error",
-      "checkedAt": "2026-11-12T08:00:00.968Z",
+      "checkedAt": "2026-11-12T08:13:31.801Z",
       "error": "unsupported image type: image/gif"
+    },
+    "26998": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:54.767Z",
+      "name": ""
+    },
+    "27386": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:05.220Z",
+      "name": ""
+    },
+    "27422": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:05.532Z",
+      "name": ""
+    },
+    "27424": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:05.856Z",
+      "name": "AQUA"
+    },
+    "27432": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:06.175Z",
+      "name": ""
+    },
+    "27597": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:06.495Z",
+      "name": ""
+    },
+    "27601": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:06.822Z",
+      "name": ""
     },
     "27607": {
       "status": "available",
@@ -107,9 +686,24 @@
       "checkedAt": "2026-11-12T08:00:01.354Z",
       "name": "SAUDISAT 1C"
     },
+    "27640": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:55.087Z",
+      "name": "Coriolis"
+    },
+    "27651": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:55.404Z",
+      "name": ""
+    },
     "27663": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:00:41.976Z",
+      "name": ""
+    },
+    "27843": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:55.719Z",
       "name": ""
     },
     "27844": {
@@ -130,6 +724,11 @@
       "checkedAt": "2026-11-12T08:00:02.144Z",
       "name": "CUBESAT XI-IV"
     },
+    "27858": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:56.038Z",
+      "name": "SCISAT 1"
+    },
     "27939": {
       "status": "available",
       "path": "/satellite-images/27939.jpg",
@@ -144,15 +743,45 @@
       "checkedAt": "2026-11-12T07:59:31.781Z",
       "name": "DMSP 5F-3 (USA 172)"
     },
+    "28059": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:07.143Z",
+      "name": ""
+    },
     "28190": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:00:42.264Z",
+      "name": ""
+    },
+    "28353": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:07.458Z",
+      "name": ""
+    },
+    "28415": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:07.768Z",
       "name": ""
     },
     "28474": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:00:42.558Z",
       "name": "NAVSTAR 56"
+    },
+    "28480": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:08.085Z",
+      "name": ""
+    },
+    "28499": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:08.394Z",
+      "name": ""
+    },
+    "28738": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:08.716Z",
+      "name": ""
     },
     "28874": {
       "status": "not-found",
@@ -178,9 +807,44 @@
       "checkedAt": "2026-11-12T07:59:32.075Z",
       "name": ""
     },
+    "28931": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:09.037Z",
+      "name": ""
+    },
+    "28932": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:09.351Z",
+      "name": ""
+    },
+    "29228": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:09.665Z",
+      "name": ""
+    },
+    "29479": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:56.361Z",
+      "name": "Hinode (SOLAR B)"
+    },
     "29486": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:00:43.439Z",
+      "name": ""
+    },
+    "29505": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:56.691Z",
+      "name": "SJ-6C"
+    },
+    "29506": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:57.006Z",
+      "name": "SJ-6D"
+    },
+    "29507": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:09.976Z",
       "name": ""
     },
     "29522": {
@@ -192,6 +856,26 @@
       "status": "not-found",
       "checkedAt": "2026-11-12T08:00:43.740Z",
       "name": "NAVSTAR 59"
+    },
+    "31114": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:10.290Z",
+      "name": ""
+    },
+    "31598": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:10.613Z",
+      "name": "SKYMED 1"
+    },
+    "31792": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:10.932Z",
+      "name": ""
+    },
+    "31793": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:11.250Z",
+      "name": ""
     },
     "32260": {
       "status": "not-found",
@@ -232,9 +916,14 @@
       "checkedAt": "2026-11-12T08:00:03.523Z",
       "name": "CUTE-1.7+APD II"
     },
+    "32790": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:08.523Z",
+      "name": ""
+    },
     "32791": {
       "status": "error",
-      "checkedAt": "2026-11-12T08:00:03.997Z",
+      "checkedAt": "2026-11-12T08:13:32.359Z",
       "error": "unsupported image type: image/gif"
     },
     "32953": {
@@ -255,6 +944,11 @@
       "checkedAt": "2026-11-12T07:59:32.977Z",
       "name": "FENGYUN 3A"
     },
+    "33053": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:57.327Z",
+      "name": ""
+    },
     "33499": {
       "status": "available",
       "path": "/satellite-images/33499.jpg",
@@ -263,6 +957,11 @@
       "bytes": 24222,
       "checkedAt": "2026-11-12T08:00:05.085Z",
       "name": "KKS-1"
+    },
+    "33504": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:11.569Z",
+      "name": ""
     },
     "35491": {
       "status": "not-found",
@@ -330,15 +1029,34 @@
       "checkedAt": "2026-11-12T08:00:06.955Z",
       "name": "XIWANG-1"
     },
+    "36395": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:57.639Z",
+      "name": ""
+    },
     "36411": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:33.882Z",
       "name": ""
     },
+    "36508": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:57.955Z",
+      "name": "CryoSat-2"
+    },
     "36585": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:00:46.615Z",
       "name": ""
+    },
+    "36799": {
+      "status": "available",
+      "path": "/satellite-images/36799.jpg",
+      "source": "https://db.satnogs.org/media/satellites/TISAT-1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 11634,
+      "checkedAt": "2026-11-12T08:14:09.104Z",
+      "name": "TISAT 1"
     },
     "36828": {
       "status": "not-found",
@@ -378,9 +1096,19 @@
       "checkedAt": "2026-11-12T08:00:47.766Z",
       "name": ""
     },
+    "37389": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:58.287Z",
+      "name": ""
+    },
     "37605": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:00:48.056Z",
+      "name": ""
+    },
+    "37731": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:11.888Z",
       "name": ""
     },
     "37763": {
@@ -461,6 +1189,21 @@
       "checkedAt": "2026-11-12T08:00:51.234Z",
       "name": "BEIDOU 13"
     },
+    "38337": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:58.619Z",
+      "name": "GCOM W1"
+    },
+    "38341": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:12.207Z",
+      "name": ""
+    },
+    "38358": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:58.939Z",
+      "name": ""
+    },
     "38552": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:35.060Z",
@@ -510,6 +1253,11 @@
       "checkedAt": "2026-11-12T08:00:53.297Z",
       "name": ""
     },
+    "39089": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:59.259Z",
+      "name": ""
+    },
     "39090": {
       "status": "available",
       "path": "/satellite-images/39090.jpg",
@@ -518,6 +1266,24 @@
       "bytes": 13024,
       "checkedAt": "2026-11-12T08:00:08.735Z",
       "name": "STRAND-1"
+    },
+    "39091": {
+      "status": "available",
+      "path": "/satellite-images/39091.jpg",
+      "source": "https://db.satnogs.org/media/satellites/BRITE-AUSTRIA.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 30712,
+      "checkedAt": "2026-11-12T08:14:00.189Z",
+      "name": "BRITE-AUSTRIA"
+    },
+    "39151": {
+      "status": "available",
+      "path": "/satellite-images/39151.jpg",
+      "source": "https://db.satnogs.org/media/satellites/NEE-01_PEGASUS.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 8160,
+      "checkedAt": "2026-11-12T08:14:09.550Z",
+      "name": "NEE-01 PEGASUS"
     },
     "39155": {
       "status": "not-found",
@@ -529,6 +1295,11 @@
       "checkedAt": "2026-11-12T08:00:53.877Z",
       "name": ""
     },
+    "39197": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:00.521Z",
+      "name": "IRIS"
+    },
     "39199": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:00:54.164Z",
@@ -539,10 +1310,39 @@
       "checkedAt": "2026-11-12T07:59:35.933Z",
       "name": ""
     },
+    "39253": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:00.841Z",
+      "name": ""
+    },
     "39260": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:36.228Z",
       "name": "FENGYUN 3C"
+    },
+    "39265": {
+      "status": "available",
+      "path": "/satellite-images/39265.jpg",
+      "source": "https://db.satnogs.org/media/satellites/CASSIOPE_satellite.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 26989,
+      "checkedAt": "2026-11-12T08:14:01.550Z",
+      "name": "CASSIOPE"
+    },
+    "39269": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:09.864Z",
+      "name": ""
+    },
+    "39270": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:10.184Z",
+      "name": ""
+    },
+    "39358": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:12.523Z",
+      "name": ""
     },
     "39417": {
       "status": "available",
@@ -552,6 +1352,25 @@
       "bytes": 5953,
       "checkedAt": "2026-11-12T08:00:09.124Z",
       "name": "ZACUBE-1"
+    },
+    "39422": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:01.865Z",
+      "name": ""
+    },
+    "39423": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:10.499Z",
+      "name": ""
+    },
+    "39427": {
+      "status": "available",
+      "path": "/satellite-images/39427.jpg",
+      "source": "https://db.satnogs.org/media/satellites/delfi-next__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 5813,
+      "checkedAt": "2026-11-12T08:14:11.088Z",
+      "name": "TRITON-1"
     },
     "39430": {
       "status": "available",
@@ -571,6 +1390,11 @@
       "checkedAt": "2026-11-12T08:00:10.126Z",
       "name": "CUBEBUG-2"
     },
+    "39441": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:11.408Z",
+      "name": "NEE-02 Krysaor"
+    },
     "39444": {
       "status": "available",
       "path": "/satellite-images/39444.jpg",
@@ -588,6 +1412,21 @@
       "bytes": 12252,
       "checkedAt": "2026-11-12T08:00:11.100Z",
       "name": "UWE-3"
+    },
+    "39451": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:02.189Z",
+      "name": "SWARM B"
+    },
+    "39452": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:02.515Z",
+      "name": "SWARM A"
+    },
+    "39453": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:02.847Z",
+      "name": "SWARM C"
     },
     "39533": {
       "status": "not-found",
@@ -609,6 +1448,11 @@
       "checkedAt": "2026-11-12T08:00:55.329Z",
       "name": ""
     },
+    "39679": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:12.841Z",
+      "name": ""
+    },
     "39727": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:00:55.953Z",
@@ -618,6 +1462,15 @@
       "status": "not-found",
       "checkedAt": "2026-11-12T08:00:56.239Z",
       "name": ""
+    },
+    "39766": {
+      "status": "available",
+      "path": "/satellite-images/39766.jpg",
+      "source": "https://db.satnogs.org/media/satellites/alos2_main_001.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 14733,
+      "checkedAt": "2026-11-12T08:15:13.759Z",
+      "name": "Alos 2"
     },
     "40001": {
       "status": "not-found",
@@ -633,6 +1486,20 @@
       "checkedAt": "2026-11-12T08:00:11.588Z",
       "name": "UNISAT-6"
     },
+    "40020": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:03.169Z",
+      "name": "BRITE-CA 1"
+    },
+    "40024": {
+      "status": "available",
+      "path": "/satellite-images/40024.jpg",
+      "source": "https://db.satnogs.org/media/satellites/nanosat.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 14129,
+      "checkedAt": "2026-11-12T08:14:11.999Z",
+      "name": "NANOSATC-BR1"
+    },
     "40025": {
       "status": "available",
       "path": "/satellite-images/40025.jpg",
@@ -641,6 +1508,80 @@
       "bytes": 8465,
       "checkedAt": "2026-11-12T08:00:12.074Z",
       "name": "QB50P1"
+    },
+    "40032": {
+      "status": "available",
+      "path": "/satellite-images/40032.jpg",
+      "source": "https://db.satnogs.org/media/satellites/qb50p2__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 8408,
+      "checkedAt": "2026-11-12T08:14:12.593Z",
+      "name": "QB50P2"
+    },
+    "40037": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:12.912Z",
+      "name": ""
+    },
+    "40039": {
+      "status": "available",
+      "path": "/satellite-images/40039.jpg",
+      "source": "https://db.satnogs.org/media/satellites/perseus-m__2.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 5270,
+      "checkedAt": "2026-11-12T08:14:13.367Z",
+      "name": "PERSEUS M1"
+    },
+    "40042": {
+      "status": "available",
+      "path": "/satellite-images/40042.jpg",
+      "source": "https://db.satnogs.org/media/satellites/polyitan.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 13202,
+      "checkedAt": "2026-11-12T08:14:13.935Z",
+      "name": "POLYITAN-1"
+    },
+    "40043": {
+      "status": "available",
+      "path": "/satellite-images/40043.jpg",
+      "source": "https://db.satnogs.org/media/satellites/tigrisat__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 8774,
+      "checkedAt": "2026-11-12T08:14:14.385Z",
+      "name": "TIGRISAT"
+    },
+    "40045": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:14.711Z",
+      "name": ""
+    },
+    "40046": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:15.022Z",
+      "name": ""
+    },
+    "40055": {
+      "status": "available",
+      "path": "/satellite-images/40055.jpg",
+      "source": "https://db.satnogs.org/media/satellites/CANX-4.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 5780,
+      "checkedAt": "2026-11-12T08:14:15.585Z",
+      "name": "CANX-4"
+    },
+    "40056": {
+      "status": "available",
+      "path": "/satellite-images/40056.jpg",
+      "source": "https://db.satnogs.org/media/satellites/CANX-4.5.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 19642,
+      "checkedAt": "2026-11-12T08:14:16.296Z",
+      "name": "CANX-5"
+    },
+    "40059": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:03.488Z",
+      "name": ""
     },
     "40069": {
       "status": "available",
@@ -651,10 +1592,20 @@
       "checkedAt": "2026-11-12T07:59:36.826Z",
       "name": "METEOR M-2"
     },
+    "40074": {
+      "status": "error",
+      "checkedAt": "2026-11-12T08:14:16.731Z",
+      "error": "unsupported image type: image/gif"
+    },
     "40105": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:00:56.818Z",
       "name": ""
+    },
+    "40119": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:03.821Z",
+      "name": "BRITE-PL 2"
     },
     "40128": {
       "status": "not-found",
@@ -689,6 +1640,26 @@
     "40367": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:37.411Z",
+      "name": ""
+    },
+    "40482": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:04.141Z",
+      "name": ""
+    },
+    "40483": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:04.454Z",
+      "name": ""
+    },
+    "40484": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:04.766Z",
+      "name": ""
+    },
+    "40485": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:05.081Z",
       "name": ""
     },
     "40534": {
@@ -745,9 +1716,24 @@
       "checkedAt": "2026-11-12T08:00:12.565Z",
       "name": "LILACSAT 2"
     },
+    "40930": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:05.392Z",
+      "name": ""
+    },
     "40938": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:01:00.908Z",
+      "name": ""
+    },
+    "40965": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:17.046Z",
+      "name": ""
+    },
+    "40966": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:17.356Z",
       "name": ""
     },
     "40967": {
@@ -759,6 +1745,45 @@
       "checkedAt": "2026-11-12T08:00:13.147Z",
       "name": "FOX-1A"
     },
+    "40968": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:17.675Z",
+      "name": ""
+    },
+    "40971": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:17.985Z",
+      "name": ""
+    },
+    "40973": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:18.303Z",
+      "name": ""
+    },
+    "40974": {
+      "status": "available",
+      "path": "/satellite-images/40974.jpg",
+      "source": "https://db.satnogs.org/media/satellites/BISONSAT.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 9543,
+      "checkedAt": "2026-11-12T08:14:18.866Z",
+      "name": "BISONSAT"
+    },
+    "40975": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:19.183Z",
+      "name": ""
+    },
+    "40976": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:19.503Z",
+      "name": ""
+    },
+    "40977": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:19.824Z",
+      "name": ""
+    },
     "41019": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:01:01.200Z",
@@ -769,10 +1794,20 @@
       "checkedAt": "2026-11-12T08:01:01.497Z",
       "name": ""
     },
+    "41038": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:14.070Z",
+      "name": ""
+    },
     "41105": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:38.007Z",
       "name": "Elektro-L 2"
+    },
+    "41173": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:05.716Z",
+      "name": "DAMPE"
     },
     "41174": {
       "status": "not-found",
@@ -802,6 +1837,11 @@
     "41335": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:38.298Z",
+      "name": ""
+    },
+    "41337": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:14.381Z",
       "name": ""
     },
     "41434": {
@@ -839,6 +1879,11 @@
       "checkedAt": "2026-11-12T07:59:38.587Z",
       "name": ""
     },
+    "41784": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:06.039Z",
+      "name": ""
+    },
     "41836": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:38.880Z",
@@ -852,6 +1897,31 @@
       "bytes": 16733,
       "checkedAt": "2026-11-12T08:00:13.552Z",
       "name": "CAS-2T"
+    },
+    "41849": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:20.148Z",
+      "name": ""
+    },
+    "41850": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:20.467Z",
+      "name": ""
+    },
+    "41851": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:20.779Z",
+      "name": ""
+    },
+    "41852": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:21.101Z",
+      "name": ""
+    },
+    "41853": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:21.418Z",
+      "name": ""
     },
     "41859": {
       "status": "not-found",
@@ -928,6 +1998,38 @@
       "checkedAt": "2026-11-12T08:01:06.416Z",
       "name": ""
     },
+    "42758": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:06.355Z",
+      "name": "HXMT"
+    },
+    "42831": {
+      "status": "available",
+      "path": "/satellite-images/42831.jpg",
+      "source": "https://db.satnogs.org/media/satellites/flp_closed_SatNOGS-DB-Icon.png",
+      "contentType": "image/jpeg",
+      "bytes": 6411,
+      "checkedAt": "2026-11-12T08:14:07.263Z",
+      "name": "FLYING LAPTOP"
+    },
+    "42846": {
+      "status": "available",
+      "path": "/satellite-images/42846.jpg",
+      "source": "https://db.satnogs.org/media/satellites/corvus-bc__1_ZNzYIdw.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 8433,
+      "checkedAt": "2026-11-12T08:14:21.996Z",
+      "name": "CORVUS BC2"
+    },
+    "42847": {
+      "status": "available",
+      "path": "/satellite-images/42847.jpg",
+      "source": "https://db.satnogs.org/media/satellites/corvus-bc__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 8433,
+      "checkedAt": "2026-11-12T08:14:22.608Z",
+      "name": "CORVUS BC1"
+    },
     "42917": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:01:06.709Z",
@@ -967,6 +2069,11 @@
       "checkedAt": "2026-11-12T07:59:42.661Z",
       "name": "NOAA 20"
     },
+    "43016": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:22.946Z",
+      "name": "MAKERSAT 0"
+    },
     "43017": {
       "status": "available",
       "path": "/satellite-images/43017.jpg",
@@ -1005,6 +2112,11 @@
       "status": "not-found",
       "checkedAt": "2026-11-12T08:01:09.596Z",
       "name": ""
+    },
+    "43194": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:07.582Z",
+      "name": "ZHANGHENG-1"
     },
     "43207": {
       "status": "not-found",
@@ -1091,6 +2203,36 @@
       "checkedAt": "2026-11-12T08:01:13.698Z",
       "name": ""
     },
+    "43603": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:32.672Z",
+      "name": ""
+    },
+    "43622": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:32.992Z",
+      "name": ""
+    },
+    "43623": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:33.304Z",
+      "name": ""
+    },
+    "43641": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:14.698Z",
+      "name": "SAOCOM 1-A"
+    },
+    "43647": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:33.622Z",
+      "name": ""
+    },
+    "43648": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:33.943Z",
+      "name": ""
+    },
     "43678": {
       "status": "available",
       "path": "/satellite-images/43678.jpg",
@@ -1099,6 +2241,21 @@
       "bytes": 13891,
       "checkedAt": "2026-11-12T08:00:14.450Z",
       "name": "DIWATA-2"
+    },
+    "43682": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:15.009Z",
+      "name": ""
+    },
+    "43683": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:34.259Z",
+      "name": ""
+    },
+    "43687": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:34.570Z",
+      "name": ""
     },
     "43689": {
       "status": "available",
@@ -1117,6 +2274,26 @@
       "bytes": 9597,
       "checkedAt": "2026-11-12T08:00:15.123Z",
       "name": "Es'hail 2"
+    },
+    "43706": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:34.891Z",
+      "name": ""
+    },
+    "43707": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:35.207Z",
+      "name": ""
+    },
+    "43759": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:23.266Z",
+      "name": "SIRION PATHFINDER-2"
+    },
+    "43767": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:23.588Z",
+      "name": "CORVUS BC4"
     },
     "43770": {
       "status": "available",
@@ -1150,6 +2327,11 @@
       "checkedAt": "2026-11-12T07:59:44.422Z",
       "name": ""
     },
+    "43873": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:35.523Z",
+      "name": ""
+    },
     "43880": {
       "status": "available",
       "path": "/satellite-images/43880.jpg",
@@ -1159,10 +2341,80 @@
       "checkedAt": "2026-11-12T08:00:17.013Z",
       "name": "UWE-4"
     },
+    "44204": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:35.841Z",
+      "name": ""
+    },
+    "44231": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:36.158Z",
+      "name": ""
+    },
+    "44299": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:36.480Z",
+      "name": ""
+    },
+    "44337": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:36.807Z",
+      "name": ""
+    },
     "44387": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:44.714Z",
       "name": "METEOR M-2-2"
+    },
+    "44506": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:37.127Z",
+      "name": ""
+    },
+    "44542": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:37.450Z",
+      "name": ""
+    },
+    "44543": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:37.768Z",
+      "name": ""
+    },
+    "44624": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:38.085Z",
+      "name": ""
+    },
+    "44709": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:38.408Z",
+      "name": ""
+    },
+    "44793": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:38.738Z",
+      "name": ""
+    },
+    "44794": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:39.064Z",
+      "name": ""
+    },
+    "44850": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:39.387Z",
+      "name": ""
+    },
+    "44864": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:39.707Z",
+      "name": ""
+    },
+    "44865": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:40.024Z",
+      "name": ""
     },
     "44881": {
       "status": "not-found",
@@ -1178,6 +2430,41 @@
       "checkedAt": "2026-11-12T08:00:17.719Z",
       "name": "DOSAAF-85"
     },
+    "45344": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:40.337Z",
+      "name": ""
+    },
+    "45358": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:40.652Z",
+      "name": ""
+    },
+    "45727": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:23.905Z",
+      "name": "M2 PATHFINDER"
+    },
+    "45807": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:40.976Z",
+      "name": ""
+    },
+    "45854": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:41.297Z",
+      "name": ""
+    },
+    "46114": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:41.609Z",
+      "name": ""
+    },
+    "46265": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:15.328Z",
+      "name": "SAOCOM 1-B"
+    },
     "46495": {
       "status": "available",
       "path": "/satellite-images/46495.jpg",
@@ -1186,6 +2473,52 @@
       "bytes": 11461,
       "checkedAt": "2026-11-12T08:00:18.305Z",
       "name": "SALSAT"
+    },
+    "46504": {
+      "status": "available",
+      "path": "/satellite-images/46504.jpg",
+      "source": "https://db.satnogs.org/media/satellites/netsat__1_lwntwlx.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 7533,
+      "checkedAt": "2026-11-12T08:14:24.492Z",
+      "name": "NETSAT 4"
+    },
+    "46505": {
+      "status": "available",
+      "path": "/satellite-images/46505.jpg",
+      "source": "https://db.satnogs.org/media/satellites/netsat__1_268tUmv.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 7533,
+      "checkedAt": "2026-11-12T08:14:25.059Z",
+      "name": "NETSAT 3"
+    },
+    "46506": {
+      "status": "available",
+      "path": "/satellite-images/46506.jpg",
+      "source": "https://db.satnogs.org/media/satellites/netsat__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 7533,
+      "checkedAt": "2026-11-12T08:14:25.638Z",
+      "name": "NETSAT 1"
+    },
+    "46507": {
+      "status": "available",
+      "path": "/satellite-images/46507.jpg",
+      "source": "https://db.satnogs.org/media/satellites/netsat__1_wb3WWyF.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 7533,
+      "checkedAt": "2026-11-12T08:14:26.209Z",
+      "name": "NETSAT 2"
+    },
+    "46805": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:41.939Z",
+      "name": ""
+    },
+    "46826": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:42.261Z",
+      "name": ""
     },
     "47719": {
       "status": "not-found",
@@ -1201,6 +2534,16 @@
       "checkedAt": "2026-11-12T07:59:26.540Z",
       "name": "CSS (Tianhe)"
     },
+    "48859": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:42.590Z",
+      "name": ""
+    },
+    "48865": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:15.650Z",
+      "name": ""
+    },
     "49008": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:45.298Z",
@@ -1214,6 +2557,26 @@
     "49271": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:27.122Z",
+      "name": ""
+    },
+    "49336": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:42.901Z",
+      "name": ""
+    },
+    "49809": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:43.226Z",
+      "name": ""
+    },
+    "49810": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:43.537Z",
+      "name": ""
+    },
+    "49954": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:07.895Z",
       "name": ""
     },
     "50466": {
@@ -1234,6 +2597,16 @@
       "checkedAt": "2026-11-12T07:59:46.174Z",
       "name": "GOES-18"
     },
+    "52794": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:15.961Z",
+      "name": ""
+    },
+    "52984": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:43.854Z",
+      "name": ""
+    },
     "53109": {
       "status": "available",
       "path": "/satellite-images/53109.jpg",
@@ -1248,6 +2621,21 @@
       "checkedAt": "2026-11-12T07:59:27.413Z",
       "name": ""
     },
+    "54031": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:44.169Z",
+      "name": ""
+    },
+    "54039": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:16.275Z",
+      "name": ""
+    },
+    "54149": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:16.587Z",
+      "name": ""
+    },
     "54216": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:27.699Z",
@@ -1258,9 +2646,19 @@
       "checkedAt": "2026-11-12T07:59:46.463Z",
       "name": "NOAA-21 JPSS-2"
     },
+    "54377": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:44.478Z",
+      "name": ""
+    },
     "54743": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:46.749Z",
+      "name": ""
+    },
+    "55268": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:44.800Z",
       "name": ""
     },
     "55973": {
@@ -1288,6 +2686,16 @@
       "checkedAt": "2026-11-12T07:59:48.187Z",
       "name": ""
     },
+    "56564": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:45.119Z",
+      "name": ""
+    },
+    "56759": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:45.437Z",
+      "name": ""
+    },
     "57166": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:48.478Z",
@@ -1301,6 +2709,11 @@
       "bytes": 8296,
       "checkedAt": "2026-11-12T08:00:19.690Z",
       "name": "UmKA-1"
+    },
+    "57176": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:26.538Z",
+      "name": "SITRO-AIS-5"
     },
     "57178": {
       "status": "available",
@@ -1365,6 +2778,31 @@
       "checkedAt": "2026-11-12T08:00:22.849Z",
       "name": "Polytech Universe-3"
     },
+    "57192": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:26.866Z",
+      "name": "SITRO-AIS-6"
+    },
+    "57193": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:27.184Z",
+      "name": "SITRO-AIS-8"
+    },
+    "57194": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:27.500Z",
+      "name": "SITRO-AIS-7"
+    },
+    "57199": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:27.828Z",
+      "name": "SITRO-AIS-10"
+    },
+    "57201": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:28.153Z",
+      "name": "SITRO-AIS-9"
+    },
     "57203": {
       "status": "available",
       "path": "/satellite-images/57203.jpg",
@@ -1373,6 +2811,16 @@
       "bytes": 11951,
       "checkedAt": "2026-11-12T08:00:23.264Z",
       "name": "UTMN2"
+    },
+    "57204": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:28.476Z",
+      "name": "SITRO-AIS-12"
+    },
+    "57208": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:28.794Z",
+      "name": "SITRO-AIS-11"
     },
     "57217": {
       "status": "available",
@@ -1412,6 +2860,16 @@
       "checkedAt": "2026-11-12T07:59:50.238Z",
       "name": "FENGYUN 3F"
     },
+    "57517": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:45.751Z",
+      "name": ""
+    },
+    "57800": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:16.902Z",
+      "name": "SLiM"
+    },
     "58645": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:50.523Z",
@@ -1430,6 +2888,16 @@
     "58648": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:51.398Z",
+      "name": ""
+    },
+    "58654": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:46.070Z",
+      "name": ""
+    },
+    "58655": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:46.385Z",
       "name": ""
     },
     "58660": {
@@ -1486,6 +2954,26 @@
       "checkedAt": "2026-11-12T07:59:54.705Z",
       "name": "METEOR M2-4"
     },
+    "59066": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:29.125Z",
+      "name": "SITRO-AIS-25"
+    },
+    "59067": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:29.445Z",
+      "name": "SITRO-AIS-26"
+    },
+    "59068": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:29.779Z",
+      "name": "SITRO-AIS-27"
+    },
+    "59071": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:30.109Z",
+      "name": "SITRO-AIS-28"
+    },
     "59112": {
       "status": "available",
       "path": "/satellite-images/59112.jpg",
@@ -1499,6 +2987,21 @@
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:55.000Z",
       "name": "WSF-M"
+    },
+    "59588": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:17.223Z",
+      "name": "ACS3"
+    },
+    "59598": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:46.702Z",
+      "name": ""
+    },
+    "59600": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:47.011Z",
+      "name": ""
     },
     "60133": {
       "status": "not-found",
@@ -1531,6 +3034,60 @@
       "bytes": 19998,
       "checkedAt": "2026-11-12T08:00:26.361Z",
       "name": "OOV-Cube"
+    },
+    "60243": {
+      "status": "available",
+      "path": "/satellite-images/60243.jpg",
+      "source": "https://db.satnogs.org/media/satellites/ROBUSTA-3A.png",
+      "contentType": "image/jpeg",
+      "bytes": 7890,
+      "checkedAt": "2026-11-12T08:14:31.011Z",
+      "name": "ROBUSTA-3A"
+    },
+    "61045": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:17.538Z",
+      "name": "Bluebird 03"
+    },
+    "61046": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:17.857Z",
+      "name": "Bluebird 05"
+    },
+    "61047": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:18.175Z",
+      "name": "Bluebird 01"
+    },
+    "61048": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:18.502Z",
+      "name": "Bluebird 02"
+    },
+    "61049": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:18.837Z",
+      "name": "Bluebird 04"
+    },
+    "61182": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:47.322Z",
+      "name": ""
+    },
+    "61183": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:47.645Z",
+      "name": ""
+    },
+    "61186": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:47.956Z",
+      "name": ""
+    },
+    "61187": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:48.274Z",
+      "name": ""
     },
     "61746": {
       "status": "available",
@@ -1604,6 +3161,11 @@
       "checkedAt": "2026-11-12T08:00:30.056Z",
       "name": "RTU MIREA1"
     },
+    "62339": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:48.591Z",
+      "name": ""
+    },
     "62391": {
       "status": "available",
       "path": "/satellite-images/62391.jpg",
@@ -1621,6 +3183,16 @@
       "bytes": 10902,
       "checkedAt": "2026-11-12T08:00:31.108Z",
       "name": "CroCube"
+    },
+    "62876": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:48.900Z",
+      "name": ""
+    },
+    "63130": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:49.214Z",
+      "name": ""
     },
     "63213": {
       "status": "not-found",
@@ -1687,6 +3259,16 @@
       "bytes": 15670,
       "checkedAt": "2026-11-12T08:00:34.788Z",
       "name": "TEVEL2-8"
+    },
+    "63772": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:19.148Z",
+      "name": ""
+    },
+    "64202": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:49.526Z",
+      "name": ""
     },
     "64723": {
       "status": "not-found",
@@ -1779,19 +3361,67 @@
       "checkedAt": "2026-11-12T07:59:55.877Z",
       "name": ""
     },
+    "65590": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:49.838Z",
+      "name": ""
+    },
     "65815": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:56.179Z",
       "name": "Object A"
+    },
+    "66004": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:19.471Z",
+      "name": ""
     },
     "66515": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:27.987Z",
       "name": ""
     },
+    "66778": {
+      "status": "available",
+      "path": "/satellite-images/66778.jpg",
+      "source": "https://db.satnogs.org/media/satellites/fm-ready.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 6921,
+      "checkedAt": "2026-11-12T08:14:31.698Z",
+      "name": "Foresail-1p"
+    },
     "66906": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:28.277Z",
+      "name": ""
+    },
+    "67160": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:50.155Z",
+      "name": ""
+    },
+    "67162": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:50.474Z",
+      "name": ""
+    },
+    "67232": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:15:19.796Z",
+      "name": "Bluebird 06"
+    },
+    "67291": {
+      "status": "available",
+      "path": "/satellite-images/67291.jpg",
+      "source": "https://db.satnogs.org/media/satellites/QMR_KWT_2_Mission_Patch_3CS09hd.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 21361,
+      "checkedAt": "2026-11-12T08:14:32.512Z",
+      "name": "QMR-KWT 2"
+    },
+    "67588": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:50.789Z",
       "name": ""
     },
     "67683": {
@@ -1813,6 +3443,11 @@
       "checkedAt": "2026-11-12T07:59:29.454Z",
       "name": ""
     },
+    "68791": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:51.102Z",
+      "name": ""
+    },
     "68837": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:29.744Z",
@@ -1823,10 +3458,42 @@
       "checkedAt": "2026-11-12T07:59:30.032Z",
       "name": ""
     },
+    "69123": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:14:08.209Z",
+      "name": ""
+    },
     "69180": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:30.318Z",
       "name": ""
+    },
+    "69589": {
+      "status": "available",
+      "path": "/satellite-images/69589.jpg",
+      "source": "https://db.satnogs.org/media/satellites/bb_P3P8LWD.png",
+      "contentType": "image/jpeg",
+      "bytes": 21715,
+      "checkedAt": "2026-11-12T08:15:20.935Z",
+      "name": "Bluebird 08"
+    },
+    "69590": {
+      "status": "available",
+      "path": "/satellite-images/69590.jpg",
+      "source": "https://db.satnogs.org/media/satellites/bb_zjUeMBL.png",
+      "contentType": "image/jpeg",
+      "bytes": 21715,
+      "checkedAt": "2026-11-12T08:15:21.508Z",
+      "name": "Bluebird 09"
+    },
+    "69591": {
+      "status": "available",
+      "path": "/satellite-images/69591.jpg",
+      "source": "https://db.satnogs.org/media/satellites/bb.png",
+      "contentType": "image/jpeg",
+      "bytes": 21715,
+      "checkedAt": "2026-11-12T08:15:22.081Z",
+      "name": "Bluebird 10"
     },
     "69920": {
       "status": "not-found",
@@ -1862,6 +3529,11 @@
       "checkedAt": "2026-11-12T07:59:30.898Z",
       "name": ""
     },
+    "100744": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:51.416Z",
+      "name": ""
+    },
     "100882": {
       "status": "not-found",
       "checkedAt": "2026-11-12T07:59:31.192Z",
@@ -1880,6 +3552,16 @@
     "101098": {
       "status": "not-found",
       "checkedAt": "2026-11-12T08:00:41.395Z",
+      "name": ""
+    },
+    "101228": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:51.726Z",
+      "name": ""
+    },
+    "101318": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:13:52.048Z",
       "name": ""
     }
   }

@@ -144,10 +144,10 @@ static double observerLatitude=DEMO_OBSERVER_LAT,observerLongitude=DEMO_OBSERVER
 static double issAzimuthDeg=0,issElevationDeg=0,issRangeKm=0;
 static uint32_t selectedNoradId=25544;
 static String selectedSatelliteName="ISS (ZARYA)";
-static String selectedSatelliteImageUrl="";
+static String selectedSatelliteImageUrl="https://db-satnogs.freetls.fastly.net/media/satellites/ISS.jpg";
 static uint8_t* selectedSatelliteImageData=nullptr;
 static uint32_t selectedSatelliteImageSize=0;
-static bool selectedSatelliteImagePending=false;
+static bool selectedSatelliteImagePending=true;
 static String orbitDataMessage="Ожидание подключения Wi-Fi";
 
 // Space Dark palette: deep navy background, layered blue panels and cyan telemetry.
@@ -1234,7 +1234,7 @@ static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V86";
+  doc["firmware"]="V87";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;

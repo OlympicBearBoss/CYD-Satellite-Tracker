@@ -584,7 +584,7 @@ document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",(
 document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
 $("language").addEventListener("click",()=>setLanguage(lang==="ru"?"en":"ru"));window.dispatchEvent(new Event("cyd-language-change"));
 document.querySelectorAll("[data-lang]").forEach(b=>b.addEventListener("click",()=>setLanguage(b.dataset.lang)));
-function setAxes(az,el){az=Number(az);el=Number(el);$("azRange").value=az;$("elRange").value=el;const a=az.toFixed(1)+"°",e=el.toFixed(1)+"°";$("azOut").textContent=a;$("elOut").textContent=e;$("overviewAz").textContent=a;$("overviewEl").textContent=e;$("kpiAz").textContent=a;$("kpiEl").textContent=e;if(cydDeviceConnected){$("overviewAz").textContent=cydNoData();$("overviewEl").textContent=cydNoData();$("kpiAz").textContent=cydNoData();$("kpiEl").textContent=cydNoData();}$("dishAz").textContent=a+" AZ";$("dishEl").textContent=e+" EL";const azModel=document.querySelector(".yagi-azimuth"),elModel=document.querySelector(".yagi-elevation");if(azModel)azModel.style.setProperty("--azimuth",az+"deg");if(elModel)elModel.style.setProperty("--elevation",el+"deg");}
+function setAxes(az,el){az=Number(az);el=Number(el);$("azRange").value=az;$("elRange").value=el;const a=az.toFixed(1)+"°",e=el.toFixed(1)+"°";$("azOut").textContent=a;$("elOut").textContent=e;$("overviewAz").textContent=a;$("overviewEl").textContent=e;$("kpiAz").textContent=a;$("kpiEl").textContent=e;if(cydDeviceConnected||cydDeviceEverConnected){$("overviewAz").textContent=cydNoData();$("overviewEl").textContent=cydNoData();$("kpiAz").textContent=cydNoData();$("kpiEl").textContent=cydNoData();}$("dishAz").textContent=a+" AZ";$("dishEl").textContent=e+" EL";const azModel=document.querySelector(".yagi-azimuth"),elModel=document.querySelector(".yagi-elevation");if(azModel)azModel.style.setProperty("--azimuth",az+"deg");if(elModel)elModel.style.setProperty("--elevation",el+"deg");}
 $("azRange").addEventListener("input",()=>setAxes($("azRange").value,$("elRange").value));
 $("elRange").addEventListener("input",()=>setAxes($("azRange").value,$("elRange").value));
 let cydDeviceBaseUrl="";
@@ -606,10 +606,14 @@ function setCydMode(mode){
  const badge=$("telemetryModeBadge");if(badge)badge.textContent=connected?cydModeText("РЕАЛЬНЫЕ ДАННЫЕ","LIVE DATA"):mode==="offline"?cydModeText("НЕТ СВЯЗИ","OFFLINE"):"DEMO DATA";
  const control=document.querySelector("#view-control .page-heading .status-pill span");if(control)control.textContent=connected?cydModeText("CYD · ПРИВОДЫ ЗАБЛОКИРОВАНЫ","CYD · DRIVES LOCKED"):mode==="offline"?cydModeText("CYD НЕТ СВЯЗИ","CYD OFFLINE"):t("simulation_only");
  const footer=document.querySelector('footer [data-i18n="footer_note"]');if(footer)footer.textContent=connected?cydModeText("Подключено к реальному CYD","Connected to real CYD"):mode==="offline"?cydModeText("CYD недоступен · реальные показания не поступают","CYD offline · no live readings"):t("footer_note");
+ const selectedMode=$("selectedSatelliteMode");if(selectedMode)selectedMode.textContent=connected?"LIVE":mode==="offline"?"OFFLINE":"ДЕМО";
+ const catalogMode=$("catalogModeBadge");if(catalogMode)catalogMode.textContent=connected?"LIVE ORBITS":mode==="offline"?"DEVICE OFFLINE":"3 OBJECTS · DEMO";
+ const dishLabel=$("dishPositionLabel");if(dishLabel)dishLabel.textContent=connected?cydModeText("ЦЕЛЕВОЕ ПОЛОЖЕНИЕ · ПРИВОДЫ ЗАБЛОКИРОВАНЫ","TARGET POSITION · DRIVES LOCKED"):mode==="offline"?cydModeText("НЕТ СВЯЗИ","OFFLINE"):t("current_position");
+ const synthetic=$("syntheticDataToggle");if(synthetic){synthetic.textContent=mode==="demo"?"ON":"OFF";synthetic.classList.toggle("on",mode==="demo");}
 }
 function setCydNoData(){
  const missing=cydNoData();
- ["kpiAz","kpiEl","overviewAz","overviewEl","kpiMotorCurrent","kpiSupplyVoltage","voltageValue","voltageGauge","azCurrentValue","azCurrentGauge","elCurrentValue","elCurrentGauge","temperatureValue","temperatureGauge","healthCpu","healthMemory","healthWifiRssi","liveDeviceGps","liveDeviceAngle","liveDeviceCompass","liveDeviceDrivers","liveDeviceLimits","liveDeviceCoords","liveDeviceRssi","gpsLat","gpsLon","gpsAlt","gpsAccuracy","gpsSatCount","radarHeading","compassDirection"].forEach(id=>{const el=$(id);if(el)el.textContent=missing;});
+ ["kpiAz","kpiEl","overviewAz","overviewEl","kpiMotorCurrent","kpiSupplyVoltage","voltageValue","voltageGauge","azCurrentValue","azCurrentGauge","elCurrentValue","elCurrentGauge","temperatureValue","temperatureGauge","healthCpu","healthMemory","healthWifiRssi","liveDeviceIp","liveDeviceSeen","liveDeviceGps","liveDeviceAngle","liveDeviceCompass","liveDeviceDrivers","liveDeviceLimits","liveDeviceCoords","liveDeviceRssi","gpsLat","gpsLon","gpsAlt","gpsAccuracy","gpsSatCount","gpsTime","radarHeading","compassDirection"].forEach(id=>{const el=$(id);if(el)el.textContent=missing;});
  ["voltageHint","azCurrentHint","elCurrentHint","temperatureHint","kpiMotorCurrentHint","kpiSupplyVoltageHint"].forEach(id=>{const el=$(id);if(el)el.textContent=missing;});
  ["healthWifiBar","healthCpuBar","healthMemoryBar"].forEach(id=>{const el=$(id);if(el)el.style.width="0%";});
  ["azDriverStatus","elDriverStatus"].forEach(id=>{const el=$(id);if(el){const span=el.querySelector("span");if(span)span.textContent=missing;el.style.color="#ffb4bd";}});
@@ -693,10 +697,9 @@ async function connectCydDevice(){
   const response=await fetch(base+"/api/v1/status",{cache:"no-store",mode:"cors"});
   if(!response.ok)throw new Error("HTTP "+response.status);
   const status=await response.json();
-  if(!status.ok)throw new Error("Контроллер не подтвердил статус");
+  if(!status.ok||status.device!=="CYD Satellite Tracker"||!status.hardware_id)throw new Error("Это не API контроллера CYD");
   cydDeviceBaseUrl=base;
   try{localStorage.setItem("cyd-device-url",base);}catch(_){}
-  if(status.device!=="CYD Satellite Tracker"||!status.hardware_id)throw new Error("Это не API контроллера CYD");
   cydDeviceConnected=true;cydDeviceEverConnected=true;cydLastStatus=status;try{localStorage.setItem("cyd-device-ever-connected","1");}catch(_){}
   ["cydDeviceAddress","cydConnectionAddress"].forEach(id=>{const el=$(id);if(el)el.value=base;});
   setCydMode("connected");applyCydTelemetry(status);

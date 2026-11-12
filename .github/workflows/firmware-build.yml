@@ -68,9 +68,12 @@ jobs:
           fi
           cp "$BOOT_APP0" release/CYD-Satellite-Tracker-${FW_VERSION}-boot_app0.bin
 
-          # PlatformIO installs esptool under tool-esptoolpy (not tool-esptool).
-          # Locate the Python entry point independently of the package directory name.
-          ESPTOOL_SCRIPT="$(find "$HOME/.platformio/packages" -type f \\( -name esptool.py -o -name esptool \\) -print -quit)"
+          # PlatformIO installs esptool under tool-esptoolpy.
+          # Check the Python entry point first, then the legacy executable name.
+          ESPTOOL_SCRIPT="$(find "$HOME/.platformio/packages" -type f -name esptool.py -print -quit)"
+          if [[ -z "$ESPTOOL_SCRIPT" ]]; then
+            ESPTOOL_SCRIPT="$(find "$HOME/.platformio/packages" -type f -name esptool -print -quit)"
+          fi
           if [[ -z "$ESPTOOL_SCRIPT" || ! -f "$ESPTOOL_SCRIPT" ]]; then
             echo "::error::esptool Python entry point was not found in PlatformIO packages"
             find "$HOME/.platformio/packages" -maxdepth 5 -type f -iname '*esptool*' -print || true

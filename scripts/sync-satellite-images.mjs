@@ -12,14 +12,13 @@ const ROOT = process.cwd();
 const OUT = path.join(ROOT, "satellite-images");
 const MANIFEST_PATH = path.join(OUT, "manifest.json");
 const GROUPS = ["stations", "weather", "amateur", "gnss", "science", "cubesat", "visual"];
-const MAX_CHECKS = Math.max(1, Number(process.env.MAX_IMAGE_CHECKS || 300));
+const MAX_CHECKS = Math.max(1, Number(process.env.MAX_IMAGE_CHECKS || 600));
 const MAX_BYTES = 5_000_000;
 const MAX_STORED_BYTES = 250_000;
 const MISS_TTL = 30 * 24 * 60 * 60 * 1000;
 const ALLOWED_HOSTS = new Set([
   "db.satnogs.org",
   "db-satnogs.freetls.fastly.net",
-  "images-assets.nasa.gov",
   "upload.wikimedia.org",
   "www.amsat.org",
   "images-assets.nasa.gov"
@@ -68,7 +67,7 @@ function extensionFor(contentType) {
 
 async function fetchPhoto(url) {
   const response = await fetch(url, {
-    headers: { "User-Agent": "CYD-Satellite-Tracker-image-library/1.0", Accept: "image/jpeg,image/png,image/webp" },
+    headers: { "User-Agent": "CYD-Satellite-Tracker-image-library/1.0", Accept: "image/jpeg,image/png,image/webp,image/gif" },
     signal: AbortSignal.timeout(20000)
   });
   if (!response.ok) throw new Error("image HTTP " + response.status);

@@ -589,7 +589,7 @@ $("azRange").addEventListener("input",()=>setAxes($("azRange").value,$("elRange"
 $("elRange").addEventListener("input",()=>setAxes($("azRange").value,$("elRange").value));
 let cydDeviceBaseUrl="";
 let cydDevicePollTimer=0,cydDevicePollBusy=false,cydDeviceConnected=false,cydDeviceEverConnected=false,cydLastStatus=null;
-try{cydDeviceBaseUrl=localStorage.getItem("cyd-device-url")||"";cydDeviceEverConnected=localStorage.getItem("cyd-device-ever-connected")==="1";}catch(_){}
+try{cydDeviceBaseUrl=localStorage.getItem("cyd-device-url")||"";cydDeviceEverConnected=localStorage.getItem("cyd-device-ever-connected")==="1"||!!cydDeviceBaseUrl;}catch(_){}
 function setCydDeviceStatus(message,ok=false){
  const node=$("cydDeviceStatus");if(!node)return;
  node.textContent=message;node.style.color=ok?"#80e5b8":"#ffbf83";
@@ -779,7 +779,7 @@ async function sendCydCommand(payload){
  catch(error){$("controlStatus").textContent="Ошибка команды CYD: "+error.message;}
 }
 async function sendSelectedSatelliteToCyd(record){
- if(!cydDeviceBaseUrl||!record)return;
+ if(!cydDeviceConnected||!cydDeviceBaseUrl||!record)return;
  const norad=Number(record.NORAD_CAT_ID);
  if(!Number.isInteger(norad)||norad<1||norad>999999)return;
  try{

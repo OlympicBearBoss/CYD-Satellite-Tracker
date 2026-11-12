@@ -673,7 +673,6 @@ async function connectCydDevice(){
  await refreshCydDeviceLink();
  if(cydLiveConnected)startCydDevicePolling();
 }
-if($("connectCydDevice"))$("connectCydDevice").addEventListener("click",connectCydDevice);
 async function fetchSatelliteImageBlob(norad){
  const apiUrl="/api/satellite-image?norad="+encodeURIComponent(norad)+"&download=1";
  let imageUrl=apiUrl;

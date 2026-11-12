@@ -305,6 +305,7 @@ static bool loadTouchCalibration() {
 
 
 // Multilingual text renderer. U8g2 fonts provide UTF-8 Cyrillic and GB2312 Chinese.
+static void showSystemScreen();
 struct UiTextEntry { const char* source; const char* ru; const char* zh; };
 static const UiTextEntry UI_TEXT[] = {
  {"TOUCH SETUP","НАСТРОЙКА СЕНСОРА","触摸设置"},

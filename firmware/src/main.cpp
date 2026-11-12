@@ -1340,6 +1340,7 @@ static void updateSelectedOrbit() {
   if(screen==Screen::Satellite) updateOrbitTelemetry();
 }
 
+// V91.1: text-safe Base64 transport avoids binary request-body truncation.
 static int satelliteBase64Value(char c) {
   if(c>='A' && c<='Z') return c-'A';
   if(c>='a' && c<='z') return c-'a'+26;

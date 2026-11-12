@@ -580,23 +580,16 @@ function isAllowedSatellitePhotoUrl(value){
  }catch(error){return false;}
 }
 async function findPublicSatelliteImage(norad,record){
- // Only send URLs that the ESP32 firmware is explicitly allowed to download.
- // The local catalog may contain NASA/Wikimedia URLs; those must not bypass
- // the SatNOGS host allow-list enforced by the firmware.
- const direct=record&&(record.image_url||record.IMAGE_URL||record.image);
- if(typeof direct==="string"&&direct.trim()&&isAllowedSatellitePhotoUrl(direct)){
-  return new URL(direct,"https://db.satnogs.org").href;
- }
+ // The Pages Function validates the public source and serves a compact JPEG
+ // from our own HTTPS origin, so the CYD needs to trust only one host.
  try{
   if(location.protocol==="file:")return "";
   const response=await fetch("/api/satellite-image?norad="+encodeURIComponent(norad),{cache:"no-store"});
   if(!response.ok)return "";
   const payload=await response.json();
   const image=payload&&payload.image;
-  if(typeof image==="string"&&image.trim()&&isAllowedSatellitePhotoUrl(image)){
-   return new URL(image,"https://db.satnogs.org").href;
-  }
- }catch(error){console.warn("SatNOGS image lookup failed:",error);}
+  if(typeof image==="string"&&image.trim()&&isAllowedSatellitePhotoUrl(image))return image;
+ }catch(error){console.warn("Satellite photo lookup failed:",error);}
  return "";
 }
 async function sendSelectedSatelliteToCyd(record){
@@ -1675,6 +1668,41 @@ body>.realistic-earth-scene.orbit-large-screen .orbit-live-info{position:fixed!i
  $('pdCheckServer').addEventListener('click',async()=>{const state=$('pdServerState');state.textContent='Проверка…';try{const d=await api('/api/devices');state.textContent='Сервер доступен · '+d.devices.length+' устройств в аккаунте · '+new Date(d.server_time*1000).toLocaleTimeString();}catch(e){state.textContent='Ошибка: '+e.message;}});$('pdRefreshDevices').addEventListener('click',loadDevices);
  $('pdCreateCode').addEventListener('click',async()=>{try{const d=await api('/api/devices','POST',{device_name:$('pdDeviceName').value});$('pdCode').textContent=d.code;$('pdCodeWrap').hidden=false;$('pdCodeExpiry').textContent='Код действует 10 минут. Введите его на устройстве до '+fmt(d.expires_at)+'.';message('Код создан. Он будет показан только сейчас.');loadDevices();}catch(e){message(e.message);}});
  document.addEventListener('keydown',e=>{if(e.key==='Escape')dialog.hidden=true;});
+})();
+</script>
+
+<script id="cyd-section-font-scale">
+(()=> {
+ const headingSelector="h1,h2,h3,h4,h5,h6";
+ function scaleTree(root,parentScaled=false){
+  if(!root||root.nodeType!==1)return;
+  const nodes=[root,...root.querySelectorAll("*")];
+  const parent=root.parentElement;
+  let savedParentFont="";
+  if(parent&&parent.dataset.cydFontScaled==="2"){
+   savedParentFont=parent.style.fontSize;
+   const computed=parseFloat(getComputedStyle(parent).fontSize);
+   if(Number.isFinite(computed))parent.style.fontSize=(computed/2)+"px";
+  }
+  const sizes=nodes.map(el=>{
+   if(!el.closest(".view")||el.matches(headingSelector)||el.closest(headingSelector))return null;
+   const size=parseFloat(getComputedStyle(el).fontSize);
+   return Number.isFinite(size)?size:null;
+  });
+  if(parent&&savedParentFont!==undefined&&parent.dataset.cydFontScaled==="2")parent.style.fontSize=savedParentFont;
+  nodes.forEach((el,i)=>{
+   if(sizes[i]===null||el.dataset.cydFontScaled==="2")return;
+   el.style.setProperty("font-size",(sizes[i]*2)+"px","important");
+   el.dataset.cydFontScaled="2";
+  });
+ }
+ document.querySelectorAll(".view").forEach(view=>scaleTree(view));
+ const observer=new MutationObserver(records=>{
+  for(const record of records)for(const node of record.addedNodes){
+   if(node.nodeType===1&&(node.matches(".view")||node.closest(".view")))scaleTree(node);
+  }
+ });
+ observer.observe(document.body,{childList:true,subtree:true});
 })();
 </script>
 

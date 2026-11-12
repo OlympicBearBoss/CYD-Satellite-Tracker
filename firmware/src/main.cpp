@@ -307,6 +307,7 @@ static bool loadTouchCalibration() {
 // Multilingual text renderer. U8g2 fonts provide UTF-8 Cyrillic and GB2312 Chinese.
 static void showSystemScreen();
 struct UiTextEntry { const char* source; const char* ru; const char* zh; };
+static String translatedUiBuffer;
 static const UiTextEntry UI_TEXT[] = {
  {"TOUCH SETUP","НАСТРОЙКА СЕНСОРА","触摸设置"},
  {"Touch the target","Коснитесь метки","触摸目标点"},
@@ -404,12 +405,23 @@ static const UiTextEntry UI_TEXT[] = {
  {"ABC","БУКВЫ","字母"},
  {"DEL","УДАЛИТЬ","删除"},
  {"SELECT A FIELD  /  TYPE YOUR WI-FI DETAILS","ВЫБЕРИТЕ ПОЛЕ / ВВЕДИТЕ ПАРАМЕТРЫ WI-FI","选择字段 / 输入 Wi-Fi 信息"},
- {"UTC --:--","UTC --:--","UTC --:--"}
+ {"UTC --:--","UTC --:--","UTC --:--"},
+ {"DO VOSKHODA","ДО ВОСХОДА","等待升起"},
+ {"DO ZAKHODA","ДО ЗАХОДА","等待落下"},
+ {"WAITING FOR ORBIT PASS","ОЖИДАНИЕ ПРОЛЁТА СПУТНИКА","等待卫星过境"}
 };
 static const char* translateUi(const char* source) {
   if(!source || uiLanguage==0) return source ? source : "";
   for(const auto& item:UI_TEXT) {
     if(strcmp(source,item.source)==0) return uiLanguage==1?item.ru:item.zh;
+  }
+  // Countdown labels include a changing HH:MM:SS suffix; translate the fixed prefix.
+  for(const auto& item:UI_TEXT) {
+    const size_t prefixLength=strlen(item.source);
+    if(strncmp(source,item.source,prefixLength)==0 && source[prefixLength]==' ') {
+      translatedUiBuffer=String(uiLanguage==1?item.ru:item.zh)+String(source+prefixLength);
+      return translatedUiBuffer.c_str();
+    }
   }
   return source;
 }
@@ -422,8 +434,11 @@ static void setUiTextDatum(uint8_t datum) {
 static void drawUiString(const String& original,int16_t x,int16_t y,uint8_t font) {
   const char* source=original.c_str();
   const char* value=translateUi(source);
-  uiFont.setFontMode(1);
+  // Opaque glyph cells prevent pixels from the previous frame showing through
+  // as black fragments inside letter counters and strokes.
+  uiFont.setFontMode(0);
   uiFont.setForegroundColor(uiTextFg);
+  uiFont.setBackgroundColor(uiTextBg);
   if(uiLanguage==2) {
     if(font>=4) uiFont.setFont(u8g2_font_wqy16_t_gb2312);
     else uiFont.setFont(font>=2?u8g2_font_wqy14_t_gb2312:u8g2_font_wqy12_t_gb2312);

@@ -718,7 +718,7 @@ static void drawSatelliteArtwork(int cx,int cy,int scale) {
 static void drawSelectedSatellitePhoto() {
   // Replace the fixed ISS artwork with the selected object's public photo.
   tft.fillRoundRect(8,34,175,80,6,0x0822);
-  if(selectedSatelliteImageData && selectedSatelliteImageSize>4) {
+  if(selectedSatelliteImageData && selectedSatelliteImageSize>4 && selectedSatelliteImageNorad==selectedNoradId) {
     tft.setViewport(8,34,175,80,true);
     TJpgDec.setJpgScale(2);
     TJpgDec.setSwapBytes(true);

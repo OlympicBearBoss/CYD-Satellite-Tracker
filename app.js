@@ -189,18 +189,17 @@ function updateCydSensorReadings(data){
  cydSet("liveDeviceIp",data.ip||noData);
  cydSet("liveDeviceRssi",Number.isFinite(data.wifi_rssi)?data.wifi_rssi+" dBm":noData);
  cydSet("liveDeviceGps",gpsReady?cydText("FIX · ","FIX · ")+(data.gps_satellites??"—")+" "+cydText("спутн.","satellites"):noData);
- cydSet("liveDeviceAngle",hw.angle_sensor_connected===true?cydText("Подключен · нет показаний","Connected · no reading"):noData);
+ cydSet("liveDeviceAngle",Number.isFinite(data.angle_deg)?data.angle_deg.toFixed(1)+"°":noData);
  cydSet("liveDeviceCompass",hw.compass_connected===true&&Number.isFinite(data.compass_heading_deg)?data.compass_heading_deg.toFixed(1)+"°":noData);
  cydSet("liveDeviceDrivers",hw.motor_drivers_connected===true?cydText("Подключены","Connected"):noData);
- cydSet("liveDeviceLimits",hw.limit_switches_connected===true?cydText("Подключены","Connected"):noData);
+ cydSet("liveDeviceLimits",data.limit_switches&&typeof data.limit_switches==="object"?cydText("Данные получены","Data received"):noData);
  cydSet("liveDeviceCoords",gpsReady&&Number.isFinite(data.latitude)&&Number.isFinite(data.longitude)?data.latitude.toFixed(5)+", "+data.longitude.toFixed(5):noData);
  cydSet("liveDeviceSeen",new Date().toLocaleString());
  cydSet("liveDeviceInfo",(data.device||"CYD")+" · "+(data.firmware||"Firmware"));
- cydSet("liveDeviceBadge",cydText("CYD подключён по Wi-Fi","CYD connected over Wi-Fi"));
  const badge=$("liveDeviceBadge");if(badge){const span=badge.querySelector("span");if(span)span.textContent=cydText("CYD подключён по Wi-Fi","CYD connected over Wi-Fi");}
  cydSet("healthWifiRssi",Number.isFinite(data.wifi_rssi)?data.wifi_rssi+" dBm":noData);
  const wifiBar=$("healthWifiBar");if(wifiBar&&Number.isFinite(data.wifi_rssi))wifiBar.style.width=Math.max(0,Math.min(100,((data.wifi_rssi+100)/60)*100))+"%";
- cydSet("healthCpu",noData);cydSet("healthMemory",noData);
+ cydSet("healthCpu",noData);cydSet("healthMemory",noData);const cpuBar=$("healthCpuBar"),memoryBar=$("healthMemoryBar");if(cpuBar)cpuBar.style.width="0%";if(memoryBar)memoryBar.style.width="0%";
  const gpsStatus=$("gpsStatus");if(gpsStatus)gpsStatus.textContent=gpsReady?"GPS FIX":noData.toUpperCase();
  cydSet("gpsLat",gpsReady?Number(data.latitude).toFixed(5)+"°":noData);
  cydSet("gpsLon",gpsReady?Number(data.longitude).toFixed(5)+"°":noData);
@@ -282,3 +281,7 @@ function initCydConnection(){
 ["connectCydDevice","connectCydFromConnection"].forEach(id=>{const button=$(id);if(button)button.addEventListener("click",()=>{const value=$(id==="connectCydDevice"?"cydDeviceAddress":"cydConnectionAddress")?.value;connectCydDevice(value);});});
 ["cydDeviceAddress","cydConnectionAddress"].forEach(id=>{const input=$(id);if(input)input.addEventListener("change",()=>showCydAddress(input.value));});
 initCydConnection();
+const setAxesBeforeCyd=setAxes;
+setAxes=function(az,el){setAxesBeforeCyd(az,el);if(window.cydConnected){const missing=cydNoData();cydSet("kpiAz",missing);cydSet("kpiEl",missing);cydSet("overviewAz",missing);cydSet("overviewEl",missing);}};
+const setLanguageBeforeCyd=setLanguage;
+setLanguage=function(next){setLanguageBeforeCyd(next);if(window.cydConnected)setCydMode("connected");else if(cydEverConnected)setCydMode("offline");};

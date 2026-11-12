@@ -31,23 +31,31 @@ function normalizeSource(value) {
   }
 }
 
-async function resolveImageSource(norad) {
+async function resolveImageSources(norad) {
+  const sources = [];
   const known = KNOWN_IMAGES[String(norad)];
-  if (known) return known;
+  if (known) sources.push(known);
 
-  const apiUrl = new URL("https://db.satnogs.org/api/satellites/");
-  apiUrl.searchParams.set("format", "json");
-  apiUrl.searchParams.set("norad_cat_id", String(norad));
-  const upstream = await fetch(apiUrl.toString(), {
-    headers: { Accept: "application/json" },
-    cf: { cacheTtl: 3600, cacheEverything: true }
-  });
-  if (!upstream.ok) return "";
-  const payload = await upstream.json();
-  const satellite = Array.isArray(payload) ? payload[0] : (payload.results || [])[0];
-  const image = satellite && (satellite.image || satellite.image_url);
-  const value = typeof image === "string" ? image : image && (image.url || image.image);
-  return normalizeSource(value);
+  try {
+    const apiUrl = new URL("https://db.satnogs.org/api/satellites/");
+    apiUrl.searchParams.set("format", "json");
+    apiUrl.searchParams.set("norad_cat_id", String(norad));
+    const upstream = await fetch(apiUrl.toString(), {
+      headers: { Accept: "application/json" },
+      cf: { cacheTtl: 3600, cacheEverything: true }
+    });
+    if (upstream.ok) {
+      const payload = await upstream.json();
+      const satellite = Array.isArray(payload) ? payload[0] : (payload.results || [])[0];
+      const image = satellite && (satellite.image || satellite.image_url);
+      const value = typeof image === "string" ? image : image && (image.url || image.image);
+      const fallback = normalizeSource(value);
+      if (fallback && !sources.includes(fallback)) sources.push(fallback);
+    }
+  } catch (_) {
+    // A known public source can still work when SatNOGS is temporarily offline.
+  }
+  return sources;
 }
 
 async function fetchCompactJpeg(source) {
@@ -78,8 +86,8 @@ export async function onRequestGet({ request }) {
   }
 
   try {
-    const source = await resolveImageSource(norad);
-    if (!source) {
+    const sources = await resolveImageSources(norad);
+    if (!sources.length) {
       return Response.json(
         { ok: true, norad_id: norad, image: "", error: "photo_not_found" },
         { headers: CACHE_HEADERS }
@@ -87,24 +95,37 @@ export async function onRequestGet({ request }) {
     }
 
     if (url.searchParams.get("download") === "1") {
-      const bytes = await fetchCompactJpeg(source);
+      let bytes = null;
+      let selectedSource = "";
+      for (const source of sources) {
+        try {
+          bytes = await fetchCompactJpeg(source);
+          selectedSource = source;
+          break;
+        } catch (_) {
+          // Try the next approved source, e.g. SatNOGS when a known image is too large.
+        }
+      }
+      if (!bytes) throw new Error("no_usable_jpeg_source");
       return new Response(bytes, {
         status: 200,
         headers: {
           ...CACHE_HEADERS,
           "Content-Type": "image/jpeg",
           "Content-Length": String(bytes.byteLength),
-          "Content-Disposition": "inline; filename=satellite.jpg"
+          "Content-Disposition": "inline; filename=satellite.jpg",
+          "X-Satellite-Image-Source": new URL(selectedSource).hostname
         }
       });
     }
 
-    const imageUrl = new URL(request.url);
-    imageUrl.search = "";
+    // Always return the production origin so firmware allow-list validation is
+    // identical for the live site and Cloudflare preview deployments.
+    const imageUrl = new URL("https://cyd-satellite-tracker.pages.dev/api/satellite-image");
     imageUrl.searchParams.set("norad", String(norad));
     imageUrl.searchParams.set("download", "1");
     return Response.json(
-      { ok: true, norad_id: norad, image: imageUrl.toString(), source },
+      { ok: true, norad_id: norad, image: imageUrl.toString(), sources: sources.length },
       { headers: CACHE_HEADERS }
     );
   } catch (error) {

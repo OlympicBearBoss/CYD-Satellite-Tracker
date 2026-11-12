@@ -218,6 +218,10 @@ static TleFetchResult tleFetchResult={};
 static time_t orbitUtcEpoch=0;
 static double observerLatitude=DEMO_OBSERVER_LAT,observerLongitude=DEMO_OBSERVER_LON,observerAltitudeM=DEMO_OBSERVER_ALT_M;
 static double issAzimuthDeg=0,issElevationDeg=0,issRangeKm=0;
+static time_t nextPassEventEpoch=0;
+static double nextRiseAzimuthDeg=0;
+static bool passPredictionValid=false,nextRiseAzimuthValid=false,satelliteCurrentlyVisible=false;
+static uint32_t lastPassPredictionMs=0;
 static uint32_t selectedNoradId=25544;
 static String selectedSatelliteName="ISS (ZARYA)";
 static uint8_t* selectedSatelliteImageData=nullptr;
@@ -674,6 +678,7 @@ static void drawNavigation(uint8_t active) {
 }
 
 static void updateGpsTelemetry();
+static void updatePassCountdown();
 
 
 static void drawEarthArtwork(int cx,int cy,int r) {
@@ -725,7 +730,7 @@ static void drawSatelliteArtwork(int cx,int cy,int scale) {
 }
 static void drawSelectedSatellitePhoto() {
   // Replace the fixed ISS artwork with the selected object's public photo.
-  tft.fillRoundRect(8,34,175,80,6,0x0822);
+  tft.fillRoundRect(8,49,175,80,6,0x0822);
   if(selectedSatelliteImageData && selectedSatelliteImageSize>4 && selectedSatelliteImageNorad==selectedNoradId) {
     // The JPEG is already center-cropped to 320x160 by the website and
     // decoded at 1/2 scale to exactly 160x80. Draw it directly: TFT_eSPI's
@@ -734,19 +739,19 @@ static void drawSelectedSatellitePhoto() {
     TJpgDec.setJpgScale(2);
     TJpgDec.setSwapBytes(true);
     TJpgDec.setCallback(uiImageOutput);
-    TJpgDec.drawJpg(15,34,selectedSatelliteImageData,selectedSatelliteImageSize);
+    TJpgDec.drawJpg(15,49,selectedSatelliteImageData,selectedSatelliteImageSize);
   } else {
-    drawSatelliteArtwork(96,74,2);
+    drawSatelliteArtwork(96,89,2);
     tft.setTextDatum(MC_DATUM);
     tft.setTextColor(TFT_YELLOW,0x0822);
-    tft.drawString("PHOTO NOT FOUND",96,105,1);
+    tft.drawString("PHOTO NOT FOUND",96,120,1);
   }
-  tft.fillRect(8,114,175,27,0x0010);
+  tft.fillRect(8,129,175,13,0x0010);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TFT_WHITE,0x0010);
   String label=selectedSatelliteName;
   if(label.length()>25) label=label.substring(0,25);
-  tft.drawString(label,14,116,1);
+  tft.drawString(label,14,130,1);
 }
 static void drawDialNeedle(int cx,int cy,int length,float degrees,uint16_t color) {
   const float a=(degrees-90.0f)*0.0174532925f;
@@ -762,11 +767,11 @@ static void drawGpsPanel() {
   // Photo and static chrome are drawn once; telemetry values are refreshed separately.
   const uint16_t edge=0x03BF, panel=0x0822, panelHi=0x1045;
   // Selected spacecraft photo card; never label a different satellite as ISS.
-  tft.fillRoundRect(5,31,181,113,9,0x0000);
-  tft.drawRoundRect(5,31,181,113,9,edge);
+  tft.fillRoundRect(5,46,181,98,9,0x0000);
+  tft.drawRoundRect(5,46,181,98,9,edge);
   drawSelectedSatellitePhoto();
   // Radar: luminous rings, graduated ticks, cardinal marks and target marker.
-  const int cx=250,cy=87,r=49;
+  const int cx=250,cy=91,r=41;
   tft.fillCircle(cx,cy,r+8,0x0000);
   tft.drawCircle(cx,cy,r+7,0x03BF);
   tft.drawCircle(cx,cy,r,0x2A69);
@@ -784,10 +789,16 @@ static void drawGpsPanel() {
   tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,BG);
   tft.drawString("N",cx,cy-r-2,2); tft.drawString("E",cx+r+2,cy,2);
   tft.drawString("S",cx,cy+r+2,2); tft.drawString("W",cx-r-2,cy,2);
-  tft.fillTriangle(cx,cy-13,cx-6,cy+7,cx+6,cy+7,TFT_CYAN);
-  tft.fillCircle(cx,cy,3,TFT_WHITE);
-  tft.fillCircle(cx-25,cy+23,4,TFT_RED);
-  tft.drawCircle(cx-25,cy+23,6,0xF986);
+  // Live bearing to the selected satellite (north=0, east=90).
+  if(issPositionValid) drawDialNeedle(cx,cy,33,(float)issAzimuthDeg,TFT_CYAN);
+  else tft.fillCircle(cx,cy,3,TFT_WHITE);
+  // Orange rim marker shows the azimuth at which the next pass rises.
+  if(nextRiseAzimuthValid) {
+    const float a=((float)nextRiseAzimuthDeg-90.0f)*0.0174532925f;
+    const int mx=cx+(int)(37*cosf(a)), my=cy+(int)(37*sinf(a));
+    tft.fillCircle(mx,my,4,TFT_ORANGE);
+    tft.drawCircle(mx,my,6,TFT_WHITE);
+  }
   // Three aligned data cards with consistent inset, edge and typography.
   const int xs[3]={5,111,217}, ws[3]={101,101,98};
   for(int i=0;i<3;i++) {
@@ -800,6 +811,7 @@ static void drawGpsPanel() {
   tft.setTextColor(TFT_CYAN,panelHi); tft.drawString("SATELLITES",117,155,1);
   tft.setTextColor(TFT_CYAN,panelHi); tft.drawString("LINK",223,155,1);
   updateGpsTelemetry();
+  updatePassCountdown();
 }
 static void updateGpsTelemetry() {
   const bool fix=gps.location.isValid() && gps.location.age()<10000;
@@ -831,15 +843,36 @@ static void updateGpsTelemetry() {
     tft.drawString(line,266,188,1);
   } else tft.drawString("UTC --:--",266,188,1);
 }
+static void updatePassCountdown() {
+  if(screen!=Screen::Dashboard) return;
+  tft.fillRoundRect(7,29,306,15,4,0x0010);
+  tft.drawRoundRect(7,29,306,15,4,0x2A69);
+  char line[32];
+  const time_t now=time(nullptr);
+  if(!passPredictionValid || nextPassEventEpoch<=now) {
+    snprintf(line,sizeof(line),"WAITING FOR ORBIT PASS");
+    tft.setTextColor(TFT_YELLOW,0x0010);
+  } else {
+    const uint32_t remaining=(uint32_t)(nextPassEventEpoch-now);
+    snprintf(line,sizeof(line),"%s %02lu:%02lu:%02lu",
+      satelliteCurrentlyVisible?"ZAKHOD":"VOSKHOD",
+      (unsigned long)(remaining/3600),
+      (unsigned long)((remaining/60)%60),
+      (unsigned long)(remaining%60));
+    tft.setTextColor(satelliteCurrentlyVisible?TFT_ORANGE:TFT_CYAN,0x0010);
+  }
+  tft.setTextDatum(MC_DATUM);
+  tft.drawString(line,160,36,2);
+}
 static void updateTargetTelemetry() {
   char line[40];
   if(screen==Screen::Dashboard) {
     // Refresh the target readout without repainting the selected spacecraft photo.
-    tft.fillRect(8,128,175,13,0x0010);
-    snprintf(line,sizeof(line),"AZ %.1f%c  EL %.1f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
+    tft.fillRect(184,138,132,10,0x0010);
+    snprintf(line,sizeof(line),"AZ %.1f%c EL %.1f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
     tft.setTextDatum(TL_DATUM);
     tft.setTextColor(TFT_CYAN,0x0010);
-    tft.drawString(line,14,129,1);
+    tft.drawString(line,186,139,1);
   } else if(screen==Screen::Antenna) {
     // Live azimuth: update the numeric heading and rotate the compass needle
     // without repainting the compass rose, labels, panels, or whole screen.
@@ -1291,6 +1324,54 @@ static void consumeSelectedTleResult() {
   orbitDataMessage="TLE загружены: "+selectedSatelliteName;
   Serial.printf("[ORBIT] TLE accepted NORAD %lu: %s\\n",(unsigned long)selectedNoradId,result.name);
 }
+static void updatePassPrediction(time_t now) {
+  if(!issTleValid || now<1700000000) return;
+  if(lastPassPredictionMs && millis()-lastPassPredictionMs<300000UL) return;
+  lastPassPredictionMs=millis();
+  const bool currentVisible=issElevationDeg>=0.0;
+  satelliteCurrentlyVisible=currentVisible;
+  passPredictionValid=false;
+  nextRiseAzimuthValid=false;
+  bool previousVisible=currentVisible;
+  time_t previousEpoch=now;
+  // Search 24 hours ahead in two-minute increments, refining each crossing.
+  for(uint16_t step=1;step<=720;step++) {
+    const time_t sampleEpoch=now+(time_t)step*120;
+    issSgp4.findsat((unsigned long)sampleEpoch);
+    const bool visible=issSgp4.satEl>=0.0;
+    if(visible!=previousVisible) {
+      time_t low=previousEpoch,high=sampleEpoch;
+      for(uint8_t refine=0;refine<4;refine++) {
+        const time_t mid=low+(high-low)/2;
+        issSgp4.findsat((unsigned long)mid);
+        const bool midVisible=issSgp4.satEl>=0.0;
+        if(midVisible==previousVisible) low=mid; else high=mid;
+      }
+      issSgp4.findsat((unsigned long)high);
+      if(!passPredictionValid) {
+        nextPassEventEpoch=high;
+        passPredictionValid=true;
+      }
+      if(!previousVisible && visible && !nextRiseAzimuthValid) {
+        nextRiseAzimuthDeg=issSgp4.satAz;
+        nextRiseAzimuthValid=isfinite(nextRiseAzimuthDeg);
+      }
+      previousVisible=visible;
+      previousEpoch=sampleEpoch;
+      if(passPredictionValid && nextRiseAzimuthValid) break;
+    } else {
+      previousEpoch=sampleEpoch;
+    }
+  }
+  // Restore the live position after prediction scanning.
+  issSgp4.findsat((unsigned long)now);
+  if(isfinite(issSgp4.satAz) && isfinite(issSgp4.satEl) && isfinite(issSgp4.satDist)) {
+    issAzimuthDeg=issSgp4.satAz;
+    issElevationDeg=issSgp4.satEl;
+    issRangeKm=issSgp4.satDist;
+    satelliteCurrentlyVisible=issElevationDeg>=0.0;
+  }
+}
 static void updateSelectedOrbit() {
   // Give the local control page and touch UI a clean startup window before
   // starting any blocking outbound HTTPS/TLE work.
@@ -1328,6 +1409,7 @@ static void updateSelectedOrbit() {
     issElevationDeg=issSgp4.satEl;
     issRangeKm=issSgp4.satDist;
     issPositionValid=true;
+    updatePassPrediction(now);
     // Feed the live SGP4 solution into the same target values rendered by
     // the dashboard and rotator screens. These are display/setpoint values;
     // motor outputs remain physically and logically disabled.
@@ -1698,7 +1780,7 @@ void loop() {
   if(!displayDiagnosticActive) updateSelectedOrbit();
   // Refresh only dynamic telemetry; keep artwork and navigation static.
   if(!displayDiagnosticActive && now-lastDashboardRefreshAt>=1000) {
-    if(screen==Screen::Dashboard) { updateGpsTelemetry(); updateTargetTelemetry(); }
+    if(screen==Screen::Dashboard) { updateGpsTelemetry(); updateTargetTelemetry(); updatePassCountdown(); }
     if(screen==Screen::Antenna) updateTargetTelemetry();
     if(screen==Screen::Satellite) updateOrbitTelemetry();
     lastDashboardRefreshAt=now;

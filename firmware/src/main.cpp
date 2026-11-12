@@ -1381,7 +1381,7 @@ refreshStatus();setInterval(refreshStatus,1000);
       selectedSatelliteImagePending=selectedSatelliteImageUrl.length()>0;
       selectedSatelliteImageAttempts=0;
       selectedSatelliteImageLastAttemptMs=0;
-      if(selectedSatelliteImageData) { free(selectedSatelliteImageData); selectedSatelliteImageData=null; }
+      if(selectedSatelliteImageData) { free(selectedSatelliteImageData); selectedSatelliteImageData=nullptr; }
       selectedSatelliteImageSize=0;
       if(screen==Screen::Dashboard) drawSelectedSatellitePhoto();
       issTleValid=false; issPositionValid=false;

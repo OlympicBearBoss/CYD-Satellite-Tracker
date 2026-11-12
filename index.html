@@ -625,8 +625,16 @@ async function sendSelectedSatelliteImageToCyd(norad){
   if(!jpeg)throw new Error("Не удалось подготовить JPEG для экрана CYD");
   if(jpeg.size>36000)jpeg=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.48));
   if(!jpeg||jpeg.size>36000)throw new Error("Изображение не удалось сжать до размера для CYD");
+  // WebServer::arg("plain") stores request bodies as a C string, so raw JPEG
+  // bytes are truncated at the first zero byte. Base64 keeps the body text-safe.
+  const bytes=new Uint8Array(await jpeg.arrayBuffer());
+  let binary="";
+  for(let offset=0;offset<bytes.length;offset+=0x8000){
+   binary+=String.fromCharCode(...bytes.subarray(offset,Math.min(offset+0x8000,bytes.length)));
+  }
+  const encoded=btoa(binary);
   const upload=await fetch(cydDeviceBaseUrl+"/api/v1/image?norad="+encodeURIComponent(norad),{
-   method:"POST",mode:"cors",cache:"no-store",headers:{"Content-Type":"image/jpeg"},body:jpeg
+   method:"POST",mode:"cors",cache:"no-store",headers:{"Content-Type":"text/plain;charset=utf-8"},body:encoded
   });
   const result=await upload.json();
   if(!upload.ok||!result.ok)throw new Error(result.error||("HTTP "+upload.status));

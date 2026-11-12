@@ -210,8 +210,8 @@
   function showSatellitePreview(item,x,y){
     ensureSatellitePreview();
     const box=$("satelliteHoverPreview"),info=satelliteInfo[String(item.NORAD_CAT_ID)]||{},generic=categoryInfo[item._category]||categoryInfo.visual;
-    const imageUrl=info.image||("/api/satellite-image?norad="+encodeURIComponent(item.NORAD_CAT_ID)+"&download=1");
-    const img='<img src="'+esc(imageUrl)+'" alt="Изображение '+esc(item.OBJECT_NAME)+'" loading="lazy" onerror="this.onerror=null;this.src=\'/satellite-placeholder.svg\'">';
+    const imageUrl=satelliteImageUrl(item.NORAD_CAT_ID);
+    const img='<img src="'+esc(imageUrl)+'" alt="Изображение '+esc(item.OBJECT_NAME)+'" loading="lazy" onerror="'+esc(satelliteImageError(item.NORAD_CAT_ID))+'">';
     box.innerHTML=img+'<h3>'+esc(info.title||item.OBJECT_NAME)+'</h3>'+
       '<p><b>История:</b> '+esc(info.history||generic.history)+'</p>'+
       '<p><b>Технически:</b> '+esc(info.tech||generic.tech)+'</p>'+
@@ -361,8 +361,8 @@
   async function showDetails() {
     if (!selected) return;
     const epoch = selected.EPOCH ? new Date(selected.EPOCH).toLocaleString() : "не указана";
-    const selectedImage=(satelliteInfo[String(selected.NORAD_CAT_ID)]||{}).image||("/api/satellite-image?norad="+encodeURIComponent(selected.NORAD_CAT_ID)+"&download=1");
-    $("liveSatelliteDetails").innerHTML = '<div style="margin:10px 0 12px;border:1px solid #29445d;border-radius:12px;overflow:hidden;background:#091827"><img src="'+esc(selectedImage)+'" alt="Изображение '+esc(selected.OBJECT_NAME)+'" loading="lazy" style="display:block;width:100%;max-height:240px;object-fit:contain" onerror="this.onerror=null;this.src=\'/satellite-placeholder.svg\'"></div>'+(trackingId===String(selected.NORAD_CAT_ID)?'<div class="note" style="margin-bottom:8px;color:#55e1a7">● Слежение активно · обновление положения каждые 5 секунд</div>':'') + '<b>' + esc(selected.OBJECT_NAME) + '</b> · NORAD ' + esc(selected.NORAD_CAT_ID) +
+    const selectedImage=satelliteImageUrl(selected.NORAD_CAT_ID);
+    $("liveSatelliteDetails").innerHTML = '<div style="margin:10px 0 12px;border:1px solid #29445d;border-radius:12px;overflow:hidden;background:#091827"><img src="'+esc(selectedImage)+'" alt="Изображение '+esc(selected.OBJECT_NAME)+'" loading="lazy" style="display:block;width:100%;max-height:240px;object-fit:contain" onerror="'+esc(satelliteImageError(selected.NORAD_CAT_ID))+'"></div>'+(trackingId===String(selected.NORAD_CAT_ID)?'<div class="note" style="margin-bottom:8px;color:#55e1a7">● Слежение активно · обновление положения каждые 5 секунд</div>':'') + '<b>' + esc(selected.OBJECT_NAME) + '</b> · NORAD ' + esc(selected.NORAD_CAT_ID) +
       '<br>Эпоха орбитальных элементов (UTC): ' + esc(epoch) +
       '<br>Возраст эпохи: ' + esc(selected.EPOCH ? Math.max(0, (Date.now() - Date.parse(selected.EPOCH)) / 3600000).toFixed(1) + ' ч' : 'неизвестен') + '<br>Наклонение: ' + esc(selected.INCLINATION) + '° · Эксцентриситет: ' + esc(selected.ECCENTRICITY) +
       '<br>Среднее движение: ' + esc(selected.MEAN_MOTION) + ' об/сутки' +

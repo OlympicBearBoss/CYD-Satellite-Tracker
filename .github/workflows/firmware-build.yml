@@ -1,4 +1,4 @@
-name: CYD firmware build # V84 generic satellite selection and on-device SGP4
+name: CYD firmware build # V85 generic satellite selection and on-device SGP4
 
 on:
   pull_request:
@@ -31,6 +31,18 @@ jobs:
       - name: Install PlatformIO
         run: pip install --upgrade platformio pillow
 
+      - name: Verify TLS configuration
+        working-directory: firmware
+        run: |
+          set -euo pipefail
+          if grep -n 'setInsecure' src/main.cpp; then
+            echo "::error::Insecure TLS verification is forbidden"
+            exit 1
+          fi
+          grep -q 'client.setCACert(CELESTRAK_CA_BUNDLE)' src/main.cpp
+          grep -q 'USERTrust RSA Certification Authority' src/main.cpp
+          grep -q 'Sectigo Public Server Authentication Root R46' src/main.cpp
+
       - name: Build CYD firmware
         working-directory: firmware
         run: pio run -e cyd_esp32_2432s028
@@ -39,7 +51,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.12.84"
+          FW_VERSION="v2026.11.12.85"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 
@@ -94,7 +106,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CYD-Satellite-Tracker-firmware-v2026.11.12.84
+          name: CYD-Satellite-Tracker-firmware-v2026.11.12.85
           path: release/
           if-no-files-found: error
           retention-days: 30

@@ -1,6 +1,11 @@
-name: CYD firmware build # V79 split TCP socket and TLS handshake diagnostics
+name: CYD firmware build # V82 local-only browser control API
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware-build.yml"
   push:
     branches: [main]
     paths:
@@ -26,26 +31,6 @@ jobs:
       - name: Install PlatformIO
         run: pip install --upgrade platformio pillow
 
-      - name: Prepare HTTPS trust roots
-        run: |
-          mkdir -p firmware/include/ca
-          for root in gtsr1 gtsr2 gtsr3 gtsr4; do
-            curl --fail --silent --show-error --location "https://pki.goog/repo/certs/${root}.pem" -o "firmware/include/ca/${root}.pem"
-          done
-          python - <<'PY'
-          from pathlib import Path
-          certs = [Path(f"firmware/include/ca/gtsr{i}.pem").read_text() for i in range(1, 5)]
-          newline = chr(10)
-          bundle = newline.join(certs)
-          header = (
-              "#pragma once" + newline
-              + "#include <Arduino.h>" + newline
-              + 'static const char ROOT_CA_BUNDLE[] PROGMEM = R"ROOTCERTS('
-              + bundle + ')ROOTCERTS";' + newline
-          )
-          Path("firmware/include/RootCACert.h").write_text(header)
-          PY
-
       - name: Build CYD firmware
         working-directory: firmware
         run: pio run -e cyd_esp32_2432s028
@@ -54,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.11.79"
+          FW_VERSION="v2026.11.12.82"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 
@@ -109,7 +94,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CYD-Satellite-Tracker-firmware-v2026.11.11.79
+          name: CYD-Satellite-Tracker-firmware-v2026.11.12.82
           path: release/
           if-no-files-found: error
           retention-days: 30

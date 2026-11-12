@@ -944,11 +944,115 @@ static void handleSerialDisplayDiagnostics() {
   }
 }
 
+static void startOrbitTimeSync() {
+  if(ntpStarted || WiFi.status()!=WL_CONNECTED) return;
+  configTime(0,0,"pool.ntp.org","time.google.com","time.cloudflare.com");
+  ntpStarted=true;
+  orbitDataMessage="Синхронизация времени UTC через NTP";
+  Serial.println("[ORBIT] NTP synchronization started");
+}
+static bool fetchIssTle() {
+  if(WiFi.status()!=WL_CONNECTED) return false;
+  WiFiClientSecure client;
+  // Temporary TLS bootstrap: replace setInsecure with a pinned CA bundle before production use.
+  client.setInsecure();
+  HTTPClient http;
+  http.setTimeout(12000);
+  const char* url="https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE";
+  if(!http.begin(client,url)) { orbitDataMessage="Не удалось открыть HTTPS CelesTrak"; return false; }
+  const int code=http.GET();
+  if(code!=HTTP_CODE_OK) {
+    orbitDataMessage="CelesTrak HTTP "+String(code);
+    Serial.printf("[ORBIT] TLE HTTP error: %d\\n",code);
+    http.end();
+    return false;
+  }
+  String payload=http.getString();
+  http.end();
+  String rows[3];
+  uint8_t count=0;
+  int start=0;
+  while(start<(int)payload.length() && count<3) {
+    int end=payload.indexOf('\\n',start);
+    if(end<0) end=payload.length();
+    String row=payload.substring(start,end);
+    row.trim();
+    if(row.length()) rows[count++]=row;
+    start=end+1;
+  }
+  String name="ISS (ZARYA)",line1,line2;
+  if(count>=3 && rows[1].startsWith("1 ") && rows[2].startsWith("2 ")) {
+    name=rows[0]; line1=rows[1]; line2=rows[2];
+  } else if(count>=2 && rows[0].startsWith("1 ") && rows[1].startsWith("2 ")) {
+    line1=rows[0]; line2=rows[1];
+  } else {
+    orbitDataMessage="CelesTrak вернул некорректный TLE";
+    Serial.println("[ORBIT] Invalid TLE response");
+    return false;
+  }
+  char tleName[32]={0},tle1[130]={0},tle2[130]={0};
+  name.toCharArray(tleName,sizeof(tleName));
+  line1.toCharArray(tle1,sizeof(tle1));
+  line2.toCharArray(tle2,sizeof(tle2));
+  if(!issSgp4.init(tleName,tle1,tle2)) {
+    orbitDataMessage="SGP4 отклонил TLE МКС";
+    Serial.println("[ORBIT] SGP4 rejected ISS TLE");
+    return false;
+  }
+  issTleValid=true;
+  lastTleSuccessMs=millis();
+  orbitDataMessage="Актуальные TLE МКС загружены";
+  Serial.printf("[ORBIT] ISS TLE accepted: %s\\n",tleName);
+  return true;
+}
+static void updateIssOrbit() {
+  if(WiFi.status()!=WL_CONNECTED) return;
+  startOrbitTimeSync();
+  const time_t now=time(nullptr);
+  if(now<1700000000) {
+    orbitDataMessage="Ожидание точного времени NTP";
+    return;
+  }
+  if(!issTleValid && (lastTleAttemptMs==0 || millis()-lastTleAttemptMs>=60000)) {
+    lastTleAttemptMs=millis();
+    fetchIssTle();
+  } else if(issTleValid && millis()-lastTleSuccessMs>=6UL*60UL*60UL*1000UL) {
+    lastTleAttemptMs=millis();
+    fetchIssTle();
+  }
+  if(!issTleValid || millis()-lastOrbitCalcMs<1000) return;
+  lastOrbitCalcMs=millis();
+  observerUsesGps=gps.location.isValid() && gps.location.age()<10000;
+  if(observerUsesGps) {
+    observerLatitude=gps.location.lat();
+    observerLongitude=gps.location.lng();
+    observerAltitudeM=gps.altitude.isValid()?gps.altitude.meters():0.0;
+  } else {
+    observerLatitude=DEMO_OBSERVER_LAT;
+    observerLongitude=DEMO_OBSERVER_LON;
+    observerAltitudeM=DEMO_OBSERVER_ALT_M;
+  }
+  issSgp4.site(observerLatitude,observerLongitude,observerAltitudeM);
+  issSgp4.findsat((unsigned long)now);
+  orbitUtcEpoch=now;
+  if(isfinite(issSgp4.satAz) && isfinite(issSgp4.satEl) && isfinite(issSgp4.satDist) && issSgp4.satDist>0) {
+    issAzimuthDeg=issSgp4.satAz;
+    issElevationDeg=issSgp4.satEl;
+    issRangeKm=issSgp4.satDist;
+    issPositionValid=true;
+    orbitDataMessage="Положение МКС рассчитано методом SGP4";
+  } else {
+    issPositionValid=false;
+    orbitDataMessage="SGP4 не вернул координаты МКС";
+  }
+  if(screen==Screen::Satellite) updateOrbitTelemetry();
+}
+
 static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V81";
+  doc["firmware"]="V83";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
@@ -968,6 +1072,23 @@ static void sendLocalStatus() {
   }
   if(gps.altitude.isValid()) doc["altitude_m"]=gps.altitude.meters();
   if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
+  doc["time_valid"]=time(nullptr)>1700000000;
+  doc["utc_epoch"]=(long long)time(nullptr);
+  JsonObject orbit=doc["orbit"].to<JsonObject>();
+  orbit["satellite"]="ISS";
+  orbit["norad_id"]=25544;
+  orbit["tle_valid"]=issTleValid;
+  orbit["position_valid"]=issPositionValid;
+  orbit["observer_source"]=observerUsesGps?"gps":"demo_yekaterinburg";
+  orbit["observer_latitude"]=observerLatitude;
+  orbit["observer_longitude"]=observerLongitude;
+  orbit["utc_epoch"]=(long long)orbitUtcEpoch;
+  if(issPositionValid) {
+    orbit["azimuth_deg"]=issAzimuthDeg;
+    orbit["elevation_deg"]=issElevationDeg;
+    orbit["range_km"]=issRangeKm;
+  }
+  orbit["message"]=orbitDataMessage;
   doc["control"]["target_azimuth_deg"]=targetAzimuthDeg;
   doc["control"]["target_elevation_deg"]=targetElevationDeg;
   doc["control"]["tracking_requested"]=trackingRequested;
@@ -1153,10 +1274,12 @@ void loop() {
   }
   if(!displayDiagnosticActive) handleTouch();
   if(!displayDiagnosticActive) { serviceLocalApi(); } // Browser and CYD communicate only over the local network.
-  // Refresh only the three telemetry tiles; keep the photo, radar and chrome static.
-  if(!displayDiagnosticActive && (screen==Screen::Dashboard || screen==Screen::Antenna) && now-lastDashboardRefreshAt>=1000) {
+  if(!displayDiagnosticActive) updateIssOrbit();
+  // Refresh only dynamic telemetry; keep artwork and navigation static.
+  if(!displayDiagnosticActive && now-lastDashboardRefreshAt>=1000) {
     if(screen==Screen::Dashboard) updateGpsTelemetry();
-    updateTargetTelemetry();
+    if(screen==Screen::Antenna) updateTargetTelemetry();
+    if(screen==Screen::Satellite) updateOrbitTelemetry();
     lastDashboardRefreshAt=now;
   }
 }

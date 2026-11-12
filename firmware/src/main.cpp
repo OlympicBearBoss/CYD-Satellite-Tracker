@@ -1253,7 +1253,7 @@ refreshStatus();setInterval(refreshStatus,1000);
       message=trackingRequested ? "Запрос слежения принят; движение моторов заблокировано." : "Слежение выключено.";
     } else {
       out["ok"]=false; out["error"]="unsupported_command";
-      out["message"]="Допустимые команды: stop, set_target, follow_satellite, tracking."
+      out["message"]="Допустимые команды: stop, set_target, follow_satellite, tracking.";
       String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
     }
     ++localCommandSequence;

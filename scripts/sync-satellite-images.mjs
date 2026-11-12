@@ -107,18 +107,32 @@ const CLASS_QUERIES = {
   cubesat: "CubeSat small satellite spacecraft",
   visual: "Earth observation satellite spacecraft"
 };
-const satelliteWords = /\b(satellite|spacecraft|space station|cubesat|orbiter|weather satellite|navigation satellite|communications satellite|earth observation)\b/i;
-// Reuse one class-representative image across matching catalog entries.
+// Require evidence for the requested spacecraft class; generic "satellite" hits are not enough.
+const CLASS_EVIDENCE = {
+  stations: /\\b(space station|orbital station|international space station|tiangong|mir space station|iss)\\b/i,
+  weather: /\\b(weather satellite|meteorological satellite|weather observatory|noaa[- ]?\\d*|goes[- ]?\\d*|meteosat|himawari|fengyun|metop|jpss)\\b/i,
+  amateur: /\\b(amateur radio satellite|ham radio satellite|amsat|cubesat|cube.?sat|1u cubesat|2u cubesat|3u cubesat)\\b/i,
+  gnss: /\\b(gnss|navigation satellite|gps satellite|galileo satellite|glonass|beidou|navic)\\b/i,
+  science: /\\b(science satellite|scientific satellite|research satellite|space telescope|space observatory|x[- ]ray observatory|astronomy satellite)\\b/i,
+  cubesat: /\\b(cubesat|cube.?sat|nanosatellite|nano.?satellite|1u|2u|3u|6u)\\b/i,
+  visual: /\\b(earth observation|earth imaging|remote sensing satellite|imaging satellite|landsat|sentinel[- ]?\\d|terra satellite|aqua satellite|spot satellite|pleiades satellite)\\b/i
+};
+const clearlyUnrelated = /\\b(miranda|uranus|neptune|jupiter|saturn|mars|venus|mercury|moon|lunar|planet|asteroid|comet|nebula|galaxy|rocket|launch vehicle|astronaut portrait)\\b/i;
 const representativePhotoCache = new Map();
 
 function cleanSearchText(value) {
-  return String(value || "").replace(/[^\p{L}\p{N} ._()-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 100);
+  return String(value || "").replace(/[^\\p{L}\\p{N} ._()-]/gu, " ").replace(/\\s+/g, " ").trim().slice(0, 100);
 }
-function candidateScore(text, name) {
-  const haystack = String(text || "").toLowerCase();
-  const tokens = cleanSearchText(name).toLowerCase().split(/[\s_-]+/).filter(token => token.length >= 3);
-  const nameHits = tokens.filter(token => haystack.includes(token)).length;
-  return nameHits * 4 + (satelliteWords.test(haystack) ? 3 : 0);
+function candidateScore(text, name, group, matchType) {
+  const haystack = String(text || "");
+  const rule = CLASS_EVIDENCE[group] || CLASS_EVIDENCE.visual;
+  if (clearlyUnrelated.test(haystack) || !rule.test(haystack)) return null;
+  const tokens = cleanSearchText(name).toLowerCase().split(/[\\s_-]+/)
+    .filter(token => token.length >= 3 && !["satellite", "spacecraft", "weather", "orbital"].includes(token));
+  const normalized = haystack.toLowerCase();
+  const nameHits = tokens.filter(token => normalized.includes(token)).length;
+  if (matchType === "name-related" && (!tokens.length || nameHits === 0)) return null;
+  return nameHits * 10 + 5;
 }
 async function fetchAlternativePhoto(name, group) {
   const safeName = cleanSearchText(name);
@@ -139,8 +153,10 @@ async function fetchAlternativePhoto(name, group) {
         const data = item.data?.[0] || {};
         const text = (data.title || "") + " " + (data.description || "");
         const href = (item.links || []).find(link => link.rel === "preview" && link.href)?.href || item.href;
-        if (href && satelliteWords.test(text)) {
-          candidates.push({ href: href.replace(/^http:/, "https:"), title: data.title || "", score: candidateScore(text, safeName), provider: "NASA" });
+        const score = candidateScore(text, safeName, group, matchType);
+        // NASA item.href is commonly a JSON manifest; accept preview image URLs only.
+        if (href && score !== null) {
+          candidates.push({ href: href.replace(/^http:/, "https:"), title: data.title || "", score, provider: "NASA" });
         }
       }
     } catch (error) {
@@ -157,8 +173,9 @@ async function fetchAlternativePhoto(name, group) {
         const info = page.imageinfo?.[0] || {};
         const title = String(page.title || "").replace(/^File:/, "");
         const href = info.thumburl || info.url;
-        if (href && /^image\/(jpeg|png|webp|gif)$/i.test(info.mime || "") && satelliteWords.test(title)) {
-          candidates.push({ href, title, score: candidateScore(title, safeName), provider: "Wikimedia Commons" });
+        const score = candidateScore(title, safeName, group, matchType);
+        if (href && /^image\/(jpeg|png|webp|gif)$/i.test(info.mime || "") && score !== null) {
+          candidates.push({ href, title, score, provider: "Wikimedia Commons" });
         }
       }
     } catch (error) {

@@ -115,3 +115,5 @@ jobs:
           path: release/
           if-no-files-found: error
           retention-days: 30
+
+# CI retrigger after fixing the shell packaging command.

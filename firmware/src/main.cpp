@@ -148,6 +148,8 @@ static String selectedSatelliteImageUrl="https://db-satnogs.freetls.fastly.net/m
 static uint8_t* selectedSatelliteImageData=nullptr;
 static uint32_t selectedSatelliteImageSize=0;
 static bool selectedSatelliteImagePending=true;
+static uint8_t selectedSatelliteImageAttempts=0;
+static uint32_t selectedSatelliteImageLastAttemptMs=0;
 static String orbitDataMessage="Ожидание подключения Wi-Fi";
 
 // Space Dark palette: deep navy background, layered blue panels and cyan telemetry.
@@ -1377,6 +1379,8 @@ refreshStatus();setInterval(refreshStatus,1000);
       selectedSatelliteImageUrl=req["image_url"]|"";
       if(!isAllowedSatelliteImageUrl(selectedSatelliteImageUrl)) selectedSatelliteImageUrl="";
       selectedSatelliteImagePending=selectedSatelliteImageUrl.length()>0;
+      selectedSatelliteImageAttempts=0;
+      selectedSatelliteImageLastAttemptMs=0;
       if(selectedSatelliteImageData) { free(selectedSatelliteImageData); selectedSatelliteImageData=null; }
       selectedSatelliteImageSize=0;
       if(screen==Screen::Dashboard) drawSelectedSatellitePhoto();
@@ -1485,9 +1489,18 @@ void loop() {
   if(!displayDiagnosticActive) handleTouch();
   if(!displayDiagnosticActive) { serviceLocalApi(); } // Browser and CYD communicate only over the local network.
   if(!displayDiagnosticActive) updateSelectedOrbit();
-  if(!displayDiagnosticActive && selectedSatelliteImagePending) {
-    selectedSatelliteImagePending=false;
-    if(fetchSelectedSatelliteImage() && screen==Screen::Dashboard) drawSelectedSatellitePhoto();
+  if(!displayDiagnosticActive && selectedSatelliteImagePending && WiFi.status()==WL_CONNECTED &&
+     selectedSatelliteImageAttempts<3 &&
+     (selectedSatelliteImageLastAttemptMs==0 || now-selectedSatelliteImageLastAttemptMs>=30000)) {
+    selectedSatelliteImageLastAttemptMs=now;
+    ++selectedSatelliteImageAttempts;
+    if(fetchSelectedSatelliteImage()) {
+      selectedSatelliteImagePending=false;
+      if(screen==Screen::Dashboard) drawSelectedSatellitePhoto();
+    } else if(selectedSatelliteImageAttempts>=3) {
+      selectedSatelliteImagePending=false;
+      Serial.println("[PHOTO] no public image available after 3 attempts");
+    }
   }
   // Refresh only dynamic telemetry; keep artwork and navigation static.
   if(!displayDiagnosticActive && now-lastDashboardRefreshAt>=1000) {

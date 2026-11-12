@@ -21,7 +21,8 @@ const ALLOWED_HOSTS = new Set([
   "db-satnogs.freetls.fastly.net",
   "images-assets.nasa.gov",
   "upload.wikimedia.org",
-  "www.amsat.org"
+  "www.amsat.org",
+  "images-assets.nasa.gov"
 ]);
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -61,6 +62,7 @@ function extensionFor(contentType) {
   if (type === "image/jpeg" || type === "image/jpg") return "jpg";
   if (type === "image/png") return "png";
   if (type === "image/webp") return "webp";
+  if (type === "image/gif") return "gif";
   return "";
 }
 
@@ -95,6 +97,82 @@ async function fetchPhoto(url) {
   return { bytes, ext: "jpg", type: "image/jpeg" };
 }
 
+
+const SEARCH_VERSION = 2;
+const CLASS_QUERIES = {
+  stations: "space station orbital spacecraft",
+  weather: "weather satellite spacecraft",
+  amateur: "amateur radio CubeSat satellite",
+  gnss: "navigation GNSS satellite spacecraft",
+  science: "scientific research satellite spacecraft",
+  cubesat: "CubeSat small satellite spacecraft",
+  visual: "Earth observation satellite spacecraft"
+};
+const satelliteWords = /\b(satellite|spacecraft|space station|cubesat|orbiter|weather satellite|navigation satellite|communications satellite|earth observation)\b/i;
+
+function cleanSearchText(value) {
+  return String(value || "").replace(/[^\p{L}\p{N} ._()-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 100);
+}
+function candidateScore(text, name) {
+  const haystack = String(text || "").toLowerCase();
+  const tokens = cleanSearchText(name).toLowerCase().split(/[\s_-]+/).filter(token => token.length >= 3);
+  const nameHits = tokens.filter(token => haystack.includes(token)).length;
+  return nameHits * 4 + (satelliteWords.test(haystack) ? 3 : 0);
+}
+async function fetchAlternativePhoto(name, group) {
+  const safeName = cleanSearchText(name);
+  const queries = safeName
+    ? [safeName + " satellite spacecraft", CLASS_QUERIES[group] || CLASS_QUERIES.visual]
+    : [CLASS_QUERIES[group] || CLASS_QUERIES.visual];
+  for (let queryIndex = 0; queryIndex < queries.length; queryIndex++) {
+    const query = queries[queryIndex];
+    const matchType = queryIndex === 0 && safeName ? "name-related" : "class-representative";
+    const candidates = [];
+    try {
+      const nasa = await json("https://images-api.nasa.gov/search?q=" + encodeURIComponent(query) + "&media_type=image&page_size=12");
+      for (const item of nasa?.collection?.items || []) {
+        const data = item.data?.[0] || {};
+        const text = (data.title || "") + " " + (data.description || "");
+        const href = (item.links || []).find(link => link.rel === "preview" && link.href)?.href || item.href;
+        if (href && satelliteWords.test(text)) {
+          candidates.push({ href: href.replace(/^http:/, "https:"), title: data.title || "", score: candidateScore(text, safeName), provider: "NASA" });
+        }
+      }
+    } catch (error) {
+      console.warn("NASA image search unavailable: " + error.message);
+    }
+    try {
+      const params = new URLSearchParams({
+        action: "query", generator: "search", gsrsearch: "filetype:bitmap " + query,
+        gsrnamespace: "6", gsrlimit: "12", prop: "imageinfo",
+        iiprop: "url|mime", iiurlwidth: "1200", format: "json"
+      });
+      const commons = await json("https://commons.wikimedia.org/w/api.php?" + params.toString());
+      for (const page of Object.values(commons?.query?.pages || {})) {
+        const info = page.imageinfo?.[0] || {};
+        const title = String(page.title || "").replace(/^File:/, "");
+        const href = info.thumburl || info.url;
+        if (href && /^image\/(jpeg|png|webp|gif)$/i.test(info.mime || "") && satelliteWords.test(title)) {
+          candidates.push({ href, title, score: candidateScore(title, safeName), provider: "Wikimedia Commons" });
+        }
+      }
+    } catch (error) {
+      console.warn("Wikimedia image search unavailable: " + error.message);
+    }
+    candidates.sort((a, b) => b.score - a.score);
+    for (const candidate of candidates.slice(0, 8)) {
+      try {
+        const photo = await fetchPhoto(candidate.href);
+        return { ...photo, source: candidate.href, provider: candidate.provider,
+          matchedTitle: candidate.title.slice(0, 180), matchType };
+      } catch (error) {
+        console.warn("Alternative image rejected (" + candidate.provider + "): " + error.message);
+      }
+    }
+  }
+  return null;
+}
+
 await fs.mkdir(OUT, { recursive: true });
 let manifest = { version: 1, generatedAt: now(), images: {} };
 try {
@@ -103,13 +181,14 @@ try {
 } catch {}
 
 const ids = new Set();
+const idGroups = new Map();
 for (const group of GROUPS) {
   try {
     const feed = await json("https://celestrak.org/NORAD/elements/gp.php?GROUP=" + encodeURIComponent(group) + "&FORMAT=JSON");
     if (Array.isArray(feed)) {
       for (const item of feed) {
         const id = String(item.NORAD_CAT_ID || "");
-        if (/^\d{1,6}$/.test(id)) ids.add(id);
+        if (/^\d{1,6}$/.test(id)) { ids.add(id); idGroups.set(id, group); }
       }
     }
     console.log(group + ": " + (Array.isArray(feed) ? feed.length : 0) + " objects");
@@ -123,7 +202,7 @@ if (!ids.size) throw new Error("No catalog records were retrieved; refusing to w
 const due = [...ids].filter(id => {
   const entry = manifest.images[id];
   if (entry?.path && entry.checkedAt && Date.now() - Date.parse(entry.checkedAt) < 180 * 86400000) return false;
-  if (entry?.status === "not-found" && entry.checkedAt && Date.now() - Date.parse(entry.checkedAt) < MISS_TTL) return false;
+  if (entry?.status === "not-found" && entry.searchVersion >= SEARCH_VERSION && entry.checkedAt && Date.now() - Date.parse(entry.checkedAt) < MISS_TTL) return false;
   return true;
 }).slice(0, MAX_CHECKS);
 
@@ -133,22 +212,36 @@ for (const id of due) {
   try {
     const payload = await json("https://db.satnogs.org/api/satellites/?format=json&norad_cat_id=" + encodeURIComponent(id));
     const record = Array.isArray(payload) ? payload[0] : (payload.results || [])[0];
+    const name = record?.name || record?.satellite_name || "";
     const source = normalizeImageUrl(imageValue(record));
-    if (!source) {
-      manifest.images[id] = { status: "not-found", checkedAt: now(), name: record?.name || record?.satellite_name || "" };
+    let photo = null;
+    let provider = "SatNOGS";
+    let matchType = "catalog-record";
+    let matchedTitle = name;
+    if (source) {
+      try { photo = await fetchPhoto(source); }
+      catch (error) { console.warn("SatNOGS image rejected for " + id + ": " + error.message); }
+    }
+    if (!photo) {
+      const alternative = await fetchAlternativePhoto(name, idGroups.get(id) || "visual");
+      if (alternative) {
+        photo = alternative;
+        provider = alternative.provider;
+        matchType = alternative.matchType;
+        matchedTitle = alternative.matchedTitle;
+      }
+    }
+    if (!photo) {
+      manifest.images[id] = { status: "not-found", checkedAt: now(), name, searchVersion: SEARCH_VERSION };
       missing++;
     } else {
-      const photo = await fetchPhoto(source);
-      const filename = id + "." + photo.ext;
+      const filename = id + ".jpg";
       await fs.writeFile(path.join(OUT, filename), photo.bytes);
       manifest.images[id] = {
-        status: "available",
-        path: "/satellite-images/" + filename,
-        source,
-        contentType: photo.type,
-        bytes: photo.bytes.length,
-        checkedAt: now(),
-        name: record?.name || record?.satellite_name || ""
+        status: "available", path: "/satellite-images/" + filename,
+        source: photo.source || source, provider, matchType, matchedTitle,
+        contentType: "image/jpeg", bytes: photo.bytes.length,
+        checkedAt: now(), name, searchVersion: SEARCH_VERSION
       };
       downloaded++;
     }

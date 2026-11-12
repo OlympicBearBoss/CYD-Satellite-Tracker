@@ -119,6 +119,25 @@ export async function onRequestGet({ request }) {
       });
     }
 
+    // Verify at least one source is a real, compact JPEG before advertising
+    // a photo to the browser and the ESP32.
+    let usableSource = false;
+    for (const source of sources) {
+      try {
+        await fetchCompactJpeg(source);
+        usableSource = true;
+        break;
+      } catch (_) {
+        // Continue through the approved source list.
+      }
+    }
+    if (!usableSource) {
+      return Response.json(
+        { ok: true, norad_id: norad, image: "", error: "no_usable_jpeg_source" },
+        { headers: CACHE_HEADERS }
+      );
+    }
+
     // Always return the production origin so firmware allow-list validation is
     // identical for the live site and Cloudflare preview deployments.
     const imageUrl = new URL("https://cyd-satellite-tracker.pages.dev/api/satellite-image");

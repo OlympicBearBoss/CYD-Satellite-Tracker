@@ -11,7 +11,7 @@ on:
       max_checks:
         description: Maximum satellite records to inspect in this run
         required: false
-        default: "600"
+        default: "700"
   schedule:
     - cron: "23 3 * * 1"
 
@@ -40,7 +40,7 @@ jobs:
         run: npm install --no-save sharp
       - name: Download public satellite images
         env:
-          MAX_IMAGE_CHECKS: ${{ inputs.max_checks || '600' }}
+          MAX_IMAGE_CHECKS: ${{ inputs.max_checks || '700' }}
         run: node scripts/sync-satellite-images.mjs
       - name: Commit image library updates
         run: |

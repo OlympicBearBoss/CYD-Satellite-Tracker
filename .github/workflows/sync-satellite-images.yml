@@ -31,6 +31,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install image optimizer
+        run: npm install --no-save sharp
       - name: Download public satellite images
         env:
           MAX_IMAGE_CHECKS: ${{ inputs.max_checks || '300' }}

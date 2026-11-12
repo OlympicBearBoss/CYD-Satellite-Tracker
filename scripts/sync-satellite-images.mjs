@@ -114,8 +114,8 @@ const CLASS_EVIDENCE = {
   amateur: /\b(amateur radio satellite|ham radio satellite|amsat|cubesat|cube.?sat|1u cubesat|2u cubesat|3u cubesat)\b/i,
   gnss: /\b(gnss|navigation satellite|gps satellite|galileo satellite|glonass|beidou|navic)\b/i,
   science: /\b(science satellite|scientific satellite|research satellite|space telescope|space observatory|x[- ]ray observatory|astronomy satellite)\b/i,
-  cubesat: /\b(cubesat|cube.?sat|nanosatellite|nano.?satellite|1u|2u|3u|6u)\b/i,
-  visual: /\b(earth observation|earth imaging|remote sensing satellite|imaging satellite|landsat|sentinel[- ]?\d|terra satellite|aqua satellite|spot satellite|pleiades satellite)\b/i
+  cubesat: /\b(cubesat|cube.?sat|nanosatellite|nano.?satellite)\b/i,
+  visual: /\b(earth observation satellite|earth imaging satellite|remote sensing satellite|imaging satellite|landsat[- ]?\d+ (satellite|spacecraft)|sentinel[- ]?\d+ (satellite|spacecraft)|terra satellite|aqua satellite|spot satellite|pleiades satellite)\b/i
 };
 const clearlyUnrelated = /\b(miranda|uranus|neptune|jupiter|saturn|mars|venus|mercury|moon|lunar|planet|asteroid|comet|nebula|galaxy|rocket|launch vehicle|astronaut portrait)\b/i;
 const representativePhotoCache = new Map();

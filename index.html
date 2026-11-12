@@ -578,7 +578,7 @@ const $=id=>document.getElementById(id);
 document.querySelectorAll("[data-i18n]").forEach(el=>{translations.ru[el.dataset.i18n]=el.innerHTML;});
 Object.assign(translations.ru,{centered:"Оси установлены в центр (демо).",stopped:"Движение остановлено (демо).",tracking:"Демонстрационное наведение на цель: ",connection_test_ok:"Проверка демо завершена: отображаются тестовые параметры подключения.",});
 function t(key){return translations[lang][key]||translations.ru[key]||key}
-function setLanguage(next){lang=next;document.documentElement.lang=lang;document.querySelectorAll("[data-i18n]").forEach(el=>{const val=t(el.dataset.i18n);if(val.includes("<br>"))el.innerHTML=val;else el.textContent=val});$("language").textContent=lang==="ru"?"EN":"RU";document.querySelectorAll("[data-lang]").forEach(b=>b.classList.toggle("selected",b.dataset.lang===lang));const active=document.querySelector(".view.active");if(active){const key=active.id.replace("view-","");const nav=document.querySelector('[data-view="'+key+'"]');$("crumbTitle").textContent=nav?nav.querySelector("i").textContent:"";}renderLog();renderRadarObjects();renderTarget();if(typeof setCydMode==="function")setCydMode(cydDeviceConnected?"connected":cydDeviceEverConnected?"offline":"demo");if(typeof cydLastStatus!=="undefined"&&cydLastStatus)applyCydTelemetry(cydLastStatus);}
+function setLanguage(next){lang=next;document.documentElement.lang=lang;document.querySelectorAll("[data-i18n]").forEach(el=>{const val=t(el.dataset.i18n);if(val.includes("<br>"))el.innerHTML=val;else el.textContent=val});$("language").textContent=lang==="ru"?"EN":"RU";document.querySelectorAll("[data-lang]").forEach(b=>b.classList.toggle("selected",b.dataset.lang===lang));const active=document.querySelector(".view.active");if(active){const key=active.id.replace("view-","");const nav=document.querySelector('[data-view="'+key+'"]');$("crumbTitle").textContent=nav?nav.querySelector("i").textContent:"";}renderLog();renderRadarObjects();renderTarget();if(typeof setCydMode==="function")setCydMode(cydDeviceConnected?"connected":cydDeviceEverConnected?"offline":"demo");if(cydDeviceConnected&&cydLastStatus)applyCydTelemetry(cydLastStatus);else if(cydDeviceEverConnected)setCydNoData();}
 function go(view){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));document.querySelectorAll(".nav-item").forEach(b=>b.classList.toggle("active",b.dataset.view===view));const nav=document.querySelector('[data-view="'+view+'"]');$("crumbTitle").textContent=nav?nav.querySelector("i").textContent:"";window.scrollTo({top:0,behavior:"smooth"});}
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.view)));
 document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
@@ -614,7 +614,7 @@ function setCydNoData(){
  ["healthWifiBar","healthCpuBar","healthMemoryBar"].forEach(id=>{const el=$(id);if(el)el.style.width="0%";});
  ["azDriverStatus","elDriverStatus"].forEach(id=>{const el=$(id);if(el){const span=el.querySelector("span");if(span)span.textContent=missing;el.style.color="#ffb4bd";}});
  const gps=$("gpsStatus");if(gps)gps.textContent=missing.toUpperCase();const badge=$("liveDeviceBadge");if(badge){const span=badge.querySelector("span");if(span)span.textContent=cydModeText("Нет связи с CYD","CYD offline");}
- const note=$("deviceSensorNote");if(note)note.textContent=cydModeText("Нет актуальных показаний GPS и компаса. Датчики без данных помечены «Не подключен».","No current GPS or compass readings. Sensors without data are marked “Not connected”.");
+ const note=$("deviceSensorNote");if(note)note.textContent=cydModeText("Нет актуальных показаний GPS и компаса. Датчики без данных помечены «Не подключен».","No current GPS or compass readings. Sensors without data are marked “Not connected”.");const telemetry=$("telemetryNote");if(telemetry)telemetry.textContent=cydModeText("CYD не передаёт данные по напряжению, току, температуре, CPU/RAM и углам валов. Для этих параметров: Не подключен.","CYD does not report voltage, current, temperature, CPU/RAM or shaft angles. These values are marked: Not connected.");
 }
 function applyCydTelemetry(status){
  cydLastStatus=status;
@@ -623,7 +623,7 @@ function applyCydTelemetry(status){
  const rssi=Number.isFinite(status.wifi_rssi)?status.wifi_rssi:null;
  const set=(id,value)=>{const el=$(id);if(el)el.textContent=value;};
  set("liveDeviceIp",status.ip||noData);set("liveDeviceRssi",rssi===null?noData:rssi+" dBm");
- set("liveDeviceGps",gpsReady?"FIX · "+(status.gps_satellites??"—")+" спутн.":noData);
+ set("liveDeviceGps",gpsReady?"FIX · "+(status.gps_satellites??"—")+" "+cydModeText("спутн.","satellites"):noData);
  set("liveDeviceAngle",Number.isFinite(status.angle_deg)?status.angle_deg.toFixed(1)+"°":noData);
  set("liveDeviceCompass",Number.isFinite(status.compass_heading_deg)?status.compass_heading_deg.toFixed(1)+"°":noData);
  set("liveDeviceDrivers",hw.motor_drivers_connected===true?"Подключены":noData);

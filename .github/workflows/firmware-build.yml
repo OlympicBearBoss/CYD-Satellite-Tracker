@@ -1,6 +1,11 @@
-name: CYD firmware build # V79 split TCP socket and TLS handshake diagnostics
+name: CYD firmware build # V85 generic satellite selection and on-device SGP4
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware-build.yml"
   push:
     branches: [main]
     paths:
@@ -26,25 +31,17 @@ jobs:
       - name: Install PlatformIO
         run: pip install --upgrade platformio pillow
 
-      - name: Prepare HTTPS trust roots
+      - name: Verify TLS configuration
+        working-directory: firmware
         run: |
-          mkdir -p firmware/include/ca
-          for root in gtsr1 gtsr2 gtsr3 gtsr4; do
-            curl --fail --silent --show-error --location "https://pki.goog/repo/certs/${root}.pem" -o "firmware/include/ca/${root}.pem"
-          done
-          python - <<'PY'
-          from pathlib import Path
-          certs = [Path(f"firmware/include/ca/gtsr{i}.pem").read_text() for i in range(1, 5)]
-          newline = chr(10)
-          bundle = newline.join(certs)
-          header = (
-              "#pragma once" + newline
-              + "#include <Arduino.h>" + newline
-              + 'static const char ROOT_CA_BUNDLE[] PROGMEM = R"ROOTCERTS('
-              + bundle + ')ROOTCERTS";' + newline
-          )
-          Path("firmware/include/RootCACert.h").write_text(header)
-          PY
+          set -euo pipefail
+          if grep -n 'setInsecure' src/main.cpp; then
+            echo "::error::Insecure TLS verification is forbidden"
+            exit 1
+          fi
+          grep -q 'client.setCACert(CELESTRAK_CA_BUNDLE)' src/main.cpp
+          grep -q 'USERTrust RSA Certification Authority' src/main.cpp
+          grep -q 'Sectigo Public Server Authentication Root R46' src/main.cpp
 
       - name: Build CYD firmware
         working-directory: firmware
@@ -54,7 +51,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.11.79"
+          FW_VERSION="v2026.11.12.85"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 
@@ -71,16 +68,22 @@ jobs:
           fi
           cp "$BOOT_APP0" release/CYD-Satellite-Tracker-${FW_VERSION}-boot_app0.bin
 
-          ESPTOOL="$(find "$HOME/.platformio/packages/tool-esptool" -type f -name esptool -perm -u+x -print -quit)"
-          if [[ -z "$ESPTOOL" || ! -x "$ESPTOOL" ]]; then
-            echo "::error::esptool executable was not found in PlatformIO tool-esptool"
-            find "$HOME/.platformio/packages" -maxdepth 4 -type f -name 'esptool*' -print || true
+          # PlatformIO installs esptool under tool-esptoolpy.
+          # Check the Python entry point first, then the legacy executable name.
+          ESPTOOL_SCRIPT="$(find "$HOME/.platformio/packages" -type f -name esptool.py -print -quit)"
+          if [[ -z "$ESPTOOL_SCRIPT" ]]; then
+            ESPTOOL_SCRIPT="$(find "$HOME/.platformio/packages" -type f -name esptool -print -quit)"
+          fi
+          if [[ -z "$ESPTOOL_SCRIPT" || ! -f "$ESPTOOL_SCRIPT" ]]; then
+            echo "::error::esptool Python entry point was not found in PlatformIO packages"
+            find "$HOME/.platformio/packages" -maxdepth 5 -type f -iname '*esptool*' -print || true
             exit 1
           fi
-
-          "$ESPTOOL" --chip esp32 merge-bin \
-            --flash-mode dio --flash-freq 40m --flash-size 4MB \
-            -o release/CYD-Satellite-Tracker-${FW_VERSION}-full-flash.bin \
+          echo "Using esptool: $ESPTOOL_SCRIPT"
+          # esptool 4.9 uses underscore option names and --output for merge_bin.
+          python "$ESPTOOL_SCRIPT" --chip esp32 merge_bin \
+            --flash_mode dio --flash_freq 40m --flash_size 4MB \
+            --output release/CYD-Satellite-Tracker-${FW_VERSION}-full-flash.bin \
             0x1000 "$BUILD_DIR/bootloader.bin" \
             0x8000 "$BUILD_DIR/partitions.bin" \
             0xE000 "$BOOT_APP0" \
@@ -109,7 +112,9 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CYD-Satellite-Tracker-firmware-v2026.11.11.79
+          name: CYD-Satellite-Tracker-firmware-v2026.11.12.85
           path: release/
           if-no-files-found: error
           retention-days: 30
+
+# CI retrigger after correcting esptool 4.9 merge_bin option names.

@@ -61,14 +61,30 @@
   const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const status = value => { if ($("orbitFeedStatus")) $("orbitFeedStatus").textContent = value; };
   async function loadSatelliteLib() {
-    if (window.satellite) return window.satellite;
-    if (!satelliteLibReady) satelliteLibReady = new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = "https://unpkg.com/satellite.js@6.0.1/dist/satellite.min.js";
-      s.onload = () => window.satellite ? resolve(window.satellite) : reject(new Error("Библиотека расчёта орбит не загрузилась"));
-      s.onerror = () => reject(new Error("Не удалось загрузить satellite.js"));
-      document.head.appendChild(s);
-    });
+    if (window.satellite && typeof window.satellite.json2satrec === "function") return window.satellite;
+    if (!satelliteLibReady) satelliteLibReady = (async () => {
+      const urls = [
+        "https://cdn.jsdelivr.net/npm/satellite.js@6.0.1/+esm",
+        "https://esm.sh/satellite.js@6.0.1?bundle",
+        "https://unpkg.com/satellite.js@6.0.1/dist/satellite.es.js"
+      ];
+      const errors = [];
+      for (const url of urls) {
+        try {
+          const imported = await import(url);
+          const candidate = imported.default && typeof imported.default.json2satrec === "function"
+            ? imported.default : imported;
+          const required = ["json2satrec", "propagate", "gstime", "eciToEcf", "ecfToLookAngles"];
+          const missing = required.filter(name => typeof candidate[name] !== "function");
+          if (missing.length) throw new Error("нет функций: " + missing.join(", "));
+          window.satellite = candidate;
+          return candidate;
+        } catch (error) {
+          errors.push(url + ": " + (error && error.message ? error.message : String(error)));
+        }
+      }
+      throw new Error("Не удалось загрузить satellite.js / SGP4. " + errors.join(" | "));
+    })();
     return satelliteLibReady;
   }
   async function refresh() {

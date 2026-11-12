@@ -2,24 +2,92 @@
 #include <TFT_eSPI.h>
 #include <SPI.h>
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
-#include <HTTPClient.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <TinyGPSPlus.h>
 #include <ctype.h>
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <time.h>
-#include <errno.h>
-#include <esp_heap_caps.h>
-#include <lwip/dns.h>
+#include <math.h>
+#include <Sgp4.h>
 #include <TJpg_Decoder.h>
 #include "splash_jpg.h"
 #include "ui_assets.h"
 #include "BoardConfig.h"
 #include "WifiConfig.h"
-#include "RootCACert.h"
+
+// Trust anchors for CelesTrak HTTPS: USERTrust RSA Certification Authority
+// and Sectigo Public Server Authentication Root R46, both from Mozilla's CA store.
+// setCACert() validates the server certificate chain and hostname; no bypass.
+static const char CELESTRAK_CA_BUNDLE[] = R"PEM(-----BEGIN CERTIFICATE-----
+MIIF3jCCA8agAwIBAgIQAf1tMPyjylGoG7xkDjUDLTANBgkqhkiG9w0BAQwFADCB
+iDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCk5ldyBKZXJzZXkxFDASBgNVBAcTC0pl
+cnNleSBDaXR5MR4wHAYDVQQKExVUaGUgVVNFUlRSVVNUIE5ldHdvcmsxLjAsBgNV
+BAMTJVVTRVJUcnVzdCBSU0EgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkwHhcNMTAw
+MjAxMDAwMDAwWhcNMzgwMTE4MjM1OTU5WjCBiDELMAkGA1UEBhMCVVMxEzARBgNV
+BAgTCk5ldyBKZXJzZXkxFDASBgNVBAcTC0plcnNleSBDaXR5MR4wHAYDVQQKExVU
+aGUgVVNFUlRSVVNUIE5ldHdvcmsxLjAsBgNVBAMTJVVTRVJUcnVzdCBSU0EgQ2Vy
+dGlmaWNhdGlvbiBBdXRob3JpdHkwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIK
+AoICAQCAEmUXNg7D2wiz0KxXDXbtzSfTTK1Qg2HiqiBNCS1kCdzOiZ/MPans9s/B
+3PHTsdZ7NygRK0faOca8Ohm0X6a9fZ2jY0K2dvKpOyuR+OJv0OwWIJAJPuLodMkY
+tJHUYmTbf6MG8YgYapAiPLz+E/CHFHv25B+O1ORRxhFnRghRy4YUVD+8M/5+bJz/
+Fp0YvVGONaanZshyZ9shZrHUm3gDwFA66Mzw3LyeTP6vBZY1H1dat//O+T23LLb2
+VN3I5xI6Ta5MirdcmrS3ID3KfyI0rn47aGYBROcBTkZTmzNg95S+UzeQc0PzMsNT
+79uq/nROacdrjGCT3sTHDN/hMq7MkztReJVni+49Vv4M0GkPGw/zJSZrM233bkf6
+c0Plfg6lZrEpfDKEY1WJxA3Bk1QwGROs0303p+tdOmw1XNtB1xLaqUkL39iAigmT
+Yo61Zs8liM2EuLE/pDkP2QKe6xJMlXzzawWpXhaDzLhn4ugTncxbgtNMs+1b/97l
+c6wjOy0AvzVVdAlJ2ElYGn+SNuZRkg7zJn0cTRe8yexDJtC/QV9AqURE9JnnV4ee
+UB9XVKg+/XRjL7FQZQnmWEIuQxpMtPAlR1n6BB6T1CZGSlCBst6+eLf8ZxXhyVeE
+Hg9j1uliutZfVS7qXMYoCAQlObgOK6nyTJccBz8NUvXt7y+CDwIDAQABo0IwQDAd
+BgNVHQ4EFgQUU3m/WqorSs9UgOHYm8Cd8rIDZsswDgYDVR0PAQH/BAQDAgEGMA8G
+A1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQEMBQADggIBAFzUfA3P9wF9QZllDHPF
+Up/L+M+ZBn8b2kMVn54CVVeWFPFSPCeHlCjtHzoBN6J2/FNQwISbxmtOuowhT6KO
+VWKR82kV2LyI48SqC/3vqOlLVSoGIG1VeCkZ7l8wXEskEVX/JJpuXior7gtNn3/3
+ATiUFJVDBwn7YKnuHKsSjKCaXqeYalltiz8I+8jRRa8YFWSQEg9zKC7F4iRO/Fjs
+8PRF/iKz6y+O0tlFYQXBl2+odnKPi4w2r78NBc5xjeambx9spnFixdjQg3IM8WcR
+iQycE0xyNN+81XHfqnHd4blsjDwSXWXavVcStkNr/+XeTWYRUc+ZruwXtuhxkYze
+Sf7dNXGiFSeUHM9h4ya7b6NnJSFd5t0dCy5oGzuCr+yDZ4XUmFF0sbmZgIn/f3gZ
+XHlKYC6SQK5MNyosycdiyA5d9zZbyuAlJQG03RoHnHcAP9Dc1ew91Pq7P8yF1m9/
+qS3fuQL39ZeatTXaw2ewh0qpKJ4jjv9cJ2vhsE/zB+4ALtRZh8tSQZXq9EfX7mRB
+VXyNWQKV3WKdwrnuWih0hKWbt5DHDAff9Yk2dDLWKMGwsAvgnEzDHNb842m1R0aB
+L6KCq9NjRHDEjf8tM7qtj3u1cIiuPhnPQCjY/MiQu12ZIvVS5ljFH4gxQ+6IHdfG
+jjxDah2nGN59PRbxYvnKkKj9
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIIFijCCA3KgAwIBAgIQdY39i658BwD6qSWn4cetFDANBgkqhkiG9w0BAQwFADBf
+MQswCQYDVQQGEwJHQjEYMBYGA1UEChMPU2VjdGlnbyBMaW1pdGVkMTYwNAYDVQQD
+Ey1TZWN0aWdvIFB1YmxpYyBTZXJ2ZXIgQXV0aGVudGljYXRpb24gUm9vdCBSNDYw
+HhcNMjEwMzIyMDAwMDAwWhcNNDYwMzIxMjM1OTU5WjBfMQswCQYDVQQGEwJHQjEY
+MBYGA1UEChMPU2VjdGlnbyBMaW1pdGVkMTYwNAYDVQQDEy1TZWN0aWdvIFB1Ymxp
+YyBTZXJ2ZXIgQXV0aGVudGljYXRpb24gUm9vdCBSNDYwggIiMA0GCSqGSIb3DQEB
+AQUAA4ICDwAwggIKAoICAQCTvtU2UnXYASOgHEdCSe5jtrch/cSV1UgrJnwUUxDa
+ef0rty2k1Cz66jLdScK5vQ9IPXtamFSvnl0xdE8H/FAh3aTPaE8bEmNtJZlMKpnz
+SDBh+oF8HqcIStw+KxwfGExxqjWMrfhu6DtK2eWUAtaJhBOqbchPM8xQljeSM9xf
+iOefVNlI8JhD1mb9nxc4Q8UBUQvX4yMPFF1bFOdLvt30yNoDN9HWOaEhUTCDsG3X
+ME6WW5HwcCSrv0WBZEMNvSE6Lzzpng3LILVCJ8zab5vuZDCQOc2TZYEhMbUjUDM3
+IuM47fgxMMxF/mL50V0yeUKH32rMVhlATc6qu/m1dkmU8Sf4kaWD5QazYw6A3OAS
+VYCmO2a0OYctyPDQ0RTp5A1NDvZdV3LFOxxHVp3i1fuBYYzMTYCQNFu31xR13NgE
+SJ/AwSiItOkcyqex8Va3e0lMWeUgFaiEAin6OJRpmkkGj80feRQXEgyDet4fsZfu
++Zd4KKTIRJLpfSYFplhym3kT2BFfrsU4YjRosoYwjviQYZ4ybPUHNs2iTG7sijbt
+8uaZFURww3y8nDnAtOFr94MlI1fZEoDlSfB1D++N6xybVCi0ITz8fAr/73trdf+L
+HaAZBav6+CuBQug4urv7qv094PPK306Xlynt8xhW6aWWrL3DkJiy4Pmi1KZHQ3xt
+zwIDAQABo0IwQDAdBgNVHQ4EFgQUVnNYZJX5khqwEioEYnmhQBWIIUkwDgYDVR0P
+AQH/BAQDAgGGMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQEMBQADggIBAC9c
+mTz8Bl6MlC5w6tIyMY208FHVvArzZJ8HXtXBc2hkeqK5Duj5XYUtqDdFqij0lgVQ
+YKlJfp/imTYpE0RHap1VIDzYm/EDMrraQKFz6oOht0SmDpkBm+S8f74TlH7Kph52
+gDY9hAaLMyZlbcp+nv4fjFg4exqDsQ+8FxG75gbMY/qB8oFM2gsQa6H61SilzwZA
+Fv97fRheORKkU55+MkIQpiGRqRxOF3yEvJ+M0ejf5lG5Nkc/kLnHvALcWxxPDkjB
+JYOcCj+esQMzEhonrPcibCTRAUH4WAP+JWgiH5paPHxsnnVI84HxZmduTILA7rpX
+DhjvLpr3Etiga+kFpaHpaPi8TD8SHkXoUsCjvxInebnMMTzD9joiFgOgyY9mpFui
+TdaBJQbpdqQACj7LzTWb4OE4y2BThihCQRxEV+ioratF4yUQvNs+ZUH7G6aXD+u5
+dHn5HrwdVw1Hr8Mvn4dGp+smWg9WY7ViYG4A++MnESLn/pmPNPW56MORcr3Ywx65
+LvKRRFHQV80MNNVIIb/bE/FmJUNS0nAiNs2fxBx1IK1jcmMGDw4nztJqDby1ORrp
+0XZ60Vzk50lJLVU3aPAaOpg+VBeHVOmmJ1CJeyAvP/+/oYtKR5j/K3tJPsMpRmAY
+QqszKbrAKbkTidOIijlBO8n9pu0f9GBj39ItVQGL
+-----END CERTIFICATE-----)PEM";
 
 TFT_eSPI tft;
 SPIClass touchSPI(VSPI);
@@ -34,7 +102,7 @@ static constexpr uint16_t TOUCH_THRESHOLD = 250;
 static constexpr uint16_t FIELD_HIT_TOP = 24;
 static constexpr uint16_t FIELD_HIT_BOTTOM = 99;
 
-enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Pairing, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, Failed };
+enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, Failed };
 static Screen screen = Screen::Splash;
 static uint32_t screenStartedAt = 0;
 static uint32_t wifiAttemptAt = 0;
@@ -57,16 +125,26 @@ static bool editingPassword = false;
 static String wifiName;
 static String wifiPassword;
 static String setupMessage;
-static String pairingCode;
-static String deviceToken;
-static String deviceId;
 static String deviceHardwareId;
-static uint32_t lastHeartbeatAt=0;
-static uint32_t lastCommandPollAt=0;
-static String cloudStatus="NOT LINKED";
-static const char* API_BASE="https://cyd-satellite-tracker.pages.dev";
 static WebServer localServer(80);
 static bool localApiStarted=false;
+// Local browser control state. Targets are stored only; motors remain disabled.
+static float targetAzimuthDeg=0.0f;
+static float targetElevationDeg=0.0f;
+static bool trackingRequested=false;
+static uint32_t localCommandSequence=0;
+static constexpr double DEMO_OBSERVER_LAT=56.8389;
+static constexpr double DEMO_OBSERVER_LON=60.6057;
+static constexpr double DEMO_OBSERVER_ALT_M=250.0;
+static Sgp4 issSgp4;
+static bool ntpStarted=false,issTleValid=false,issPositionValid=false,observerUsesGps=false;
+static uint32_t lastTleAttemptMs=0,lastTleSuccessMs=0,lastOrbitCalcMs=0;
+static time_t orbitUtcEpoch=0;
+static double observerLatitude=DEMO_OBSERVER_LAT,observerLongitude=DEMO_OBSERVER_LON,observerAltitudeM=DEMO_OBSERVER_ALT_M;
+static double issAzimuthDeg=0,issElevationDeg=0,issRangeKm=0;
+static uint32_t selectedNoradId=25544;
+static String selectedSatelliteName="ISS (ZARYA)";
+static String orbitDataMessage="Ожидание подключения Wi-Fi";
 
 // Space Dark palette: deep navy background, layered blue panels and cyan telemetry.
 static constexpr uint16_t BG = 0x0841;
@@ -491,308 +569,6 @@ static void showConnecting() {
 
 static void showSystemScreen();
 
-// TLS certificate validation requires a sane wall clock. ESP32 starts with
-// an unset clock after boot, so synchronize SNTP before opening HTTPS sessions.
-static bool ensureSystemClock() {
-  time_t now = time(nullptr);
-  if (now >= 1760000000) {
-    Serial.printf("[CLOUD] System clock already valid: epoch=%lu\n",(unsigned long)now);
-    return true;
-  }
-  Serial.printf("[CLOUD] System clock unset (epoch=%lu); starting SNTP\n",(unsigned long)now);
-  configTime(0,0,"pool.ntp.org","time.cloudflare.com","time.google.com");
-  const uint32_t startedAt=millis();
-  while(millis()-startedAt<15000) {
-    now=time(nullptr);
-    if(now>=1760000000) {
-      Serial.printf("[CLOUD] SNTP synchronized: epoch=%lu\n",(unsigned long)now);
-      return true;
-    }
-    delay(250);
-  }
-  now=time(nullptr);
-  Serial.printf("[CLOUD] SNTP FAILED after 15000 ms; epoch=%lu\n",(unsigned long)now);
-  return false;
-}
-
-static bool cloudRequest(const char* method,const String& path,const String& body,String& response) {
-  if(WiFi.status()!=WL_CONNECTED) { response="Wi-Fi offline"; Serial.println("[CLOUD] Wi-Fi offline"); return false; }
-  if(!ensureSystemClock()) { response="NTP time synchronization failed"; return false; }
-  const char* host="cyd-satellite-tracker.pages.dev";
-  IPAddress apiIp(0,0,0,0);
-  bool dnsOk=false;
-  // Validate the address, not only hostByName's return value: some ESP32
-  // network stacks may report success while leaving the result as 0.0.0.0.
-  for(uint8_t attempt=1; attempt<=2 && !dnsOk; ++attempt) {
-    apiIp=IPAddress(0,0,0,0);
-    const int result=WiFi.hostByName(host,apiIp);
-    dnsOk=(result==1 && apiIp!=IPAddress(0,0,0,0));
-    Serial.printf("[CLOUD] DNS DHCP attempt=%u result=%d ip=%s valid=%d\\n",
-                  attempt,result,apiIp.toString().c_str(),dnsOk?1:0);
-    if(!dnsOk) delay(250);
-  }
-  if(!dnsOk) {
-    // Set lwIP resolver entries directly; keep the DHCP IP, gateway and subnet.
-    ip_addr_t fallbackDns1, fallbackDns2;
-    IP_ADDR4(&fallbackDns1,1,1,1,1);
-    IP_ADDR4(&fallbackDns2,8,8,8,8);
-    dns_setserver(0,&fallbackDns1);
-    dns_setserver(1,&fallbackDns2);
-    Serial.println("[CLOUD] DNS FALLBACK configured primary=1.1.1.1 secondary=8.8.8.8");
-    for(uint8_t attempt=1; attempt<=3 && !dnsOk; ++attempt) {
-      apiIp=IPAddress(0,0,0,0);
-      const int result=WiFi.hostByName(host,apiIp);
-      dnsOk=(result==1 && apiIp!=IPAddress(0,0,0,0));
-      Serial.printf("[CLOUD] DNS fallback attempt=%u result=%d ip=%s valid=%d\\n",
-                    attempt,result,apiIp.toString().c_str(),dnsOk?1:0);
-      if(!dnsOk) delay(350);
-    }
-  }
-  if(!dnsOk) {
-    response="DNS lookup failed (DHCP and fallback resolvers)";
-    Serial.printf("[CLOUD] DNS FAILED host=%s after 5 attempts\\n",host);
-    return false;
-  }
-  Serial.printf("[CLOUD] DNS OK %s -> %s, RSSI=%d dBm\\n",
-                host,apiIp.toString().c_str(),WiFi.RSSI());
-  Serial.printf("[CLOUD] NETWORK local=%s gateway=%s subnet=%s rssi=%d dBm\\n",
-                WiFi.localIP().toString().c_str(),WiFi.gatewayIP().toString().c_str(),
-                WiFi.subnetMask().toString().c_str(),WiFi.RSSI());
-
-  // Retry raw TCP with a fresh DNS lookup each time. This distinguishes a
-  // transient Cloudflare route/IP issue from a persistent socket failure.
-  bool tcpOk=false;
-  for(uint8_t attempt=1; attempt<=3 && !tcpOk; ++attempt) {
-    if(attempt>1) {
-      delay(500);
-      IPAddress retryIp(0,0,0,0);
-      const int dnsResult=WiFi.hostByName(host,retryIp);
-      const bool retryDnsOk=(dnsResult==1 && retryIp!=IPAddress(0,0,0,0));
-      Serial.printf("[CLOUD] DNS RETRY attempt=%u result=%d ip=%s valid=%d\\n",
-                    attempt,dnsResult,retryIp.toString().c_str(),retryDnsOk?1:0);
-      if(retryDnsOk) apiIp=retryIp;
-      else continue;
-    }
-    WiFiClient tcpProbe;
-    const uint32_t tcpStartedAt=millis();
-    errno=0;
-    tcpOk=tcpProbe.connect(apiIp,443);
-    const int tcpErrno=errno;
-    Serial.printf("[CLOUD] TCP PREFLIGHT attempt=%u ip=%s port=443 ok=%d elapsed=%lu ms errno=%d (%s)\\n",
-                  attempt,apiIp.toString().c_str(),tcpOk?1:0,
-                  (unsigned long)(millis()-tcpStartedAt),tcpErrno,strerror(tcpErrno));
-    tcpProbe.stop();
-  }
-  if(!tcpOk) {
-    response="TCP connection to API failed after 3 attempts";
-    Serial.printf("[CLOUD] TCP FAILED host=%s last_ip=%s local=%s gateway=%s\\n",
-                  host,apiIp.toString().c_str(),WiFi.localIP().toString().c_str(),
-                  WiFi.gatewayIP().toString().c_str());
-    return false;
-  }
-
-  WiFiClientSecure tlsProbe;
-  tlsProbe.setHandshakeTimeout(12);
-  // Split socket setup from the TLS handshake so the serial log identifies
-  // which phase fails. Certificate-chain and hostname verification stay on.
-  tlsProbe.setPlainStart();
-  Serial.printf("[CLOUD] TLS MEMORY before free=%u min=%u largest=%u\\n",
-                ESP.getFreeHeap(),ESP.getMinFreeHeap(),
-                (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-  Serial.printf("[CLOUD] TLS SOCKET START ip=%s port=443 sni=%s verify=enabled\\n",
-                apiIp.toString().c_str(),host);
-  const uint32_t tlsSocketStartedAt=millis();
-  errno=0;
-  const int tlsSocketOk=tlsProbe.connect(apiIp,443,host,ROOT_CA_BUNDLE,nullptr,nullptr);
-  const int tlsSocketErrno=errno;
-  Serial.printf("[CLOUD] TLS SOCKET RESULT ok=%d elapsed=%lu ms fd=%d errno=%d (%s)\\n",
-                tlsSocketOk,(unsigned long)(millis()-tlsSocketStartedAt),
-                tlsProbe.fd(),tlsSocketErrno,strerror(tlsSocketErrno));
-  if(!tlsSocketOk) {
-    char socketError[160]={0};
-    const int socketErrorCode=tlsProbe.lastError(socketError,sizeof(socketError));
-    Serial.printf("[CLOUD] TLS SOCKET ERROR code=%d detail=%s\\n",
-                  socketErrorCode,socketError[0]?socketError:"none");
-    tlsProbe.stop();
-    response=String("TLS socket setup failed: ")+(socketError[0]?socketError:"unknown");
-    return false;
-  }
-
-  Serial.printf("[CLOUD] TLS HANDSHAKE START host=%s fd=%d free=%u largest=%u\\n",
-                host,tlsProbe.fd(),ESP.getFreeHeap(),
-                (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-  const uint32_t tlsHandshakeStartedAt=millis();
-  errno=0;
-  const int tlsHandshakeOk=tlsProbe.startTLS();
-  const int tlsHandshakeErrno=errno;
-  char tlsHandshakeError[160]={0};
-  const int tlsHandshakeErrorCode=tlsProbe.lastError(tlsHandshakeError,sizeof(tlsHandshakeError));
-  Serial.printf("[CLOUD] TLS HANDSHAKE RESULT ok=%d elapsed=%lu ms error_code=%d detail=%s errno=%d (%s)\\n",
-                tlsHandshakeOk,(unsigned long)(millis()-tlsHandshakeStartedAt),
-                tlsHandshakeErrorCode,tlsHandshakeError[0]?tlsHandshakeError:"none",
-                tlsHandshakeErrno,strerror(tlsHandshakeErrno));
-  Serial.printf("[CLOUD] TLS MEMORY after free=%u min=%u largest=%u\\n",
-                ESP.getFreeHeap(),ESP.getMinFreeHeap(),
-                (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-  tlsProbe.stop();
-  if(!tlsHandshakeOk) {
-    response=String("TLS handshake failed: ")+(tlsHandshakeError[0]?tlsHandshakeError:"unknown");
-    return false;
-  }
-
-  WiFiClientSecure tls;
-  tls.setCACert(ROOT_CA_BUNDLE); // Keep certificate verification enabled.
-  tls.setHandshakeTimeout(20);   // Bound TLS handshake so the UI cannot wait indefinitely.
-  HTTPClient http;
-  http.setConnectTimeout(12000);
-  http.setTimeout(15000);
-  http.setReuse(false);
-  const String url=String(API_BASE)+path;
-  Serial.printf("[CLOUD] HTTPS init: %s\\n",url.c_str());
-  if(!http.begin(tls,url)) {
-    response="HTTPS init failed";
-    Serial.printf("[CLOUD] HTTP begin failed: %s\\n",url.c_str());
-    return false;
-  }
-  Serial.println("[CLOUD] HTTPS client ready");
-  http.addHeader("Content-Type","application/json");
-  if(deviceToken.length()) http.addHeader("Authorization",String("Bearer ")+deviceToken);
-  int status=-1;
-  Serial.printf("[CLOUD] REQUEST START method=%s path=%s payload=%u bytes\\n",method,path.c_str(),(unsigned)body.length());
-  const uint32_t requestStartedAt=millis();
-  if(strcmp(method,"POST")==0) status=http.POST((uint8_t*)body.c_str(),body.length());
-  else if(strcmp(method,"PUT")==0) status=http.PUT((uint8_t*)body.c_str(),body.length());
-  else status=http.GET();
-  Serial.printf("[CLOUD] REQUEST FINISHED status=%d elapsed=%lu ms\\n",status,(unsigned long)(millis()-requestStartedAt));
-  if(status>0) {
-    response=http.getString();
-    Serial.printf("[CLOUD] %s %s -> HTTP %d, response=%u bytes\\n",method,path.c_str(),status,(unsigned)response.length());
-    if(status<200 || status>=300) Serial.printf("[CLOUD] ERROR BODY: %.180s\\n",response.c_str());
-  } else {
-    char tlsError[160]={0};
-    tls.lastError(tlsError,sizeof(tlsError));
-    response=http.errorToString(status);
-    Serial.printf("[CLOUD] %s %s -> %s; IP=%s; TLS=%s\\n",method,path.c_str(),response.c_str(),apiIp.toString().c_str(),tlsError);
-    response += " IP " + apiIp.toString();
-  }
-  http.end();
-  Serial.println("[CLOUD] HTTP client closed");
-  return status>=200 && status<300;
-}
-static void showPairingScreen();
-static void startDevicePairing() {
-  if(pairingCode.length()!=8) { setupMessage="Enter all 8 digits"; showPairingScreen(); return; }
-  JsonDocument requestDoc;
-  requestDoc["code"]=pairingCode;
-  requestDoc["device_name"]="CYD Satellite Tracker";
-  String body; serializeJson(requestDoc,body);
-  String response;
-  cloudStatus="PAIRING...";
-  if(!cloudRequest("POST","/api/devices/claim",body,response)) {
-    JsonDocument errorDoc;
-    if(deserializeJson(errorDoc,response)==DeserializationError::Ok && errorDoc["error"].is<const char*>())
-      setupMessage=String((const char*)errorDoc["error"]);
-    else setupMessage="HTTPS error: "+response.substring(0,34);
-    cloudStatus="PAIR FAILED";
-    showPairingScreen();
-    return;
-  }
-  JsonDocument result;
-  if(deserializeJson(result,response)!=DeserializationError::Ok || !result["device_token"].is<const char*>()) {
-    setupMessage="Invalid server response"; cloudStatus="PAIR FAILED"; showPairingScreen(); return;
-  }
-  deviceToken=String((const char*)result["device_token"]);
-  deviceId=String((const char*)result["device_id"]);
-  prefs.putString("device_token",deviceToken);
-  prefs.putString("device_id",deviceId);
-  pairingCode="";
-  setupMessage="Device linked to your account";
-  cloudStatus="LINKED";
-  showSystemScreen();
-}
-static void sendDeviceHeartbeat() {
-  if(!deviceToken.length() || WiFi.status()!=WL_CONNECTED) return;
-  JsonDocument doc;
-  doc["wifi_rssi"]=WiFi.RSSI();
-  doc["hardware_id"]=deviceHardwareId;
-  doc["gps_connected"]=gps.charsProcessed()>0;
-  doc["angle_sensor_connected"]=false;
-  doc["compass_connected"]=false;
-  doc["motor_drivers_connected"]=false;
-  doc["limit_switches_connected"]=false;
-  doc["ip"]=WiFi.localIP().toString();
-  const bool fix=gps.location.isValid() && gps.location.age()<10000;
-  doc["gps_valid"]=fix;
-  if(fix) {
-    doc["latitude"]=gps.location.lat();
-    doc["longitude"]=gps.location.lng();
-  }
-  if(gps.altitude.isValid()) doc["altitude"]=gps.altitude.meters();
-  if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
-  doc["firmware"]="V74";
-  String body,response; serializeJson(doc,body);
-  if(cloudRequest("POST","/api/devices/heartbeat",body,response)) cloudStatus="LINKED";
-  else if(response.indexOf("401")>=0 || response.indexOf("не авторизовано")>=0) {
-    deviceToken=""; prefs.remove("device_token"); prefs.remove("device_id"); cloudStatus="TOKEN INVALID";
-  }
-}
-static void pollDeviceCommands() {
-  if(!deviceToken.length() || WiFi.status()!=WL_CONNECTED) return;
-  String response;
-  if(!cloudRequest("GET","/api/devices/commands","",response)) return;
-  JsonDocument doc;
-  if(deserializeJson(doc,response)!=DeserializationError::Ok) return;
-  JsonArray commands=doc["commands"].as<JsonArray>();
-  for(JsonObject command:commands) {
-    const String id=command["id"]| "";
-    const String name=command["command"]| "";
-    String result="ignored";
-    if(name=="telemetry_refresh") { sendDeviceHeartbeat(); result="telemetry sent"; }
-    else if(name=="stop") { result="motors already locked"; } // No motor motion is enabled in this firmware.
-    JsonDocument ack; ack["id"]=id; ack["result"]=result;
-    String body,ackResponse; serializeJson(ack,body);
-    cloudRequest("PUT","/api/devices/commands",body,ackResponse);
-  }
-}
-static void updateCloudServices(uint32_t now) {
-  if(!deviceToken.length() || WiFi.status()!=WL_CONNECTED) return;
-  if(now-lastHeartbeatAt>=30000) { lastHeartbeatAt=now; sendDeviceHeartbeat(); }
-  if(now-lastCommandPollAt>=10000) { lastCommandPollAt=now; pollDeviceCommands(); }
-}
-static void drawPairingCodeField() {
-  tft.fillRoundRect(16,42,288,34,7,0x1028);
-  tft.drawRoundRect(16,42,288,34,7,0x07FF);
-  String shown=pairingCode; while(shown.length()<8) shown+="_";
-  tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,0x1028);
-  tft.drawString(shown,160,59,4);
-}
-static void drawPairingMessage() {
-  tft.fillRect(8,78,304,15,BG);
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(setupMessage.length()?TFT_YELLOW:MUTED,BG);
-  String msg=setupMessage.length()?setupMessage:"Enter the 8-digit code from the website";
-  if(msg.length()>39) msg=msg.substring(0,39);
-  tft.drawString(msg,12,80,1);
-}
-static void showPairingScreen() {
-  screen=Screen::Pairing;
-  tft.fillScreen(BG);
-  tft.fillRect(0,0,320,30,0x0862); tft.fillRect(0,29,320,2,TFT_CYAN);
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_WHITE,0x0862);
-  tft.drawString("LINK DEVICE",12,7,2);
-  tft.setTextDatum(TR_DATUM); tft.setTextColor(TFT_CYAN,0x0862);
-  tft.drawString("CLOUD / HTTPS",309,9,1);
-  drawButton(235,3,78,23,"BACK",0x035F);
-  drawPairingCodeField();
-  drawPairingMessage();
-  for(int row=0;row<3;row++) for(int col=0;col<3;col++) {
-    char key[2]={(char)('1'+row*3+col),0};
-    drawKey(28+col*88,99+row*32,72,27,key,KEY_NUM);
-  }
-  drawKey(28,195,72,27,"DEL",KEY_BG);
-  drawKey(116,195,72,27,"0",KEY_NUM);
-  drawKey(204,195,88,27,"PAIR",0x03B9);
-}
-
 static void drawNavigation(uint8_t active) {
   const uint16_t activeColor=0x07FF, idleColor=0x001F;
   drawButton(4,207,76,29,"HOME",active==0?activeColor:idleColor);
@@ -861,7 +637,7 @@ static void drawDialNeedle(int cx,int cy,int length,float degrees,uint16_t color
 }
 
 static void drawGpsPanel() {
-  // V71: compact four-zone instrument dashboard, designed for native 320x240.
+  // V81: compact four-zone instrument dashboard, designed for native 320x240.
   // Photo and static chrome are drawn once; telemetry values are refreshed separately.
   const uint16_t edge=0x03BF, panel=0x0822, panelHi=0x1045;
   // Featured ISS photograph card.
@@ -939,6 +715,40 @@ static void updateGpsTelemetry() {
     tft.drawString(line,266,188,1);
   } else tft.drawString("UTC --:--",266,188,1);
 }
+static void updateTargetTelemetry() {
+  char line[40];
+  if(screen==Screen::Dashboard) {
+    // Refresh the target readout without repainting the ISS artwork.
+    tft.fillRect(8,128,175,13,0x0010);
+    snprintf(line,sizeof(line),"AZ %.1f%c  EL %.1f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
+    tft.setTextDatum(TL_DATUM);
+    tft.setTextColor(TFT_CYAN,0x0010);
+    tft.drawString(line,14,129,1);
+  } else if(screen==Screen::Antenna) {
+    // Live azimuth: update the numeric heading and rotate the compass needle
+    // without repainting the compass rose, labels, panels, or whole screen.
+    tft.fillRect(15,93,132,16,0x0822);
+    snprintf(line,sizeof(line),"AZ %.1f%c",targetAzimuthDeg,(char)247);
+    tft.setTextDatum(TL_DATUM);
+    tft.setTextColor(TFT_CYAN,0x0822);
+    tft.drawString(line,17,95,2);
+    const int cx=81, cy=150;
+    tft.fillCircle(cx,cy,22,0x0822);
+    drawDialNeedle(cx,cy,19,targetAzimuthDeg,TFT_ORANGE);
+
+    // Keep the motor-lock warning visible alongside the latest target values.
+    tft.fillRect(10,186,300,9,0x4000);
+    snprintf(line,sizeof(line),"LOCKED  AZ %.1f%c  EL %.1f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TFT_YELLOW,0x4000);
+    tft.drawString(line,160,190,1);
+    tft.fillRect(184,139,106,25,0x0822);
+    snprintf(line,sizeof(line),"%.1f%c",targetElevationDeg,(char)247);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TFT_WHITE,0x0822);
+    tft.drawString(line,237,151,4);
+  }
+}
 static void showDashboard() {
   screen=Screen::Dashboard;
   tft.fillScreen(BG);
@@ -960,6 +770,7 @@ static void showDashboard() {
   tft.fillCircle(260,17,2,wifiColor);
   drawGpsPanel();
   drawNavigation(0);
+  updateTargetTelemetry();
   lastDashboardRefreshAt=millis();
 }
 
@@ -1014,8 +825,6 @@ static void showAntennaScreen() {
   tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,0x0822);
   tft.drawString("N",cx,cy-26,1);tft.drawString("E",cx+26,cy,1);
   tft.drawString("S",cx,cy+26,1);tft.drawString("W",cx-26,cy,1);
-  tft.fillTriangle(cx,cy-19,cx-5,cy+3,cx+5,cy+3,TFT_ORANGE);
-  tft.fillCircle(cx,cy,4,TFT_WHITE);
   tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,0x0822);tft.drawString("ELEVATION",173,95,1);
   tft.setTextDatum(MC_DATUM);tft.setTextColor(MUTED,0x0822);tft.drawString("0°",180,181,1);
   tft.drawString("45°",237,181,1);tft.drawString("90°",294,181,1);
@@ -1030,8 +839,9 @@ static void showAntennaScreen() {
   tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,0x0822);
   tft.drawString("--.-°",237,151,4);
   tft.fillRoundRect(8,184,304,13,5,0x4000);tft.drawRoundRect(8,184,304,13,5,TFT_ORANGE);
-  tft.setTextColor(TFT_YELLOW,0x4000);tft.drawString("DRIVE LOCKED  /  ORBIT DATA REQUIRED",160,190,1);
+  tft.setTextColor(TFT_YELLOW,0x4000);tft.drawString("DRIVE LOCKED  /  TARGET PENDING",160,190,1);
   drawNavigation(2);
+  updateTargetTelemetry();
 }
 static void showSystemScreen() {
   screen=Screen::SystemInfo;
@@ -1047,12 +857,12 @@ static void showSystemScreen() {
   tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,0x0822);tft.drawString(fix?"FIX":"SEARCH",173,114,4);
   tft.setTextColor(MUTED,0x0822);tft.drawString(wifi?WiFi.localIP().toString().c_str():"NO NETWORK",17,140,1);
   tft.drawString(gps.satellites.isValid()?"SATELLITES RECEIVED":"WAITING FOR DATA",173,140,1);
-  tft.setTextColor(deviceToken.length()?TFT_GREEN:TFT_YELLOW,0x0822);
-  tft.drawString(deviceToken.length()?"CLOUD LINKED":cloudStatus.c_str(),173,151,1);
+  tft.setTextColor(TFT_CYAN,0x0822);
+  tft.drawString("LOCAL API READY",173,151,1);
   tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,BG);tft.drawString("QUICK ACTIONS",10,160,1);
   drawButton(7,174,98,26,"TOUCH",0x035F);
   drawButton(111,174,98,26,"WI-FI",0x03B9);
-  drawButton(215,174,98,26,"LINK",0x03B9);
+  drawButton(215,174,98,26,"API",0x03B9);
   drawNavigation(3);
 }
 
@@ -1163,50 +973,7 @@ static void handleTouch(){
    } else if(x<212) {
      WiFi.disconnect(false,false); editingPassword=false; setupMessage="Edit network, then press CONNECT";
      wifiScreenDrawn=false; showWifiSetup();
-   } else { pairingCode=""; setupMessage=""; showPairingScreen(); }
- }
- else if(screen==Screen::Pairing) {
-   Serial.printf("PAIR SCREEN TOUCH x=%u y=%u code_len=%u\\n",x,y,(unsigned)pairingCode.length());
-   // Header BACK exits pairing without changing saved Wi-Fi or device credentials.
-   if(y<=30 && x>=225) {
-     pairingCode=""; setupMessage=""; showSystemScreen();
-   }
-   // Bottom-row hit zones follow the actual button layout and tolerate calibration drift.
-   else if(y>=178 && x>=198) {
-     tft.fillRoundRect(204,195,88,27,4,0x07FF);
-     tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_BLACK,0x07FF); tft.drawString("PAIR",248,208,2);
-     setupMessage="PAIR pressed - contacting server...";
-     drawPairingMessage();
-     Serial.println("PAIR BUTTON ACTIVATED");
-     startDevicePairing();
-   } else if(y>=178 && x<108) {
-     tft.fillRoundRect(28,195,72,27,4,0x5D7A);
-     tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,0x5D7A); tft.drawString("DEL",64,208,2);
-     delay(65);
-     if(pairingCode.length()) pairingCode.remove(pairingCode.length()-1);
-     setupMessage=""; drawPairingCodeField(); drawPairingMessage();
-     drawKey(28,195,72,27,"DEL",KEY_BG);
-   } else if(y>=178 && x>=108 && x<198) {
-     tft.fillRoundRect(116,195,72,27,4,0x5DFF);
-     tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_BLACK,0x5DFF); tft.drawString("0",152,208,2);
-     delay(65);
-     if(pairingCode.length()<8) pairingCode+="0";
-     setupMessage=""; drawPairingCodeField(); drawPairingMessage();
-     drawKey(116,195,72,27,"0",KEY_NUM);
-   } else if(y>=96 && y<190) {
-     const int row=(y-99)/32, col=(x-28)/88;
-     if(row>=0 && row<3 && col>=0 && col<3 && x>=28+col*88 && x<100+col*88 && y>=99+row*32 && y<126+row*32 && pairingCode.length()<8) {
-       const int kx=28+col*88, ky=99+row*32;
-       char label[2]={(char)('1'+row*3+col),0};
-       drawKey(kx,ky,72,27,label,0x07FF);
-       delay(55);
-       pairingCode+=label; setupMessage="";
-       drawPairingCodeField(); drawPairingMessage();
-       drawKey(kx,ky,72,27,label,KEY_NUM);
-     }
-   } else {
-     setupMessage="Touch detected"; drawPairingMessage();
-   }
+   } else { Serial.printf("[LOCAL] API address: http://%s/\\n",WiFi.localIP().toString().c_str()); showSystemScreen(); }
  }
  else if(screen==Screen::Dashboard && y>=160 && y<200) {
    showSatelliteScreen();
@@ -1264,13 +1031,148 @@ static void handleSerialDisplayDiagnostics() {
   }
 }
 
+static void updateOrbitTelemetry() {
+  if(screen!=Screen::Satellite) return;
+  tft.fillRect(10,88,300,105,BG);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(TFT_CYAN,BG);
+  String label=selectedSatelliteName;
+  if(label.length()>25) label=label.substring(0,25);
+  tft.drawString(label,14,91,2);
+  char norad[32]; snprintf(norad,sizeof(norad),"NORAD %lu",(unsigned long)selectedNoradId);
+  tft.setTextColor(MUTED,BG); tft.drawString(norad,14,111,1);
+  tft.setTextColor(issTleValid?TFT_GREEN:TFT_YELLOW,BG);
+  tft.drawString(issTleValid?"TLE OK":"TLE WAIT",220,111,1);
+  char line[40];
+  tft.setTextColor(TFT_WHITE,BG);
+  snprintf(line,sizeof(line),"AZ  %6.1f deg",issAzimuthDeg); tft.drawString(line,14,132,2);
+  snprintf(line,sizeof(line),"EL  %6.1f deg",issElevationDeg); tft.drawString(line,14,153,2);
+  snprintf(line,sizeof(line),"RANGE %7.1f km",issRangeKm); tft.drawString(line,164,153,1);
+  tft.setTextColor(MUTED,BG);
+  tft.drawString(observerUsesGps?"GPS FIX":"DEMO: YEKATERINBURG",14,178,1);
+}
+
+static void startOrbitTimeSync() {
+  if(ntpStarted || WiFi.status()!=WL_CONNECTED) return;
+  configTime(0,0,"pool.ntp.org","time.google.com","time.cloudflare.com");
+  ntpStarted=true;
+  orbitDataMessage="Синхронизация времени UTC через NTP";
+  Serial.println("[ORBIT] NTP synchronization started");
+}
+static bool fetchSelectedTle() {
+  if(WiFi.status()!=WL_CONNECTED) return false;
+  WiFiClientSecure client;
+  // Verify the CelesTrak certificate chain against trusted Sectigo RSA roots.
+  // The NTP gate in updateSelectedOrbit() ensures the clock is valid first.
+  client.setCACert(CELESTRAK_CA_BUNDLE);
+  HTTPClient http;
+  http.setTimeout(12000);
+  const String url="https://celestrak.org/NORAD/elements/gp.php?CATNR="+String(selectedNoradId)+"&FORMAT=TLE";
+  if(!http.begin(client,url.c_str())) { orbitDataMessage="Не удалось открыть HTTPS CelesTrak"; return false; }
+  const int code=http.GET();
+  if(code!=HTTP_CODE_OK) {
+    orbitDataMessage="CelesTrak HTTP "+String(code);
+    Serial.printf("[ORBIT] TLE HTTP error: %d\\n",code);
+    http.end();
+    return false;
+  }
+  String payload=http.getString();
+  http.end();
+  String rows[3];
+  uint8_t count=0;
+  int start=0;
+  while(start<(int)payload.length() && count<3) {
+    int end=payload.indexOf('\n',start);
+    if(end<0) end=payload.length();
+    String row=payload.substring(start,end);
+    row.trim();
+    if(row.length()) rows[count++]=row;
+    start=end+1;
+  }
+  String name=selectedSatelliteName,line1,line2;
+  if(count>=3 && rows[1].startsWith("1 ") && rows[2].startsWith("2 ")) {
+    name=rows[0]; line1=rows[1]; line2=rows[2];
+  } else if(count>=2 && rows[0].startsWith("1 ") && rows[1].startsWith("2 ")) {
+    line1=rows[0]; line2=rows[1];
+  } else {
+    orbitDataMessage="CelesTrak вернул некорректный TLE";
+    Serial.println("[ORBIT] Invalid TLE response");
+    return false;
+  }
+  char tleName[24]={0},tle1[130]={0},tle2[130]={0};
+  name.toCharArray(tleName,sizeof(tleName));
+  line1.toCharArray(tle1,sizeof(tle1));
+  line2.toCharArray(tle2,sizeof(tle2));
+  const bool initialized=issSgp4.init(tleName,tle1,tle2);
+  if(!initialized && !issTleValid) {
+    orbitDataMessage="SGP4 отклонил TLE выбранного спутника";
+    Serial.println("[ORBIT] SGP4 rejected selected satellite TLE");
+    return false;
+  }
+  issTleValid=true;
+  selectedSatelliteName=name;
+  lastTleSuccessMs=millis();
+  orbitDataMessage="TLE загружены: "+selectedSatelliteName;
+  Serial.printf("[ORBIT] TLE accepted NORAD %lu: %s\\n",(unsigned long)selectedNoradId,tleName);
+  return true;
+}
+static void updateSelectedOrbit() {
+  if(WiFi.status()!=WL_CONNECTED) return;
+  startOrbitTimeSync();
+  const time_t now=time(nullptr);
+  if(now<1700000000) {
+    orbitDataMessage="Ожидание точного времени NTP";
+    return;
+  }
+  if(!issTleValid && (lastTleAttemptMs==0 || millis()-lastTleAttemptMs>=60000)) {
+    lastTleAttemptMs=millis();
+    fetchSelectedTle();
+  } else if(issTleValid && millis()-lastTleSuccessMs>=6UL*60UL*60UL*1000UL) {
+    lastTleAttemptMs=millis();
+    fetchSelectedTle();
+  }
+  if(!issTleValid || millis()-lastOrbitCalcMs<1000) return;
+  lastOrbitCalcMs=millis();
+  observerUsesGps=gps.location.isValid() && gps.location.age()<10000;
+  if(observerUsesGps) {
+    observerLatitude=gps.location.lat();
+    observerLongitude=gps.location.lng();
+    observerAltitudeM=gps.altitude.isValid()?gps.altitude.meters():0.0;
+  } else {
+    observerLatitude=DEMO_OBSERVER_LAT;
+    observerLongitude=DEMO_OBSERVER_LON;
+    observerAltitudeM=DEMO_OBSERVER_ALT_M;
+  }
+  issSgp4.site(observerLatitude,observerLongitude,observerAltitudeM);
+  issSgp4.findsat((unsigned long)now);
+  orbitUtcEpoch=now;
+  if(isfinite(issSgp4.satAz) && isfinite(issSgp4.satEl) && isfinite(issSgp4.satDist) && issSgp4.satDist>0) {
+    issAzimuthDeg=issSgp4.satAz;
+    issElevationDeg=issSgp4.satEl;
+    issRangeKm=issSgp4.satDist;
+    issPositionValid=true;
+    orbitDataMessage="SGP4: рассчитано положение "+selectedSatelliteName;
+  } else {
+    issPositionValid=false;
+    orbitDataMessage="SGP4 не вернул координаты выбранного спутника";
+  }
+  if(screen==Screen::Satellite) updateOrbitTelemetry();
+}
+
+static void sendLocalCorsHeaders() {
+  localServer.sendHeader("Access-Control-Allow-Origin","*");
+  localServer.sendHeader("Access-Control-Allow-Methods","GET, POST, OPTIONS");
+  localServer.sendHeader("Access-Control-Allow-Headers","Content-Type");
+  localServer.sendHeader("Access-Control-Allow-Private-Network","true");
+  localServer.sendHeader("Vary","Origin");
+}
+
 static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V71";
+  doc["firmware"]="V84";
   doc["hardware_id"]=deviceHardwareId;
-  doc["device_id"]=deviceId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
   hardware["angle_sensor_connected"]=false;
@@ -1289,8 +1191,30 @@ static void sendLocalStatus() {
   }
   if(gps.altitude.isValid()) doc["altitude_m"]=gps.altitude.meters();
   if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
-  doc["cloud_linked"]=deviceToken.length()>0;
+  doc["time_valid"]=time(nullptr)>1700000000;
+  doc["utc_epoch"]=(long long)time(nullptr);
+  JsonObject orbit=doc["orbit"].to<JsonObject>();
+  orbit["satellite"]=selectedSatelliteName;
+  orbit["norad_id"]=selectedNoradId;
+  orbit["tle_valid"]=issTleValid;
+  orbit["position_valid"]=issPositionValid;
+  orbit["observer_source"]=observerUsesGps?"gps":"demo_yekaterinburg";
+  orbit["observer_latitude"]=observerLatitude;
+  orbit["observer_longitude"]=observerLongitude;
+  orbit["utc_epoch"]=(long long)orbitUtcEpoch;
+  if(issPositionValid) {
+    orbit["azimuth_deg"]=issAzimuthDeg;
+    orbit["elevation_deg"]=issElevationDeg;
+    orbit["range_km"]=issRangeKm;
+  }
+  orbit["message"]=orbitDataMessage;
+  doc["control"]["target_azimuth_deg"]=targetAzimuthDeg;
+  doc["control"]["target_elevation_deg"]=targetElevationDeg;
+  doc["control"]["tracking_requested"]=trackingRequested;
+  doc["control"]["motors_enabled"]=false;
+  doc["last_command_sequence"]=localCommandSequence;
   String body; serializeJson(doc,body);
+  sendLocalCorsHeaders();
   localServer.sendHeader("Cache-Control","no-store");
   localServer.send(200,"application/json; charset=utf-8",body);
 }
@@ -1314,20 +1238,31 @@ button{font:inherit;cursor:pointer}.layout{min-height:100vh}.sidebar{position:fi
 <body><div class="layout"><aside class="sidebar"><div class="brand"><div class="brand-mark">C</div><div><strong>CYD SATELLITE</strong><small>TRACKER · LOCAL</small></div></div><div class="nav-label">СТАНЦИЯ</div><nav class="nav"><button class="active" data-view="overview"><span>⌂</span>Обзор</button><button data-view="system"><span>◈</span>Система</button><button data-view="connection"><span>⌁</span>Подключение</button></nav><div class="side-foot">Локальный режим<br><b id="sideIp">Ожидание IP…</b><br>Управление в пределах Wi‑Fi сети</div></aside>
 <div class="main"><header class="top"><div class="crumb">CYD / <b id="crumbName">ОБЗОР СТАНЦИИ</b></div><div class="top-right"><div class="live"><i class="dot"></i><span id="topState">ПОДКЛЮЧЕНО</span></div><button class="refresh" onclick="refreshStatus()">↻ ОБНОВИТЬ</button></div></header>
 <main class="content">
-<section class="view active" id="overview"><div class="heading"><div><div class="eyebrow">LOCAL CONTROL CENTER / V71</div><h1>Центр управления</h1><p>Состояние контроллера и локального соединения в реальном времени</p></div><div class="badge" id="connectionBadge"><i class="dot"></i> ЛОКАЛЬНАЯ СЕТЬ</div></div>
+<section class="view active" id="overview"><div class="heading"><div><div class="eyebrow">LOCAL CONTROL CENTER / V81</div><h1>Центр управления</h1><p>Состояние контроллера и локального соединения в реальном времени</p></div><div class="badge" id="connectionBadge"><i class="dot"></i> ЛОКАЛЬНАЯ СЕТЬ</div></div>
 <div class="grid hero-grid"><article class="panel"><div class="panel-head"><h2>Орбитальная обстановка</h2><span class="micro">ВИЗУАЛЬНЫЙ МОДУЛЬ</span></div><div class="scene"><div class="orbit"></div><div class="orbit two"></div><div class="planet"></div><div class="scene-note">ОРБИТЫ: НЕТ ДАННЫХ</div><div class="scene-label">CYD SATELLITE TRACKER</div></div><div class="scene-foot"><span>Режим отображения</span><b>Локальная диагностика</b></div><p class="hint">Орбитальные позиции и каталог спутников появятся после подключения источника TLE. Сейчас здесь показана только визуальная оболочка интерфейса — реальные координаты спутников не имитируются.</p></article>
-<article class="panel"><div class="panel-head"><h2>Телеметрия устройства</h2><span class="micro">АВТООБНОВЛЕНИЕ · 3 СЕК</span></div><div class="grid metrics"><div class="metric"><small>Wi‑Fi сигнал</small><strong id="rssi">—</strong><em id="rssiLabel">Ожидание</em><div class="bar"><i id="rssiBar"></i></div></div><div class="metric"><small>GPS модуль</small><strong id="gps">—</strong><em id="gpsLabel">Статус фиксации</em></div><div class="metric"><small>GPS спутники</small><strong id="sats">—</strong><em>В зоне приёма</em></div><div class="metric"><small>Облачная связь</small><strong id="cloud">—</strong><em id="cloudLabel">Статус привязки</em></div></div><div class="statusline"><span>Прошивка</span><b id="firmware">V71</b></div><div class="statusline"><span>Состояние API</span><b id="apiState">Проверка…</b></div></article></div>
-<div class="grid lower"><article class="panel"><div class="panel-head"><h2>Положение станции</h2><span class="micro">GPS / GNSS</span></div><div class="statusline"><span>Широта</span><b id="lat">Нет фиксации</b></div><div class="statusline"><span>Долгота</span><b id="lon">Нет фиксации</b></div><div class="statusline"><span>Высота</span><b id="alt">—</b></div><p class="hint" id="gpsHint">GPS-модуль пока не выдал действительные координаты. Проверьте антенну GPS и подключение NEO-6M.</p></article><article class="panel"><div class="panel-head"><h2>Локальное устройство</h2><span class="micro">ESP32 / WI‑FI</span></div><div class="statusline"><span>Имя устройства</span><b>CYD Satellite Tracker</b></div><div class="statusline"><span>IP-адрес</span><b id="ip">—</b></div><div class="statusline"><span>mDNS</span><b id="hostname">cyd-tracker.local</b></div><div class="statusline"><span>Связь</span><b id="connectionType">Wi‑Fi · HTTP</b></div><div class="actions"><button class="btn" onclick="copyAddress()">КОПИРОВАТЬ IP</button><button class="btn" onclick="openSystem()">СИСТЕМА</button></div></article></div></section>
-<section class="view" id="system"><div class="heading"><div><div class="eyebrow">DEVICE HEALTH / ESP32</div><h1>Система</h1><p>Диагностика платы, GPS и сетевого соединения</p></div></div><div class="grid system-grid"><article class="panel"><div class="panel-head"><h2>Контроллер</h2><span class="micro">ESP32</span></div><div class="statusline"><span>Устройство</span><b>CYD Satellite Tracker</b></div><div class="statusline"><span>Версия ПО</span><b id="sysFirmware">—</b></div><div class="statusline"><span>IP</span><b id="sysIp">—</b></div><div class="statusline"><span>Wi‑Fi RSSI</span><b id="sysRssi">—</b></div></article><article class="panel"><div class="panel-head"><h2>GPS / GNSS</h2><span class="micro">NEO-6M</span></div><div class="statusline"><span>Фиксация</span><b id="sysGps">—</b></div><div class="statusline"><span>Спутники</span><b id="sysSats">—</b></div><div class="statusline"><span>Широта</span><b id="sysLat">—</b></div><div class="statusline"><span>Долгота</span><b id="sysLon">—</b></div></article><article class="panel"><div class="panel-head"><h2>Безопасность управления</h2><span class="micro">ТЕКУЩИЕ ОГРАНИЧЕНИЯ</span></div><div class="badge warn">ДВИЖЕНИЕ ЗАБЛОКИРОВАНО</div><p class="hint">Команды поворота антенны ещё не реализованы. Драйверы и двигатели нельзя включать до проверки концевых выключателей, аппаратного STOP и механических ограничителей.</p><div class="actions"><button class="btn stop" onclick="requestStop()">ТЕСТОВЫЙ ЗАПРОС STOP</button></div><p class="hint">Эта кнопка отправляет диагностический запрос. Она не является аварийной остановкой и не отключает питание двигателей.</p></article><article class="panel"><div class="panel-head"><h2>Облачная связь</h2><span class="micro">CLOUD LINK</span></div><div class="statusline"><span>Привязка</span><b id="sysCloud">—</b></div><p class="hint">Локальная панель работает независимо от Cloudflare. Облачная привязка остаётся отдельным каналом и не заменяется локальным Wi‑Fi.</p></article></div></section>
-<section class="view" id="connection"><div class="heading"><div><div class="eyebrow">NETWORK / LOCAL ACCESS</div><h1>Подключение</h1><p>Адреса для браузера и мобильного приложения в этой Wi‑Fi сети</p></div></div><article class="panel"><div class="panel-head"><h2>Доступ к контроллеру</h2><span class="badge"><i class="dot"></i> API ДОСТУПЕН</span></div><p class="micro">ЛОКАЛЬНЫЙ HTTP АДРЕС</p><p class="device-address" id="fullAddress">http://192.168.0.48/</p><div class="actions"><button class="btn" onclick="copyAddress()">КОПИРОВАТЬ АДРЕС</button><button class="btn" onclick="window.location.href='/api/v1/status'">ОТКРЫТЬ JSON API</button></div><div class="statusline"><span>mDNS адрес</span><b>http://cyd-tracker.local/</b></div><div class="statusline"><span>Статус API</span><b id="connApi">Работает</b></div><div class="statusline"><span>Обновление данных</span><b>Каждые 3 секунды</b></div><p class="hint">Телефон, планшет или компьютер должны быть подключены к той же Wi‑Fi сети, что и CYD. Для локального управления используйте этот адрес, а не HTTPS-сайт Cloudflare: браузер ограничивает обращения с HTTPS-страницы к локальному HTTP-устройству.</p></article></section>
+<article class="panel"><div class="panel-head"><h2>Телеметрия устройства</h2><span class="micro">АВТООБНОВЛЕНИЕ · 1 СЕК</span></div><div class="grid metrics"><div class="metric"><small>Wi‑Fi сигнал</small><strong id="rssi">—</strong><em id="rssiLabel">Ожидание</em><div class="bar"><i id="rssiBar"></i></div></div><div class="metric"><small>GPS модуль</small><strong id="gps">—</strong><em id="gpsLabel">Статус фиксации</em></div><div class="metric"><small>GPS спутники</small><strong id="sats">—</strong><em>В зоне приёма</em></div><div class="metric"><small>Режим работы</small><strong id="cloud">—</strong><em id="cloudLabel">Работа без облака</em></div></div><div class="statusline"><span>Прошивка</span><b id="firmware">V83</b></div><div class="statusline"><span>Состояние API</span><b id="apiState">Проверка…</b></div></article></div>
+<div class="grid lower"><article class="panel"><div class="panel-head"><h2>Положение станции</h2><span class="micro">GPS / GNSS</span></div><div class="statusline"><span>Широта</span><b id="lat">Нет фиксации</b></div><div class="statusline"><span>Долгота</span><b id="lon">Нет фиксации</b></div><div class="statusline"><span>Высота</span><b id="alt">—</b></div><p class="hint" id="gpsHint">GPS-модуль пока не выдал действительные координаты. Проверьте антенну GPS и подключение NEO-6M.</p></article><article class="panel"><div class="panel-head"><h2>Локальное устройство</h2><span class="micro">ESP32 / WI‑FI</span></div><div class="statusline"><span>Имя устройства</span><b>CYD Satellite Tracker</b></div><div class="statusline"><span>IP-адрес</span><b id="ip">—</b></div><div class="statusline"><span>mDNS</span><b id="hostname">cyd-tracker.local</b></div><div class="statusline"><span>Связь</span><b id="connectionType">Wi‑Fi · HTTP</b></div><div class="actions"><button class="btn" onclick="copyAddress()">КОПИРОВАТЬ IP</button><button class="btn" onclick="openSystem()">СИСТЕМА</button></div></article></div>
+ <article class="panel" style="margin-top:14px"><div class="panel-head"><h2>Управление антенной · локальные команды</h2><span class="badge warn">МОТОРЫ ЗАБЛОКИРОВАНЫ</span></div>
+ <div class="grid metrics control-grid"><label class="metric"><small>Азимут · 0–359.9°</small><input id="azInput" type="number" min="0" max="359.9" step="0.1" value="0" style="width:100%;margin-top:10px;padding:11px;border-radius:8px;border:1px solid #28516f;background:#071827;color:#eaf6ff;font:18px monospace"></label><label class="metric"><small>Угол места · 0–90°</small><input id="elInput" type="number" min="0" max="90" step="0.1" value="0" style="width:100%;margin-top:10px;padding:11px;border-radius:8px;border:1px solid #28516f;background:#071827;color:#eaf6ff;font:18px monospace"></label></div>
+ <div class="actions"><button class="btn" id="sendTargetBtn" onclick="sendTarget()">ОТПРАВИТЬ ЦЕЛЬ</button><button class="btn" id="trackingBtn" onclick="toggleTracking()">СЛЕЖЕНИЕ: ВЫКЛ</button><button class="btn stop" onclick="requestStop()">STOP</button></div>
+ <div class="statusline"><span>Принятая цель</span><b id="targetState">Азимут 0° · место 0°</b></div><div class="statusline"><span>Режим слежения</span><b id="trackingState">Выключен</b></div><p class="hint" id="commandMessage">Команды принимаются по локальному Wi‑Fi. Сейчас прошивка только сохраняет целевые углы и флаг слежения — физическое движение двигателей не запускается.</p>
+ </article></section>
+<section class="view" id="system"><div class="heading"><div><div class="eyebrow">DEVICE HEALTH / ESP32</div><h1>Система</h1><p>Диагностика платы, GPS и сетевого соединения</p></div></div><div class="grid system-grid"><article class="panel"><div class="panel-head"><h2>Контроллер</h2><span class="micro">ESP32</span></div><div class="statusline"><span>Устройство</span><b>CYD Satellite Tracker</b></div><div class="statusline"><span>Версия ПО</span><b id="sysFirmware">—</b></div><div class="statusline"><span>IP</span><b id="sysIp">—</b></div><div class="statusline"><span>Wi‑Fi RSSI</span><b id="sysRssi">—</b></div></article><article class="panel"><div class="panel-head"><h2>GPS / GNSS</h2><span class="micro">NEO-6M</span></div><div class="statusline"><span>Фиксация</span><b id="sysGps">—</b></div><div class="statusline"><span>Спутники</span><b id="sysSats">—</b></div><div class="statusline"><span>Широта</span><b id="sysLat">—</b></div><div class="statusline"><span>Долгота</span><b id="sysLon">—</b></div></article><article class="panel"><div class="panel-head"><h2>Безопасность управления</h2><span class="micro">ТЕКУЩИЕ ОГРАНИЧЕНИЯ</span></div><div class="badge warn">ДВИЖЕНИЕ ЗАБЛОКИРОВАНО</div><p class="hint">Команды поворота антенны ещё не реализованы. Драйверы и двигатели нельзя включать до проверки концевых выключателей, аппаратного STOP и механических ограничителей.</p><div class="actions"><button class="btn stop" onclick="requestStop()">ТЕСТОВЫЙ ЗАПРОС STOP</button></div><p class="hint">Эта кнопка отправляет диагностический запрос. Она не является аварийной остановкой и не отключает питание двигателей.</p></article><article class="panel"><div class="panel-head"><h2>Локальная связь</h2><span class="micro">LOCAL LINK</span></div><div class="statusline"><span>Привязка</span><b id="sysCloud">—</b></div><p class="hint">Прошивка не обращается к облачным серверам. Телеметрия и команды передаются напрямую между браузером и CYD по локальному Wi‑Fi.</p></article></div></section>
+<section class="view" id="connection"><div class="heading"><div><div class="eyebrow">NETWORK / LOCAL ACCESS</div><h1>Подключение</h1><p>Адреса для браузера и мобильного приложения в этой Wi‑Fi сети</p></div></div><article class="panel"><div class="panel-head"><h2>Доступ к контроллеру</h2><span class="badge"><i class="dot"></i> API ДОСТУПЕН</span></div><p class="micro">ЛОКАЛЬНЫЙ HTTP АДРЕС</p><p class="device-address" id="fullAddress">http://192.168.0.48/</p><div class="actions"><button class="btn" onclick="copyAddress()">КОПИРОВАТЬ АДРЕС</button><button class="btn" onclick="window.location.href='/api/v1/status'">ОТКРЫТЬ JSON API</button></div><div class="statusline"><span>mDNS адрес</span><b>http://cyd-tracker.local/</b></div><div class="statusline"><span>Статус API</span><b id="connApi">Работает</b></div><div class="statusline"><span>Обновление данных</span><b>Каждую секунду</b></div><p class="hint">Телефон, планшет или компьютер должны быть подключены к той же Wi‑Fi сети, что и CYD. Для локального управления используйте этот адрес, а не HTTPS-сайт Cloudflare: браузер ограничивает обращения с HTTPS-страницы к локальному HTTP-устройству.</p></article></section>
 </main><nav class="mobile-nav"><button class="active" data-view="overview"><span>⌂</span>Обзор</button><button data-view="system"><span>◈</span>Система</button><button data-view="connection"><span>⌁</span>Сеть</button></nav></div></div>
 <script>
-let lastStatus=null;const $=id=>document.getElementById(id);function showView(name){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===name));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));$('crumbName').textContent=({overview:'ОБЗОР СТАНЦИИ',system:'СИСТЕМА',connection:'ПОДКЛЮЧЕНИЕ'})[name]||'ОБЗОР';window.scrollTo({top:0,behavior:'smooth'});}document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));function openSystem(){showView('system')}
+let lastStatus=null;let targetInputsDirty=false;let targetSendBusy=false;const $=id=>document.getElementById(id);function showView(name){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===name));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));$('crumbName').textContent=({overview:'ОБЗОР СТАНЦИИ',system:'СИСТЕМА',connection:'ПОДКЛЮЧЕНИЕ'})[name]||'ОБЗОР';window.scrollTo({top:0,behavior:'smooth'});}document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));function openSystem(){showView('system')}
 function set(id,value){const e=$(id);if(e)e.textContent=value}function fmt(v,n=6){return typeof v==='number'?v.toFixed(n):'—'}
-async function refreshStatus(){try{const response=await fetch('/api/v1/status',{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);const d=await response.json();lastStatus=d;set('topState','ПОДКЛЮЧЕНО');set('apiState','ОТВЕЧАЕТ · HTTP 200');set('connApi','Работает · HTTP 200');set('firmware',d.firmware||'—');set('sysFirmware',d.firmware||'—');set('ip',d.ip||'—');set('sysIp',d.ip||'—');set('sideIp',d.ip||'—');set('hostname',d.hostname||'—');set('connectionType',d.connection||'local-wifi');set('fullAddress','http://'+(d.ip||location.hostname)+'/');set('rssi',(d.wifi_rssi??'—')+' dBm');set('sysRssi',(d.wifi_rssi??'—')+' dBm');const pct=Math.max(0,Math.min(100,((Number(d.wifi_rssi)+100)/60)*100));$('rssiBar').style.width=pct+'%';set('rssiLabel',d.wifi_rssi>-60?'Отличный сигнал':d.wifi_rssi>-75?'Хороший сигнал':'Слабый сигнал');const gps=!!d.gps_valid;set('gps',gps?'FIX':'ПОИСК');set('gpsLabel',gps?'Координаты получены':'Ожидание фиксации');set('sysGps',gps?'Есть фиксация':'Нет фиксации');set('sats',d.gps_satellites??'—');set('sysSats',d.gps_satellites??'—');set('lat',gps?fmt(d.latitude):'Нет фиксации');set('lon',gps?fmt(d.longitude):'Нет фиксации');set('sysLat',gps?fmt(d.latitude):'—');set('sysLon',gps?fmt(d.longitude):'—');set('alt',d.altitude_m!=null?d.altitude_m.toFixed(1)+' м':'—');set('gpsHint',gps?'GPS-координаты получены от модуля.':'GPS-модуль пока не выдал действительные координаты. Проверьте антенну GPS и подключение NEO-6M.');set('cloud',d.cloud_linked?'LINKED':'OFFLINE');set('cloudLabel',d.cloud_linked?'Устройство привязано':'Облачная привязка отсутствует');set('sysCloud',d.cloud_linked?'Подключено':'Не привязано');$('connectionBadge').classList.toggle('warn',false);$('topState').previousElementSibling.style.background='var(--green)';}catch(e){set('topState','НЕТ СВЯЗИ');set('apiState','ОШИБКА СОЕДИНЕНИЯ');set('connApi','Нет ответа');$('topState').previousElementSibling.style.background='var(--red)';}}
+async function refreshStatus(){try{const response=await fetch('/api/v1/status',{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);const d=await response.json();lastStatus=d;set('topState','ПОДКЛЮЧЕНО');set('apiState','ОТВЕЧАЕТ · HTTP 200');set('connApi','Работает · HTTP 200');set('firmware',d.firmware||'—');set('sysFirmware',d.firmware||'—');set('ip',d.ip||'—');set('sysIp',d.ip||'—');set('sideIp',d.ip||'—');set('hostname',d.hostname||'—');set('connectionType',d.connection||'local-wifi');set('fullAddress','http://'+(d.ip||location.hostname)+'/');set('rssi',(d.wifi_rssi??'—')+' dBm');set('sysRssi',(d.wifi_rssi??'—')+' dBm');const pct=Math.max(0,Math.min(100,((Number(d.wifi_rssi)+100)/60)*100));$('rssiBar').style.width=pct+'%';set('rssiLabel',d.wifi_rssi>-60?'Отличный сигнал':d.wifi_rssi>-75?'Хороший сигнал':'Слабый сигнал');const gps=!!d.gps_valid;set('gps',gps?'FIX':'ПОИСК');set('gpsLabel',gps?'Координаты получены':'Ожидание фиксации');set('sysGps',gps?'Есть фиксация':'Нет фиксации');set('sats',d.gps_satellites??'—');set('sysSats',d.gps_satellites??'—');set('lat',gps?fmt(d.latitude):'Нет фиксации');set('lon',gps?fmt(d.longitude):'Нет фиксации');set('sysLat',gps?fmt(d.latitude):'—');set('sysLon',gps?fmt(d.longitude):'—');set('alt',d.altitude_m!=null?d.altitude_m.toFixed(1)+' м':'—');set('gpsHint',gps?'GPS-координаты получены от модуля.':'GPS-модуль пока не выдал действительные координаты. Проверьте антенну GPS и подключение NEO-6M.');set('cloud','LOCAL');set('cloudLabel','Работа только в локальной сети');set('sysCloud','Облако отключено');updateControlState(d);$('connectionBadge').classList.toggle('warn',false);$('topState').previousElementSibling.style.background='var(--green)';}catch(e){set('topState','НЕТ СВЯЗИ');set('apiState','ОШИБКА СОЕДИНЕНИЯ');set('connApi','Нет ответа');$('topState').previousElementSibling.style.background='var(--red)';}}
+function updateControlState(d){const c=d.control||{};const az=Number(c.target_azimuth_deg??0),el=Number(c.target_elevation_deg??0);if(!targetInputsDirty){$('azInput').value=az.toFixed(1);$('elInput').value=el.toFixed(1);}set('targetState','Азимут '+az.toFixed(1)+'° · место '+el.toFixed(1)+'°');const on=c.tracking_requested===true;set('trackingState',on?'Запрошено':'Выключено');set('trackingBtn',on?'СЛЕЖЕНИЕ: ВКЛ':'СЛЕЖЕНИЕ: ВЫКЛ');}
 function copyAddress(){const a='http://'+(lastStatus?.ip||location.hostname)+'/';if(navigator.clipboard?.writeText)navigator.clipboard.writeText(a).then(()=>alert('Адрес скопирован: '+a)).catch(()=>prompt('Скопируйте адрес',a));else prompt('Скопируйте адрес',a)}
-async function requestStop(){if(!confirm('Отправить тестовый запрос STOP? Это не аппаратная аварийная остановка.'))return;try{const r=await fetch('/api/v1/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:'stop'})});const d=await r.json();alert(d.message||d.error||'Ответ контроллера получен');}catch(e){alert('Нет связи с контроллером')}}
-refreshStatus();setInterval(refreshStatus,3000);
+async function sendCommand(payload){try{const r=await fetch('/api/v1/command',{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify(payload)});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.message||d.error||('HTTP '+r.status));set('commandMessage',d.message||'Команда принята');return d;}catch(e){set('commandMessage','Ошибка команды: '+e.message);throw e;}}
+$('azInput').addEventListener('input',()=>{targetInputsDirty=true;});
+$('elInput').addEventListener('input',()=>{targetInputsDirty=true;});
+async function sendTarget(){if(targetSendBusy)return;const azText=$('azInput').value.trim(),elText=$('elInput').value.trim();if(azText===''||elText===''){set('commandMessage','Введите оба значения: азимут и угол места.');return;}const az=Number(azText),el=Number(elText);if(!Number.isFinite(az)||!Number.isFinite(el)||az<0||az>=360||el<0||el>90){set('commandMessage','Проверьте углы: азимут 0–менее 360°, угол места 0–90°.');return;}const btn=$('sendTargetBtn');targetSendBusy=true;btn.disabled=true;btn.textContent='ОТПРАВКА…';set('commandMessage','Передаю азимут и угол места одним запросом…');try{const d=await sendCommand({command:'set_target',azimuth_deg:az,elevation_deg:el});targetInputsDirty=false;set('commandMessage',d.message||'Оба угла приняты контроллером.');await refreshStatus();}catch(e){}finally{targetSendBusy=false;btn.disabled=false;btn.textContent='ОТПРАВИТЬ ЦЕЛЬ';}}
+ async function toggleTracking(){const enabled=!(lastStatus?.control?.tracking_requested===true);try{await sendCommand({command:'tracking',enabled});}catch(e){}}
+ async function requestStop(){if(!confirm('Отправить STOP? Это программная команда, не аппаратная аварийная остановка.'))return;try{await sendCommand({command:'stop'});}catch(e){}}
+refreshStatus();setInterval(refreshStatus,1000);
 </script></body></html>)HTML";
     // Keep the page in static flash storage; never allocate this large HTML
     // buffer on the request-handler stack or copy it into the heap.
@@ -1336,21 +1271,69 @@ refreshStatus();setInterval(refreshStatus,3000);
     Serial.printf("[LOCAL] GET / sent | free_heap=%u min_heap=%u\\n", ESP.getFreeHeap(), ESP.getMinFreeHeap());
   });
   localServer.on("/api/v1/status",HTTP_GET,sendLocalStatus);
+  localServer.on("/api/v1/status",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
+  localServer.on("/api/v1/command",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
   localServer.on("/api/v1/command",HTTP_POST,[](){
+    sendLocalCorsHeaders();
     JsonDocument req; JsonDocument out;
     if(deserializeJson(req,localServer.arg("plain"))!=DeserializationError::Ok) {
       out["ok"]=false; out["error"]="invalid_json";
       String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
     }
     const String command=req["command"]| "";
+    String message;
     if(command=="stop") {
-      out["ok"]=true; out["message"]="STOP принят. Двигатели сейчас заблокированы прошивкой.";
-      Serial.println("[LOCAL] STOP command received");
-      String body; serializeJson(out,body); localServer.send(200,"application/json",body); return;
+      trackingRequested=false;
+      message="STOP принят. Двигатели заблокированы; аппаратное движение не включено.";
+    } else if(command=="set_target") {
+      if(!(req["azimuth_deg"].is<float>() || req["azimuth_deg"].is<int>() || req["azimuth_deg"].is<long>()) || !(req["elevation_deg"].is<float>() || req["elevation_deg"].is<int>() || req["elevation_deg"].is<long>())) {
+        out["ok"]=false; out["error"]="invalid_target";
+        out["message"]="Нужны числовые azimuth_deg и elevation_deg.";
+        String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
+      }
+      const float az=req["azimuth_deg"].as<float>();
+      const float el=req["elevation_deg"].as<float>();
+      if(!isfinite(az) || !isfinite(el) || az<0.0f || az>=360.0f || el<0.0f || el>90.0f) {
+        out["ok"]=false; out["error"]="target_out_of_range";
+        out["message"]="Азимут: 0–менее 360°, угол места: 0–90°.";
+        String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
+      }
+      targetAzimuthDeg=az; targetElevationDeg=el;
+      message="Целевые углы сохранены. Моторы пока не задействованы.";
+    } else if(command=="follow_satellite") {
+      const uint32_t norad=req["norad_id"]|0U;
+      if(norad<1 || norad>999999) {
+        out["ok"]=false; out["error"]="invalid_norad_id";
+        out["message"]="Нужен действительный NORAD ID от 1 до 999999.";
+        String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
+      }
+      selectedNoradId=norad;
+      const String requestedName=req["name"]| "";
+      selectedSatelliteName=requestedName.length()?requestedName:("NORAD "+String(norad));
+      issTleValid=false; issPositionValid=false;
+      lastTleAttemptMs=0; lastTleSuccessMs=0; lastOrbitCalcMs=0;
+      trackingRequested=false;
+      orbitDataMessage="Загрузка орбиты выбранного спутника";
+      message="Выбран "+selectedSatelliteName+" · NORAD "+String(selectedNoradId)+". Загружаю TLE и рассчитываю SGP4.";
+    } else if(command=="tracking") {
+      if(!req["enabled"].is<bool>()) {
+        out["ok"]=false; out["error"]="invalid_enabled";
+        String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
+      }
+      trackingRequested=req["enabled"].as<bool>();
+      message=trackingRequested ? "Запрос слежения принят; движение моторов заблокировано." : "Слежение выключено.";
+    } else {
+      out["ok"]=false; out["error"]="unsupported_command";
+      out["message"]="Допустимые команды: stop, set_target, follow_satellite, tracking.";
+      String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
     }
-    out["ok"]=false; out["error"]="unsupported_command";
-    out["message"]="Команда не поддерживается текущей версией прошивки";
-    String body; serializeJson(out,body); localServer.send(400,"application/json",body);
+    ++localCommandSequence;
+    out["ok"]=true; out["command"]=command; out["sequence"]=localCommandSequence;
+    out["message"]=message; out["motors_enabled"]=false;
+    String body; serializeJson(out,body);
+    localServer.sendHeader("Cache-Control","no-store");
+    localServer.send(200,"application/json; charset=utf-8",body);
+    Serial.printf("[LOCAL] command=%s seq=%lu motors=LOCKED\\n",command.c_str(),(unsigned long)localCommandSequence);
   });
   localServer.onNotFound([](){
     localServer.send(404,"application/json","{\"ok\":false,\"error\":\"not_found\"}");
@@ -1386,9 +1369,6 @@ void setup() {
   Serial.printf("[DEVICE] hardware_id=%s\\n",deviceHardwareId.c_str());
   wifiName=prefs.getString("ssid","");
   wifiPassword=prefs.getString("password","");
-  deviceToken=prefs.getString("device_token","");
-  deviceId=prefs.getString("device_id","");
-  if(deviceToken.length()) cloudStatus="LINKED";
   if(!wifiName.length() && WIFI_SSID[0]) {
     wifiName=WIFI_SSID;
     wifiPassword=WIFI_PASSWORD;
@@ -1431,10 +1411,13 @@ void loop() {
     }
   }
   if(!displayDiagnosticActive) handleTouch();
-  if(!displayDiagnosticActive) { serviceLocalApi(); updateCloudServices(now); }
-  // Refresh only the three telemetry tiles; keep the photo, radar and chrome static.
-  if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastDashboardRefreshAt>=1000) {
-    updateGpsTelemetry();
+  if(!displayDiagnosticActive) { serviceLocalApi(); } // Browser and CYD communicate only over the local network.
+  if(!displayDiagnosticActive) updateSelectedOrbit();
+  // Refresh only dynamic telemetry; keep artwork and navigation static.
+  if(!displayDiagnosticActive && now-lastDashboardRefreshAt>=1000) {
+    if(screen==Screen::Dashboard) updateGpsTelemetry();
+    if(screen==Screen::Antenna) updateTargetTelemetry();
+    if(screen==Screen::Satellite) updateOrbitTelemetry();
     lastDashboardRefreshAt=now;
   }
 }

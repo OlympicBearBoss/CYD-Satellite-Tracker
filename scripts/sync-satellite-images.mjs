@@ -109,25 +109,25 @@ const CLASS_QUERIES = {
 };
 // Require evidence for the requested spacecraft class; generic "satellite" hits are not enough.
 const CLASS_EVIDENCE = {
-  stations: /\\b(space station|orbital station|international space station|tiangong|mir space station|iss)\\b/i,
-  weather: /\\b(weather satellite|meteorological satellite|weather observatory|noaa[- ]?\\d*|goes[- ]?\\d*|meteosat|himawari|fengyun|metop|jpss)\\b/i,
-  amateur: /\\b(amateur radio satellite|ham radio satellite|amsat|cubesat|cube.?sat|1u cubesat|2u cubesat|3u cubesat)\\b/i,
-  gnss: /\\b(gnss|navigation satellite|gps satellite|galileo satellite|glonass|beidou|navic)\\b/i,
-  science: /\\b(science satellite|scientific satellite|research satellite|space telescope|space observatory|x[- ]ray observatory|astronomy satellite)\\b/i,
-  cubesat: /\\b(cubesat|cube.?sat|nanosatellite|nano.?satellite|1u|2u|3u|6u)\\b/i,
-  visual: /\\b(earth observation|earth imaging|remote sensing satellite|imaging satellite|landsat|sentinel[- ]?\\d|terra satellite|aqua satellite|spot satellite|pleiades satellite)\\b/i
+  stations: /\b(space station|orbital station|international space station|tiangong|mir space station|iss)\b/i,
+  weather: /\b(weather satellite|meteorological satellite|weather observatory|noaa[- ]?\d*|goes[- ]?\d*|meteosat|himawari|fengyun|metop|jpss)\b/i,
+  amateur: /\b(amateur radio satellite|ham radio satellite|amsat|cubesat|cube.?sat|1u cubesat|2u cubesat|3u cubesat)\b/i,
+  gnss: /\b(gnss|navigation satellite|gps satellite|galileo satellite|glonass|beidou|navic)\b/i,
+  science: /\b(science satellite|scientific satellite|research satellite|space telescope|space observatory|x[- ]ray observatory|astronomy satellite)\b/i,
+  cubesat: /\b(cubesat|cube.?sat|nanosatellite|nano.?satellite|1u|2u|3u|6u)\b/i,
+  visual: /\b(earth observation|earth imaging|remote sensing satellite|imaging satellite|landsat|sentinel[- ]?\d|terra satellite|aqua satellite|spot satellite|pleiades satellite)\b/i
 };
-const clearlyUnrelated = /\\b(miranda|uranus|neptune|jupiter|saturn|mars|venus|mercury|moon|lunar|planet|asteroid|comet|nebula|galaxy|rocket|launch vehicle|astronaut portrait)\\b/i;
+const clearlyUnrelated = /\b(miranda|uranus|neptune|jupiter|saturn|mars|venus|mercury|moon|lunar|planet|asteroid|comet|nebula|galaxy|rocket|launch vehicle|astronaut portrait)\b/i;
 const representativePhotoCache = new Map();
 
 function cleanSearchText(value) {
-  return String(value || "").replace(/[^\\p{L}\\p{N} ._()-]/gu, " ").replace(/\\s+/g, " ").trim().slice(0, 100);
+  return String(value || "").replace(/[^\p{L}\p{N} ._()-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 100);
 }
 function candidateScore(text, name, group, matchType) {
   const haystack = String(text || "");
   const rule = CLASS_EVIDENCE[group] || CLASS_EVIDENCE.visual;
   if (clearlyUnrelated.test(haystack) || !rule.test(haystack)) return null;
-  const tokens = cleanSearchText(name).toLowerCase().split(/[\\s_-]+/)
+  const tokens = cleanSearchText(name).toLowerCase().split(/[\s_-]+/)
     .filter(token => token.length >= 3 && !["satellite", "spacecraft", "weather", "orbital"].includes(token));
   const normalized = haystack.toLowerCase();
   const nameHits = tokens.filter(token => normalized.includes(token)).length;

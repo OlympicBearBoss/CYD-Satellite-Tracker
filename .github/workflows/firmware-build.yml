@@ -80,9 +80,10 @@ jobs:
             exit 1
           fi
           echo "Using esptool: $ESPTOOL_SCRIPT"
+          # esptool 4.9 uses underscore option names and --output for merge_bin.
           python "$ESPTOOL_SCRIPT" --chip esp32 merge_bin \
-            --flash-mode dio --flash-freq 40m --flash-size 4MB \
-            -o release/CYD-Satellite-Tracker-${FW_VERSION}-full-flash.bin \
+            --flash_mode dio --flash_freq 40m --flash_size 4MB \
+            --output release/CYD-Satellite-Tracker-${FW_VERSION}-full-flash.bin \
             0x1000 "$BUILD_DIR/bootloader.bin" \
             0x8000 "$BUILD_DIR/partitions.bin" \
             0xE000 "$BOOT_APP0" \
@@ -116,4 +117,4 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-# CI retrigger after fixing the shell packaging command.
+# CI retrigger after correcting esptool 4.9 merge_bin option names.

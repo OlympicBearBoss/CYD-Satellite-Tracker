@@ -762,20 +762,12 @@ static void drawDialNeedle(int cx,int cy,int length,float degrees,uint16_t color
   tft.drawCircle(cx,cy,5,TFT_WHITE);
 }
 
-static void drawGpsPanel() {
-  // V81: compact four-zone instrument dashboard, designed for native 320x240.
-  // Photo and static chrome are drawn once; telemetry values are refreshed separately.
-  const uint16_t edge=0x03BF, panel=0x0822, panelHi=0x1045;
-  // Selected spacecraft photo card; never label a different satellite as ISS.
-  tft.fillRoundRect(5,46,181,98,9,0x0000);
-  tft.drawRoundRect(5,46,181,98,9,edge);
-  drawSelectedSatellitePhoto();
-  // Radar: luminous rings, graduated ticks, cardinal marks and target marker.
-  const int cx=250,cy=91,r=41;
+static void drawRadarDisplay() {
+  const int cx=250,cy=95,r=40;
   tft.fillCircle(cx,cy,r+8,0x0000);
   tft.drawCircle(cx,cy,r+7,0x03BF);
   tft.drawCircle(cx,cy,r,0x2A69);
-  tft.drawCircle(cx,cy,32,0x1A45);
+  tft.drawCircle(cx,cy,31,0x1A45);
   tft.drawCircle(cx,cy,15,0x1A45);
   tft.drawFastHLine(cx-r,cy,2*r,0x2A69);
   tft.drawFastVLine(cx,cy-r,2*r,0x2A69);
@@ -789,16 +781,26 @@ static void drawGpsPanel() {
   tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,BG);
   tft.drawString("N",cx,cy-r-2,2); tft.drawString("E",cx+r+2,cy,2);
   tft.drawString("S",cx,cy+r+2,2); tft.drawString("W",cx-r-2,cy,2);
-  // Live bearing to the selected satellite (north=0, east=90).
-  if(issPositionValid) drawDialNeedle(cx,cy,33,(float)issAzimuthDeg,TFT_CYAN);
+  if(issPositionValid) drawDialNeedle(cx,cy,32,(float)issAzimuthDeg,TFT_CYAN);
   else tft.fillCircle(cx,cy,3,TFT_WHITE);
-  // Orange rim marker shows the azimuth at which the next pass rises.
+  // Amber point on the rim = azimuth of the next horizon rise.
   if(nextRiseAzimuthValid) {
     const float a=((float)nextRiseAzimuthDeg-90.0f)*0.0174532925f;
-    const int mx=cx+(int)(37*cosf(a)), my=cy+(int)(37*sinf(a));
+    const int mx=cx+(int)(36*cosf(a)), my=cy+(int)(36*sinf(a));
     tft.fillCircle(mx,my,4,TFT_ORANGE);
     tft.drawCircle(mx,my,6,TFT_WHITE);
   }
+}
+static void drawGpsPanel() {
+  // V81: compact four-zone instrument dashboard, designed for native 320x240.
+  // Photo and static chrome are drawn once; telemetry values are refreshed separately.
+  const uint16_t edge=0x03BF, panel=0x0822, panelHi=0x1045;
+  // Selected spacecraft photo card; never label a different satellite as ISS.
+  tft.fillRoundRect(5,46,181,98,9,0x0000);
+  tft.drawRoundRect(5,46,181,98,9,edge);
+  drawSelectedSatellitePhoto();
+  // Live compass radar: current satellite bearing and predicted next rise.
+  drawRadarDisplay();
   // Three aligned data cards with consistent inset, edge and typography.
   const int xs[3]={5,111,217}, ws[3]={101,101,98};
   for(int i=0;i<3;i++) {
@@ -855,7 +857,7 @@ static void updatePassCountdown() {
   } else {
     const uint32_t remaining=(uint32_t)(nextPassEventEpoch-now);
     snprintf(line,sizeof(line),"%s %02lu:%02lu:%02lu",
-      satelliteCurrentlyVisible?"ZAKHOD":"VOSKHOD",
+      satelliteCurrentlyVisible?"DO ZAKHODA":"DO VOSKHODA",
       (unsigned long)(remaining/3600),
       (unsigned long)((remaining/60)%60),
       (unsigned long)(remaining%60));
@@ -868,11 +870,7 @@ static void updateTargetTelemetry() {
   char line[40];
   if(screen==Screen::Dashboard) {
     // Refresh the target readout without repainting the selected spacecraft photo.
-    tft.fillRect(184,138,132,10,0x0010);
-    snprintf(line,sizeof(line),"AZ %.1f%c EL %.1f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
-    tft.setTextDatum(TL_DATUM);
-    tft.setTextColor(TFT_CYAN,0x0010);
-    tft.drawString(line,186,139,1);
+    // Numeric AZ/EL is shown on the antenna page; the home radar stays uncluttered.
   } else if(screen==Screen::Antenna) {
     // Live azimuth: update the numeric heading and rotate the compass needle
     // without repainting the compass rose, labels, panels, or whole screen.
@@ -1408,6 +1406,7 @@ static void updateSelectedOrbit() {
     issAzimuthDeg=issSgp4.satAz;
     issElevationDeg=issSgp4.satEl;
     issRangeKm=issSgp4.satDist;
+    if((issElevationDeg>=0.0)!=satelliteCurrentlyVisible) lastPassPredictionMs=0;
     issPositionValid=true;
     updatePassPrediction(now);
     // Feed the live SGP4 solution into the same target values rendered by
@@ -1780,7 +1779,7 @@ void loop() {
   if(!displayDiagnosticActive) updateSelectedOrbit();
   // Refresh only dynamic telemetry; keep artwork and navigation static.
   if(!displayDiagnosticActive && now-lastDashboardRefreshAt>=1000) {
-    if(screen==Screen::Dashboard) { updateGpsTelemetry(); updateTargetTelemetry(); updatePassCountdown(); }
+    if(screen==Screen::Dashboard) { updateGpsTelemetry(); updateTargetTelemetry(); drawRadarDisplay(); updatePassCountdown(); }
     if(screen==Screen::Antenna) updateTargetTelemetry();
     if(screen==Screen::Satellite) updateOrbitTelemetry();
     lastDashboardRefreshAt=now;

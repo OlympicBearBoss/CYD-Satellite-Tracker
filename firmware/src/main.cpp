@@ -638,6 +638,17 @@ static void updateTargetTelemetry() {
     tft.setTextColor(TFT_CYAN,0x0010);
     tft.drawString(line,14,129,1);
   } else if(screen==Screen::Antenna) {
+    // Live azimuth: update the numeric heading and rotate the compass needle
+    // without repainting the compass rose, labels, panels, or whole screen.
+    tft.fillRect(15,93,132,16,0x0822);
+    snprintf(line,sizeof(line),"AZ %.1f%c",targetAzimuthDeg,(char)247);
+    tft.setTextDatum(TL_DATUM);
+    tft.setTextColor(TFT_CYAN,0x0822);
+    tft.drawString(line,17,95,2);
+    const int cx=81, cy=150;
+    tft.fillCircle(cx,cy,22,0x0822);
+    drawDialNeedle(cx,cy,19,targetAzimuthDeg,TFT_ORANGE);
+
     // Keep the motor-lock warning visible alongside the latest target values.
     tft.fillRect(10,186,300,9,0x4000);
     snprintf(line,sizeof(line),"LOCKED  AZ %.1f%c  EL %.1f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
@@ -727,8 +738,6 @@ static void showAntennaScreen() {
   tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,0x0822);
   tft.drawString("N",cx,cy-26,1);tft.drawString("E",cx+26,cy,1);
   tft.drawString("S",cx,cy+26,1);tft.drawString("W",cx-26,cy,1);
-  tft.fillTriangle(cx,cy-19,cx-5,cy+3,cx+5,cy+3,TFT_ORANGE);
-  tft.fillCircle(cx,cy,4,TFT_WHITE);
   tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,0x0822);tft.drawString("ELEVATION",173,95,1);
   tft.setTextDatum(MC_DATUM);tft.setTextColor(MUTED,0x0822);tft.drawString("0°",180,181,1);
   tft.drawString("45°",237,181,1);tft.drawString("90°",294,181,1);

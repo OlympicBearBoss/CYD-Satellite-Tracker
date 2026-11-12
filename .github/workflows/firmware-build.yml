@@ -1,4 +1,4 @@
-name: CYD firmware build # V91 engineering splash and pass radar without ESP32 HTTPS downloads
+name: CYD firmware build # V94 opaque text rendering and translated countdown and pass radar without ESP32 HTTPS downloads
 
 on:
   pull_request:
@@ -52,7 +52,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.12.93"
+          FW_VERSION="v2026.11.12.94"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 
@@ -113,7 +113,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CYD-Satellite-Tracker-firmware-v2026.11.12.93
+          name: CYD-Satellite-Tracker-firmware-v2026.11.12.94
           path: release/
           if-no-files-found: error
           retention-days: 30

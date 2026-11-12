@@ -12,7 +12,7 @@ const ROOT = process.cwd();
 const OUT = path.join(ROOT, "satellite-images");
 const MANIFEST_PATH = path.join(OUT, "manifest.json");
 const GROUPS = ["stations", "weather", "amateur", "gnss", "science", "cubesat", "visual"];
-const MAX_CHECKS = Math.max(1, Number(process.env.MAX_IMAGE_CHECKS || 600));
+const MAX_CHECKS = Math.max(1, Number(process.env.MAX_IMAGE_CHECKS || 700));
 const MAX_BYTES = 5_000_000;
 const MAX_STORED_BYTES = 250_000;
 const MISS_TTL = 30 * 24 * 60 * 60 * 1000;
@@ -97,7 +97,7 @@ async function fetchPhoto(url) {
 }
 
 
-const SEARCH_VERSION = 2;
+const SEARCH_VERSION = 3;
 const CLASS_QUERIES = {
   stations: "space station orbital spacecraft",
   weather: "weather satellite spacecraft",
@@ -223,9 +223,17 @@ for (const group of GROUPS) {
 
 if (!ids.size) throw new Error("No catalog records were retrieved; refusing to write an empty image manifest.");
 
+async function removePreviouslyStoredImage(id) {
+  const previousPath = manifest.images[id]?.path;
+  // Only remove this script's own deterministic file for the current NORAD ID.
+  if (previousPath === "/satellite-images/" + id + ".jpg") {
+    await fs.rm(path.join(OUT, id + ".jpg"), { force: true });
+  }
+}
+
 const due = [...ids].filter(id => {
   const entry = manifest.images[id];
-  if (entry?.path && entry.checkedAt && Date.now() - Date.parse(entry.checkedAt) < 180 * 86400000) return false;
+  if (entry?.path && entry.searchVersion >= SEARCH_VERSION && entry.checkedAt && Date.now() - Date.parse(entry.checkedAt) < 180 * 86400000) return false;
   if (entry?.status === "not-found" && entry.searchVersion >= SEARCH_VERSION && entry.checkedAt && Date.now() - Date.parse(entry.checkedAt) < MISS_TTL) return false;
   return true;
 }).slice(0, MAX_CHECKS);
@@ -256,6 +264,7 @@ for (const id of due) {
       }
     }
     if (!photo) {
+      await removePreviouslyStoredImage(id);
       manifest.images[id] = { status: "not-found", checkedAt: now(), name, searchVersion: SEARCH_VERSION };
       missing++;
     } else {
@@ -270,7 +279,8 @@ for (const id of due) {
       downloaded++;
     }
   } catch (error) {
-    manifest.images[id] = { ...(manifest.images[id] || {}), status: "error", checkedAt: now(), error: error.message.slice(0, 180) };
+    await removePreviouslyStoredImage(id);
+    manifest.images[id] = { status: "error", checkedAt: now(), searchVersion: SEARCH_VERSION, error: error.message.slice(0, 180) };
     failed++;
   }
   if ((downloaded + missing + failed) % 25 === 0) {

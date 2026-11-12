@@ -398,6 +398,12 @@ static const UiTextEntry UI_TEXT[] = {
  {"WHITE FFFF","БЕЛЫЙ FFFF","白色 FFFF"},
  {"CYAN 07FF","ГОЛУБОЙ 07FF","青色 07FF"},
  {"MAGENTA F81F","ПУРПУРНЫЙ F81F","品红 F81F"},
+ {"SHIFT","СМЕНА РЕГИСТРА","切换大小写"},
+ {"SPACE","ПРОБЕЛ","空格"},
+ {"SYM","СИМВОЛЫ","符号"},
+ {"ABC","БУКВЫ","字母"},
+ {"DEL","УДАЛИТЬ","删除"},
+ {"SELECT A FIELD  /  TYPE YOUR WI-FI DETAILS","ВЫБЕРИТЕ ПОЛЕ / ВВЕДИТЕ ПАРАМЕТРЫ WI-FI","选择字段 / 输入 Wi-Fi 信息"},
  {"UTC --:--","UTC --:--","UTC --:--"}
 };
 static const char* translateUi(const char* source) {
@@ -435,9 +441,9 @@ static void drawUiString(const String& original,int16_t x,int16_t y,uint8_t font
   switch(uiTextDatum) {
     case TC_DATUM: px=x-width/2; break;
     case TR_DATUM: px=x-width; break;
-    case ML_DATUM: baseline=y+(ascent-descent)/2; break;
-    case MC_DATUM: px=x-width/2; baseline=y+(ascent-descent)/2; break;
-    case MR_DATUM: px=x-width; baseline=y+(ascent-descent)/2; break;
+    case ML_DATUM: baseline=y+(ascent+descent)/2; break;
+    case MC_DATUM: px=x-width/2; baseline=y+(ascent+descent)/2; break;
+    case MR_DATUM: px=x-width; baseline=y+(ascent+descent)/2; break;
     case BL_DATUM: baseline=y; break;
     case BC_DATUM: px=x-width/2; baseline=y; break;
     case BR_DATUM: px=x-width; baseline=y; break;
@@ -466,7 +472,7 @@ static void drawCalibrationTarget(uint8_t n){
   drawUiString("XPT2046",309,11,1);
   tft.drawRoundRect(54,78,212,88,12,0x2A69);
   tft.fillRoundRect(59,83,202,78,9,0x1028);
-  char msg[32];snprintf(msg,sizeof(msg),"POINT %u / 4",n+1);
+  char msg[32];snprintf(msg,sizeof(msg),uiLanguage==1?"ТОЧКА %u / 4":(uiLanguage==2?"点 %u / 4":"POINT %u / 4"),n+1);
   setUiTextDatum(MC_DATUM);setUiTextColor(TFT_CYAN,0x1028);
   drawUiString(msg,160,103,2);
   setUiTextColor(TFT_WHITE,0x1028);drawUiString("Touch the target",160,128,2);

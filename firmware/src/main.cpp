@@ -174,6 +174,7 @@ static uint32_t lastTouchAt = 0;
 static uint32_t lastDashboardRefreshAt = 0;
 static uint32_t lastHeaderIconsAt = 0;
 static uint32_t lastSiteClientAt = 0;
+static uint32_t firstSiteClientAt = 0;
 static constexpr uint32_t SITE_CLIENT_TIMEOUT_MS = 8000;
 static bool wifiScreenDrawn = false;
 static bool keyboardNeedsRedraw = true;
@@ -214,7 +215,7 @@ static String selectedSatelliteName="ISS (ZARYA)";
 static String selectedSatelliteImageUrl="https://cyd-satellite-tracker.pages.dev/api/satellite-image?norad=25544&download=1";
 static uint8_t* selectedSatelliteImageData=nullptr;
 static uint32_t selectedSatelliteImageSize=0;
-static bool selectedSatelliteImagePending=true;
+static bool selectedSatelliteImagePending=false;
 static uint8_t selectedSatelliteImageAttempts=0;
 static uint32_t selectedSatelliteImageLastAttemptMs=0;
 static String orbitDataMessage="Ожидание подключения Wi-Fi";
@@ -532,7 +533,7 @@ static void showWifiSetup() {
     tft.fillCircle(14,13,5,TFT_CYAN);tft.fillCircle(14,13,2,TFT_WHITE);
     tft.setTextDatum(TL_DATUM);
     tft.setTextColor(TFT_WHITE,0x0862);tft.drawString("NETWORK CONFIG",26,5,2);
-    tft.setTextDatum(TR_DATUM);tft.setTextColor(MUTED,0x0862);tft.drawString("WI-FI SETUP",263,8,1);
+    // Keep the right side clear for the shared connection icons.
   }
   tft.setTextDatum(TL_DATUM);
   drawField(37,"NETWORK / SSID",wifiName,!editingPassword,false);
@@ -1269,7 +1270,10 @@ static bool fetchSelectedSatelliteImage() {
   return true;
 }
 static void updateSelectedOrbit() {
-  if(WiFi.status()!=WL_CONNECTED) return;
+  // Give the local control page and touch UI a clean startup window before
+  // starting any blocking outbound HTTPS/TLE work.
+  if(WiFi.status()!=WL_CONNECTED || !localApiStarted || firstSiteClientAt==0 ||
+     millis()-firstSiteClientAt<15000) return;
   startOrbitTimeSync();
   const time_t now=time(nullptr);
   if(now<1700000000) {
@@ -1330,6 +1334,7 @@ static void sendLocalCorsHeaders() {
 
 static void sendLocalStatus() {
   lastSiteClientAt=millis();
+  if(firstSiteClientAt==0) firstSiteClientAt=lastSiteClientAt;
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
@@ -1385,6 +1390,7 @@ static void startLocalApi() {
   if(localApiStarted || WiFi.status()!=WL_CONNECTED) return;
   localServer.on("/",HTTP_GET,[](){
     lastSiteClientAt=millis();
+    if(firstSiteClientAt==0) firstSiteClientAt=lastSiteClientAt;
     static const char page[] PROGMEM=R"HTML(<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071321"><title>CYD Satellite Tracker · Local</title>
 <style>
@@ -1439,6 +1445,7 @@ refreshStatus();setInterval(refreshStatus,1000);
   localServer.on("/api/v1/command",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
   localServer.on("/api/v1/command",HTTP_POST,[](){
     lastSiteClientAt=millis();
+    if(firstSiteClientAt==0) firstSiteClientAt=lastSiteClientAt;
     sendLocalCorsHeaders();
     JsonDocument req; JsonDocument out;
     if(deserializeJson(req,localServer.arg("plain"))!=DeserializationError::Ok) {
@@ -1599,6 +1606,7 @@ void loop() {
   if(!displayDiagnosticActive) serviceLocalApi();
   if(!displayDiagnosticActive) updateSelectedOrbit();
   if(!displayDiagnosticActive && selectedSatelliteImagePending && WiFi.status()==WL_CONNECTED &&
+     firstSiteClientAt!=0 && now-firstSiteClientAt>=15000 &&
      selectedSatelliteImageAttempts<3 &&
      (selectedSatelliteImageLastAttemptMs==0 || now-selectedSatelliteImageLastAttemptMs>=30000)) {
     selectedSatelliteImageLastAttemptMs=now;

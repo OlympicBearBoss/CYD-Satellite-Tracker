@@ -578,22 +578,84 @@ const $=id=>document.getElementById(id);
 document.querySelectorAll("[data-i18n]").forEach(el=>{translations.ru[el.dataset.i18n]=el.innerHTML;});
 Object.assign(translations.ru,{centered:"Оси установлены в центр (демо).",stopped:"Движение остановлено (демо).",tracking:"Демонстрационное наведение на цель: ",connection_test_ok:"Проверка демо завершена: отображаются тестовые параметры подключения.",});
 function t(key){return translations[lang][key]||translations.ru[key]||key}
-function setLanguage(next){lang=next;document.documentElement.lang=lang;document.querySelectorAll("[data-i18n]").forEach(el=>{const val=t(el.dataset.i18n);if(val.includes("<br>"))el.innerHTML=val;else el.textContent=val});$("language").textContent=lang==="ru"?"EN":"RU";document.querySelectorAll("[data-lang]").forEach(b=>b.classList.toggle("selected",b.dataset.lang===lang));const active=document.querySelector(".view.active");if(active){const key=active.id.replace("view-","");const nav=document.querySelector('[data-view="'+key+'"]');$("crumbTitle").textContent=nav?nav.querySelector("i").textContent:"";}renderLog();renderRadarObjects();renderTarget();}
+function setLanguage(next){lang=next;document.documentElement.lang=lang;document.querySelectorAll("[data-i18n]").forEach(el=>{const val=t(el.dataset.i18n);if(val.includes("<br>"))el.innerHTML=val;else el.textContent=val});$("language").textContent=lang==="ru"?"EN":"RU";document.querySelectorAll("[data-lang]").forEach(b=>b.classList.toggle("selected",b.dataset.lang===lang));const active=document.querySelector(".view.active");if(active){const key=active.id.replace("view-","");const nav=document.querySelector('[data-view="'+key+'"]');$("crumbTitle").textContent=nav?nav.querySelector("i").textContent:"";}renderLog();renderRadarObjects();renderTarget();if(typeof setCydMode==="function")setCydMode(cydDeviceConnected?"connected":cydDeviceEverConnected?"offline":"demo");if(typeof cydLastStatus!=="undefined"&&cydLastStatus)applyCydTelemetry(cydLastStatus);}
 function go(view){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));document.querySelectorAll(".nav-item").forEach(b=>b.classList.toggle("active",b.dataset.view===view));const nav=document.querySelector('[data-view="'+view+'"]');$("crumbTitle").textContent=nav?nav.querySelector("i").textContent:"";window.scrollTo({top:0,behavior:"smooth"});}
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.view)));
 document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
 $("language").addEventListener("click",()=>setLanguage(lang==="ru"?"en":"ru"));window.dispatchEvent(new Event("cyd-language-change"));
 document.querySelectorAll("[data-lang]").forEach(b=>b.addEventListener("click",()=>setLanguage(b.dataset.lang)));
-function setAxes(az,el){az=Number(az);el=Number(el);$("azRange").value=az;$("elRange").value=el;const a=az.toFixed(1)+"°",e=el.toFixed(1)+"°";$("azOut").textContent=a;$("elOut").textContent=e;$("overviewAz").textContent=a;$("overviewEl").textContent=e;$("kpiAz").textContent=a;$("kpiEl").textContent=e;$("dishAz").textContent=a+" AZ";$("dishEl").textContent=e+" EL";const azModel=document.querySelector(".yagi-azimuth"),elModel=document.querySelector(".yagi-elevation");if(azModel)azModel.style.setProperty("--azimuth",az+"deg");if(elModel)elModel.style.setProperty("--elevation",el+"deg");}
+function setAxes(az,el){az=Number(az);el=Number(el);$("azRange").value=az;$("elRange").value=el;const a=az.toFixed(1)+"°",e=el.toFixed(1)+"°";$("azOut").textContent=a;$("elOut").textContent=e;$("overviewAz").textContent=a;$("overviewEl").textContent=e;$("kpiAz").textContent=a;$("kpiEl").textContent=e;if(cydDeviceConnected){$("overviewAz").textContent=cydNoData();$("overviewEl").textContent=cydNoData();$("kpiAz").textContent=cydNoData();$("kpiEl").textContent=cydNoData();}$("dishAz").textContent=a+" AZ";$("dishEl").textContent=e+" EL";const azModel=document.querySelector(".yagi-azimuth"),elModel=document.querySelector(".yagi-elevation");if(azModel)azModel.style.setProperty("--azimuth",az+"deg");if(elModel)elModel.style.setProperty("--elevation",el+"deg");}
 $("azRange").addEventListener("input",()=>setAxes($("azRange").value,$("elRange").value));
 $("elRange").addEventListener("input",()=>setAxes($("azRange").value,$("elRange").value));
 let cydDeviceBaseUrl="";
-let cydDevicePollTimer=0,cydDevicePollBusy=false;
-try{cydDeviceBaseUrl=localStorage.getItem("cyd-device-url")||"";}catch(_){}
+let cydDevicePollTimer=0,cydDevicePollBusy=false,cydDeviceConnected=false,cydDeviceEverConnected=false,cydLastStatus=null;
+try{cydDeviceBaseUrl=localStorage.getItem("cyd-device-url")||"";cydDeviceEverConnected=localStorage.getItem("cyd-device-ever-connected")==="1";}catch(_){}
 function setCydDeviceStatus(message,ok=false){
  const node=$("cydDeviceStatus");if(!node)return;
  node.textContent=message;node.style.color=ok?"#80e5b8":"#ffbf83";
 }
+function cydNoData(){return lang==="en"?"Not connected":"Не подключен";}
+function cydModeText(ru,en){return lang==="en"?en:ru;}
+function setCydMode(mode){
+ const demo=$("demoWarning");if(demo)demo.hidden=mode!=="demo";
+ const connected=mode==="connected";
+ const label=connected?cydModeText("CYD ПОДКЛЮЧЕНО","CYD CONNECTED"):mode==="offline"?cydModeText("CYD НЕТ СВЯЗИ","CYD OFFLINE"):cydModeText("Симуляция","Simulation");
+ const chipLabel=$("connectionModeLabel");if(chipLabel)chipLabel.textContent=label;
+ const side=$("sidebarModeLabel");if(side)side.textContent=connected?cydModeText("Реальное устройство подключено","Live device connected"):mode==="offline"?cydModeText("Связь с CYD потеряна","CYD connection lost"):cydModeText("Демо-режим активен","Demo mode active");
+ const dot=document.querySelector(".connection-chip i");if(dot)dot.style.background=connected?"var(--green)":mode==="offline"?"var(--red)":"var(--green)";
+ const badge=$("telemetryModeBadge");if(badge)badge.textContent=connected?cydModeText("РЕАЛЬНЫЕ ДАННЫЕ","LIVE DATA"):mode==="offline"?cydModeText("НЕТ СВЯЗИ","OFFLINE"):"DEMO DATA";
+ const control=document.querySelector("#view-control .page-heading .status-pill span");if(control)control.textContent=connected?cydModeText("CYD · ПРИВОДЫ ЗАБЛОКИРОВАНЫ","CYD · DRIVES LOCKED"):mode==="offline"?cydModeText("CYD НЕТ СВЯЗИ","CYD OFFLINE"):t("simulation_only");
+ const footer=document.querySelector('footer [data-i18n="footer_note"]');if(footer)footer.textContent=connected?cydModeText("Подключено к реальному CYD","Connected to real CYD"):mode==="offline"?cydModeText("CYD недоступен · реальные показания не поступают","CYD offline · no live readings"):t("footer_note");
+}
+function setCydNoData(){
+ const missing=cydNoData();
+ ["kpiAz","kpiEl","overviewAz","overviewEl","kpiMotorCurrent","kpiSupplyVoltage","voltageValue","voltageGauge","azCurrentValue","azCurrentGauge","elCurrentValue","elCurrentGauge","temperatureValue","temperatureGauge","healthCpu","healthMemory","healthWifiRssi","liveDeviceGps","liveDeviceAngle","liveDeviceCompass","liveDeviceDrivers","liveDeviceLimits","liveDeviceCoords","liveDeviceRssi","gpsLat","gpsLon","gpsAlt","gpsAccuracy","gpsSatCount","radarHeading","compassDirection"].forEach(id=>{const el=$(id);if(el)el.textContent=missing;});
+ ["voltageHint","azCurrentHint","elCurrentHint","temperatureHint","kpiMotorCurrentHint","kpiSupplyVoltageHint"].forEach(id=>{const el=$(id);if(el)el.textContent=missing;});
+ ["healthWifiBar","healthCpuBar","healthMemoryBar"].forEach(id=>{const el=$(id);if(el)el.style.width="0%";});
+ ["azDriverStatus","elDriverStatus"].forEach(id=>{const el=$(id);if(el){const span=el.querySelector("span");if(span)span.textContent=missing;el.style.color="#ffb4bd";}});
+ const gps=$("gpsStatus");if(gps)gps.textContent=missing.toUpperCase();
+ const note=$("deviceSensorNote");if(note)note.textContent=cydModeText("Нет актуальных показаний GPS и компаса. Датчики без данных помечены «Не подключен».","No current GPS or compass readings. Sensors without data are marked “Not connected”.");
+}
+function applyCydTelemetry(status){
+ cydLastStatus=status;
+ const hw=status.hardware||{},noData=cydNoData();
+ const gpsReady=hw.gps_connected===true&&status.gps_valid===true&&Number.isFinite(status.latitude)&&Number.isFinite(status.longitude);
+ const rssi=Number.isFinite(status.wifi_rssi)?status.wifi_rssi:null;
+ const set=(id,value)=>{const el=$(id);if(el)el.textContent=value;};
+ set("liveDeviceIp",status.ip||noData);set("liveDeviceRssi",rssi===null?noData:rssi+" dBm");
+ set("liveDeviceGps",gpsReady?"FIX · "+(status.gps_satellites??"—")+" спутн.":noData);
+ set("liveDeviceAngle",Number.isFinite(status.angle_deg)?status.angle_deg.toFixed(1)+"°":noData);
+ set("liveDeviceCompass",Number.isFinite(status.compass_heading_deg)?status.compass_heading_deg.toFixed(1)+"°":noData);
+ set("liveDeviceDrivers",hw.motor_drivers_connected===true?"Подключены":noData);
+ set("liveDeviceLimits",status.limit_switches&&typeof status.limit_switches==="object"?"Данные получены":noData);
+ set("liveDeviceCoords",gpsReady?status.latitude.toFixed(5)+", "+status.longitude.toFixed(5):noData);
+ set("liveDeviceSeen",new Date().toLocaleString());
+ set("liveDeviceInfo",(status.device||"CYD")+" · "+(status.firmware||"прошивка не указана"));
+ const liveBadge=$("liveDeviceBadge");if(liveBadge){const span=liveBadge.querySelector("span");if(span)span.textContent=cydModeText("CYD подключён по Wi-Fi","CYD connected over Wi-Fi");}
+ set("healthWifiRssi",rssi===null?noData:rssi+" dBm");
+ const wifiBar=$("healthWifiBar");if(wifiBar)wifiBar.style.width=rssi===null?"0%":Math.max(0,Math.min(100,((rssi+100)/60)*100))+"%";
+ ["healthCpu","healthMemory"].forEach(id=>set(id,noData));
+ ["healthCpuBar","healthMemoryBar"].forEach(id=>{const el=$(id);if(el)el.style.width="0%";});
+ set("gpsStatus",gpsReady?"GPS FIX":noData.toUpperCase());
+ set("gpsLat",gpsReady?status.latitude.toFixed(5)+"°":noData);set("gpsLon",gpsReady?status.longitude.toFixed(5)+"°":noData);
+ set("gpsAlt",gpsReady&&Number.isFinite(status.altitude_m)?Math.round(status.altitude_m)+" м":noData);
+ set("gpsAccuracy",noData);set("gpsSatCount",gpsReady?(status.gps_satellites??"—"):noData);set("gpsTime",gpsReady?new Date().toLocaleTimeString():"—");
+ set("radarHeading",Number.isFinite(status.compass_heading_deg)?status.compass_heading_deg.toFixed(1)+"°":noData);
+ set("compassDirection",Number.isFinite(status.compass_heading_deg)?compassNames[Math.round(status.compass_heading_deg/45)%8]:noData);
+ ["azDriverStatus","elDriverStatus"].forEach(id=>{const el=$(id);if(el){const span=el.querySelector("span");if(span)span.textContent=hw.motor_drivers_connected===true?"Подключен":noData;el.style.color=hw.motor_drivers_connected===true?"#80e5b8":"#ffb4bd";}});
+ if(gpsReady){window.cydObserverLocation={latitude:status.latitude,longitude:status.longitude,height:Number.isFinite(status.altitude_m)?status.altitude_m/1000:0};window.dispatchEvent(new Event("cyd-observer-change"));const lat=$("observerLat"),lon=$("observerLon");if(lat)lat.value=status.latitude;if(lon)lon.value=status.longitude;}
+ else {const note=$("deviceSensorNote");if(note)note.textContent=cydModeText("GPS: Не подключен или нет действительных координат. Компас: Не подключен. Демонстрационные показания не подставляются.","GPS: Not connected or no valid coordinates. Compass: Not connected. Demo readings are not substituted.");}
+ const control=status.control||{};
+ if(Number.isFinite(control.target_azimuth_deg)&&Number.isFinite(control.target_elevation_deg))setAxes(control.target_azimuth_deg,control.target_elevation_deg);
+ ["kpiMotorCurrent","kpiSupplyVoltage","voltageValue","voltageGauge","azCurrentValue","azCurrentGauge","elCurrentValue","elCurrentGauge","temperatureValue","temperatureGauge"].forEach(id=>set(id,noData));
+ ["voltageHint","azCurrentHint","elCurrentHint","temperatureHint","kpiMotorCurrentHint","kpiSupplyVoltageHint"].forEach(id=>set(id,noData));
+ set("telemetryNote",cydModeText("Отображаются только данные, которые реально передаёт прошивка. Напряжение, токи, температура, CPU/RAM, углы валов и отсутствующие датчики: Не подключен.","Only values actually reported by firmware are shown. Voltage, currents, temperature, CPU/RAM, shaft angles and unavailable sensors: Not connected."));
+}
+function markCydOffline(error){
+ cydDeviceConnected=false;
+ if(cydDeviceEverConnected){setCydMode("offline");setCydNoData();const badge=$("liveDeviceBadge");if(badge){const span=badge.querySelector("span");if(span)span.textContent=cydModeText("Нет связи с CYD","CYD offline");}setCydDeviceStatus("Связь с CYD потеряна: "+error+". Реальные показания не заменяются демо-данными.",false);}
+}
+
 async function refreshCydDeviceLink(){
  if(!cydDeviceBaseUrl||cydDevicePollBusy)return;
  cydDevicePollBusy=true;
@@ -601,9 +663,12 @@ async function refreshCydDeviceLink(){
   const response=await fetch(cydDeviceBaseUrl+"/api/v1/status",{cache:"no-store",mode:"cors"});
   if(!response.ok)throw new Error("HTTP "+response.status);
   const status=await response.json();
-  if(!status.ok)throw new Error("Контроллер не подтвердил статус");
+  if(!status.ok||status.device!=="CYD Satellite Tracker"||!status.hardware_id)throw new Error("Контроллер не подтвердил подлинный статус CYD");
+  cydDeviceConnected=true;cydDeviceEverConnected=true;cydLastStatus=status;try{localStorage.setItem("cyd-device-ever-connected","1");}catch(_){}
+  setCydMode("connected");applyCydTelemetry(status);
   setCydDeviceStatus("CYD на связи · "+(status.ip||cydDeviceBaseUrl)+" · прошивка "+(status.firmware||"неизвестна"),true);
  }catch(error){
+  markCydOffline(error.message);
   setCydDeviceStatus("Связь с CYD потеряна: "+error.message+". Проверьте локальную сеть и разрешение браузера.",false);
  }finally{cydDevicePollBusy=false;}
 }
@@ -631,7 +696,11 @@ async function connectCydDevice(){
   if(!status.ok)throw new Error("Контроллер не подтвердил статус");
   cydDeviceBaseUrl=base;
   try{localStorage.setItem("cyd-device-url",base);}catch(_){}
-  setCydDeviceStatus("CYD подключён · "+(status.ip||base)+" · прошивка "+(status.firmware||"неизвестна"),true);
+  if(status.device!=="CYD Satellite Tracker"||!status.hardware_id)throw new Error("Это не API контроллера CYD");
+  cydDeviceConnected=true;cydDeviceEverConnected=true;cydLastStatus=status;try{localStorage.setItem("cyd-device-ever-connected","1");}catch(_){}
+  ["cydDeviceAddress","cydConnectionAddress"].forEach(id=>{const el=$(id);if(el)el.value=base;});
+  setCydMode("connected");applyCydTelemetry(status);
+  setCydDeviceStatus("CYD подключён · "+(status.ip||base)+" · прошивка "+(status.firmware||"неизвестна")+" · демо-режим отключён",true);
   startCydDevicePolling();
  }catch(error){
   setCydDeviceStatus("Нет связи с CYD: "+error.message+". Проверьте IP, Wi-Fi и разрешение браузера на доступ к локальной сети.");
@@ -720,6 +789,11 @@ async function sendSelectedSatelliteToCyd(record){
  }
 }
 if($("connectCydDevice"))$("connectCydDevice").addEventListener("click",connectCydDevice);
+if($("connectCydFromConnection"))$("connectCydFromConnection").addEventListener("click",()=>{const input=$("cydConnectionAddress");if(cydAddressInput&&input)cydAddressInput.value=input.value;connectCydDevice();});
+if($("cydConnectionAddress"))$("cydConnectionAddress").value=cydDeviceBaseUrl||"http://cyd-tracker.local";
+if(cydDeviceEverConnected){setCydMode("offline");setCydNoData();}
+if(cydDeviceBaseUrl)connectCydDevice();
+else if(location.protocol==="http:"&&(location.hostname==="cyd-tracker.local"||/^192\\.168\\.|^10\\.|^172\\.(1[6-9]|2\\d|3[01])\\./.test(location.hostname))){cydAddressInput.value=location.origin;connectCydDevice();}
 
 function renderTarget(){
  const o=objectData[selected];
@@ -759,7 +833,7 @@ $("targetSelect").addEventListener("change",e=>{selected=e.target.value;window.c
 $("centerBtn").addEventListener("click",()=>{setAxes(180,45);$("controlStatus").textContent=t("centered");addLog("CTRL",t("centered"));});
 $("trackBtn").addEventListener("click",()=>{const o=objectData[selected];setAxes(o.az,o.el);$("controlStatus").textContent=t("tracking")+o.name;addLog("CTRL",t("tracking")+o.name);});
 $("stopBtn").addEventListener("click",()=>{$("controlStatus").textContent=t("stopped");addLog("STOP",t("stopped"));});
-$("testConnection").addEventListener("click",()=>{$("connectionResult").textContent=t("connection_test_ok");addLog("NET",t("connection_test_ok"));});
+$("testConnection").addEventListener("click",()=>{if(cydDeviceBaseUrl)refreshCydDeviceLink();else connectCydDevice();});
 function renderRadarPassOverlay(){
  const target=objectData[selected]||objectData.iss;
  const needle=$("radarBearingNeedle"),marker=$("radarRiseMarker");

@@ -613,7 +613,7 @@ function setCydNoData(){
  ["voltageHint","azCurrentHint","elCurrentHint","temperatureHint","kpiMotorCurrentHint","kpiSupplyVoltageHint"].forEach(id=>{const el=$(id);if(el)el.textContent=missing;});
  ["healthWifiBar","healthCpuBar","healthMemoryBar"].forEach(id=>{const el=$(id);if(el)el.style.width="0%";});
  ["azDriverStatus","elDriverStatus"].forEach(id=>{const el=$(id);if(el){const span=el.querySelector("span");if(span)span.textContent=missing;el.style.color="#ffb4bd";}});
- const gps=$("gpsStatus");if(gps)gps.textContent=missing.toUpperCase();
+ const gps=$("gpsStatus");if(gps)gps.textContent=missing.toUpperCase();const badge=$("liveDeviceBadge");if(badge){const span=badge.querySelector("span");if(span)span.textContent=cydModeText("Нет связи с CYD","CYD offline");}
  const note=$("deviceSensorNote");if(note)note.textContent=cydModeText("Нет актуальных показаний GPS и компаса. Датчики без данных помечены «Не подключен».","No current GPS or compass readings. Sensors without data are marked “Not connected”.");
 }
 function applyCydTelemetry(status){
@@ -641,7 +641,7 @@ function applyCydTelemetry(status){
  set("gpsAlt",gpsReady&&Number.isFinite(status.altitude_m)?Math.round(status.altitude_m)+" м":noData);
  set("gpsAccuracy",noData);set("gpsSatCount",gpsReady?(status.gps_satellites??"—"):noData);set("gpsTime",gpsReady?new Date().toLocaleTimeString():"—");
  set("radarHeading",Number.isFinite(status.compass_heading_deg)?status.compass_heading_deg.toFixed(1)+"°":noData);
- set("compassDirection",Number.isFinite(status.compass_heading_deg)?compassNames[Math.round(status.compass_heading_deg/45)%8]:noData);
+ set("compassDirection",Number.isFinite(status.compass_heading_deg)?["СЕВЕР","СЕВЕРО-ВОСТОК","ВОСТОК","ЮГО-ВОСТОК","ЮГ","ЮГО-ЗАПАД","ЗАПАД","СЕВЕРО-ЗАПАД"][Math.round(status.compass_heading_deg/45)%8]:noData);
  ["azDriverStatus","elDriverStatus"].forEach(id=>{const el=$(id);if(el){const span=el.querySelector("span");if(span)span.textContent=hw.motor_drivers_connected===true?"Подключен":noData;el.style.color=hw.motor_drivers_connected===true?"#80e5b8":"#ffb4bd";}});
  if(gpsReady){window.cydObserverLocation={latitude:status.latitude,longitude:status.longitude,height:Number.isFinite(status.altitude_m)?status.altitude_m/1000:0};window.dispatchEvent(new Event("cyd-observer-change"));const lat=$("observerLat"),lon=$("observerLon");if(lat)lat.value=status.latitude;if(lon)lon.value=status.longitude;}
  else {const note=$("deviceSensorNote");if(note)note.textContent=cydModeText("GPS: Не подключен или нет действительных координат. Компас: Не подключен. Демонстрационные показания не подставляются.","GPS: Not connected or no valid coordinates. Compass: Not connected. Demo readings are not substituted.");}
@@ -703,6 +703,7 @@ async function connectCydDevice(){
   setCydDeviceStatus("CYD подключён · "+(status.ip||base)+" · прошивка "+(status.firmware||"неизвестна")+" · демо-режим отключён",true);
   startCydDevicePolling();
  }catch(error){
+  markCydOffline(error.message);
   setCydDeviceStatus("Нет связи с CYD: "+error.message+". Проверьте IP, Wi-Fi и разрешение браузера на доступ к локальной сети.");
  }
 }
@@ -769,6 +770,11 @@ async function sendSelectedSatelliteImageToCyd(norad){
   setCydDeviceStatus("CYD: спутник выбран; фото не передано ("+error.message+"). Сенсор и управление остаются доступны.",false);
  }
 }
+async function sendCydCommand(payload){
+ if(!cydDeviceConnected||!cydDeviceBaseUrl)return;
+ try{const response=await fetch(cydDeviceBaseUrl+"/api/v1/command",{method:"POST",mode:"cors",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.message||result.error||("HTTP "+response.status));$("controlStatus").textContent=result.message+(result.motors_enabled===false?" · приводы заблокированы прошивкой":"");addLog(payload.command==="stop"?"STOP":"CTRL",result.message);}
+ catch(error){$("controlStatus").textContent="Ошибка команды CYD: "+error.message;}
+}
 async function sendSelectedSatelliteToCyd(record){
  if(!cydDeviceBaseUrl||!record)return;
  const norad=Number(record.NORAD_CAT_ID);
@@ -793,7 +799,7 @@ if($("connectCydFromConnection"))$("connectCydFromConnection").addEventListener(
 if($("cydConnectionAddress"))$("cydConnectionAddress").value=cydDeviceBaseUrl||"http://cyd-tracker.local";
 if(cydDeviceEverConnected){setCydMode("offline");setCydNoData();}
 if(cydDeviceBaseUrl)connectCydDevice();
-else if(location.protocol==="http:"&&(location.hostname==="cyd-tracker.local"||/^192\\.168\\.|^10\\.|^172\\.(1[6-9]|2\\d|3[01])\\./.test(location.hostname))){cydAddressInput.value=location.origin;connectCydDevice();}
+else if(location.protocol==="http:"&&(location.hostname==="cyd-tracker.local"||/^192\.168\.|^10\.|^172\.(1[6-9]|2\d|3[01])\./.test(location.hostname))){cydAddressInput.value=location.origin;connectCydDevice();}
 
 function renderTarget(){
  const o=objectData[selected];
@@ -830,9 +836,9 @@ window.addEventListener("cyd-catalog-track",event=>{
 
 document.querySelectorAll("[data-select]").forEach(b=>b.addEventListener("click",()=>selectTarget(b.dataset.select)));
 $("targetSelect").addEventListener("change",e=>{selected=e.target.value;window.cydSelectedSatelliteId=selected;window.dispatchEvent(new Event("cyd-selected-target-change"));renderTarget();const o=objectData[selected];setAxes(o.az,o.el);});
-$("centerBtn").addEventListener("click",()=>{setAxes(180,45);$("controlStatus").textContent=t("centered");addLog("CTRL",t("centered"));});
-$("trackBtn").addEventListener("click",()=>{const o=objectData[selected];setAxes(o.az,o.el);$("controlStatus").textContent=t("tracking")+o.name;addLog("CTRL",t("tracking")+o.name);});
-$("stopBtn").addEventListener("click",()=>{$("controlStatus").textContent=t("stopped");addLog("STOP",t("stopped"));});
+$("centerBtn").addEventListener("click",()=>{if(cydDeviceConnected){sendCydCommand({command:"set_target",azimuth_deg:180,elevation_deg:45});return;}setAxes(180,45);$("controlStatus").textContent=t("centered");addLog("CTRL",t("centered"));});
+$("trackBtn").addEventListener("click",()=>{const o=objectData[selected];if(cydDeviceConnected){const match=String(o.norad||"").match(/\d+/);if(!match){$("controlStatus").textContent="Для группового объекта нет одного NORAD ID.";return;}sendCydCommand({command:"follow_satellite",norad_id:Number(match[0]),name:o.name});return;}setAxes(o.az,o.el);$("controlStatus").textContent=t("tracking")+o.name;addLog("CTRL",t("tracking")+o.name);});
+$("stopBtn").addEventListener("click",()=>{if(cydDeviceConnected){sendCydCommand({command:"stop"});return;}$("controlStatus").textContent=t("stopped");addLog("STOP",t("stopped"));});
 $("testConnection").addEventListener("click",()=>{if(cydDeviceBaseUrl)refreshCydDeviceLink();else connectCydDevice();});
 function renderRadarPassOverlay(){
  const target=objectData[selected]||objectData.iss;

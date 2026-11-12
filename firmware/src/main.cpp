@@ -672,7 +672,7 @@ static void drawSelectedSatellitePhoto() {
     TJpgDec.setJpgScale(2);
     TJpgDec.setSwapBytes(true);
     TJpgDec.setCallback(uiImageOutput);
-    TJpgDec.drawJpg(0,0,selectedSatelliteImageData,selectedSatelliteImageSize);
+    TJpgDec.drawJpg(12,-35,selectedSatelliteImageData,selectedSatelliteImageSize); // center-crop square source into the 175x80 card
     tft.resetViewport();
   } else {
     drawSatelliteArtwork(96,74,2);

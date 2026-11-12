@@ -599,7 +599,7 @@ function setRuntimeMode(connected,status=null){
  const headerConnection=$("headerConnectionText");if(headerConnection)headerConnection.textContent=connected?(lang==="en"?"CYD LIVE":"CYD ПОДКЛЮЧЁН"):(lang==="en"?"SIMULATION":"СИМУЛЯЦИЯ");
  const headerChip=$("headerConnectionChip");if(headerChip){headerChip.style.color=connected?"#9fdac2":"#ffbf83";headerChip.setAttribute("aria-label",connected?"CYD connected":"Simulation mode");}
  const banner=$("runtimeModeBanner"),title=$("runtimeModeTitle"),desc=$("runtimeModeDescription"),tag=$("runtimeModeTag");
- if(banner){banner.style.borderColor=connected?"#24644f":"#87612e66";banner.style.background=connected?"#103a3226":"#5b3d171c";banner.style.color=connected?"#9be7c4":"#e9c78d";}
+ if(banner){banner.style.display=connected?"none":"";banner.style.borderColor=connected?"#24644f":"#87612e66";banner.style.background=connected?"#103a3226":"#5b3d171c";banner.style.color=connected?"#9be7c4":"#e9c78d";}
  if(title)title.textContent=connected?"РЕАЛЬНОЕ УСТРОЙСТВО ПОДКЛЮЧЕНО":"Демонстрационный режим";
  if(desc)desc.textContent=connected?"CYD на связи. Показаны только поля, реально переданные платой; отсутствующие датчики и телеметрия не подменяются демо-значениями.":"Связь с CYD отсутствует. Используются демонстрационные значения.";
  if(tag)tag.textContent=connected?"CYD LIVE":"DEMO";

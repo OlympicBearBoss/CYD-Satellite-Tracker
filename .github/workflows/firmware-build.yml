@@ -52,7 +52,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.12.92"
+          FW_VERSION="v2026.11.12.93"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 
@@ -113,7 +113,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CYD-Satellite-Tracker-firmware-v2026.11.12.92
+          name: CYD-Satellite-Tracker-firmware-v2026.11.12.93
           path: release/
           if-no-files-found: error
           retention-days: 30

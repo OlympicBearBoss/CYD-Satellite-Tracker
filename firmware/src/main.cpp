@@ -230,6 +230,7 @@ static constexpr uint16_t KEY_EDGE = 0x07FF;
 static uint16_t touchCal[5];
 static constexpr int TOUCH_CLK_PIN=25, TOUCH_MISO_PIN=39, TOUCH_MOSI_PIN=32, TOUCH_IRQ_PIN=36;
 static bool touchWasDown=false; static uint8_t touchCalStep=0; static uint16_t touchCorners[8]={0};
+static void drawHeaderConnectionIcons();
 static constexpr int16_t calX[4]={18,302,18,302}, calY[4]={18,18,222,222};
 static uint16_t readXptChannel(uint8_t command){touchSPI.transfer(command);return (touchSPI.transfer16(0)>>3)&0x0FFF;}
 static uint16_t median3(uint16_t a,uint16_t b,uint16_t c){
@@ -313,6 +314,7 @@ static void drawCalibrationTarget(uint8_t n){
   tft.fillCircle(x,y,3,TFT_YELLOW);
   tft.drawFastHLine(x-20,y,40,TFT_CYAN);tft.drawFastVLine(x,y-20,40,TFT_CYAN);
   tft.drawCircle(x,y,19,0x2A69);
+  drawHeaderConnectionIcons();
 }
 
 static void printGeometry(const char* stage) {
@@ -355,6 +357,7 @@ static void showSplash(){
   TJpgDec.setSwapBytes(true);
   TJpgDec.setCallback(splashOutput);
   TJpgDec.drawJpg(0,0,splash_jpg,sizeof(splash_jpg));
+  drawHeaderConnectionIcons();
   printGeometry("JPEG SPLASH VARIANT 4");
 }
 
@@ -530,10 +533,10 @@ static void showWifiSetup() {
     tft.fillCircle(14,13,5,TFT_CYAN);tft.fillCircle(14,13,2,TFT_WHITE);
     tft.setTextDatum(TL_DATUM);
     tft.setTextColor(TFT_WHITE,0x0862);tft.drawString("NETWORK CONFIG",26,5,2);
-    tft.setTextDatum(TR_DATUM);tft.setTextColor(MUTED,0x0862);tft.drawString("SPACE DARK",263,8,1);
+    tft.setTextDatum(TR_DATUM);tft.setTextColor(MUTED,0x0862);tft.drawString("WI-FI SETUP",263,8,1);
   }
   tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(russianLayout?"RU":"EN",275,6,2);
+  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(russianLayout?"RU":"EN",260,6,2);
   drawField(37,"NETWORK / SSID",wifiName,!editingPassword,false);
   drawField(68,"PASSWORD",wifiPassword,editingPassword,true);
   tft.fillRoundRect(7,96,306,10,4,0x1028);
@@ -566,6 +569,7 @@ static void showWifiSetup() {
   }
   tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_WHITE,BG);
   tft.drawString(passwordVisible?"HIDE":"SHOW",315,91,1);
+  drawHeaderConnectionIcons();
   wifiScreenDrawn=true;
 }
 static void appendKeyUtf8(const char* value) {
@@ -867,13 +871,8 @@ static void showDashboard() {
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TFT_WHITE,top); tft.drawString("CYD",29,4,2);
   tft.setTextColor(0x8E7F,top); tft.drawString("SATELLITE TRACKER",65,8,1);
-  // Compact Wi-Fi glyph replaces the text badge; color reflects link state.
-  const uint16_t wifiColor=wifi?TFT_GREEN:TFT_ORANGE;
-  tft.drawLine(250,9,254,6,wifiColor); tft.drawLine(254,6,260,4,wifiColor);
-  tft.drawLine(260,4,266,6,wifiColor); tft.drawLine(266,6,270,9,wifiColor);
-  tft.drawLine(254,13,257,10,wifiColor); tft.drawLine(257,10,260,9,wifiColor);
-  tft.drawLine(260,9,263,10,wifiColor); tft.drawLine(263,10,266,13,wifiColor);
-  tft.fillCircle(260,17,2,wifiColor);
+  // Same live Wi-Fi and browser-link indicators as every other screen.
+  drawHeaderConnectionIcons();
   drawGpsPanel();
   drawNavigation(0);
   updateTargetTelemetry();
@@ -998,7 +997,7 @@ static void beginWiFi() {
   WiFi.setAutoReconnect(false);
   WiFi.disconnect(false,false);
   WiFi.mode(WIFI_STA);
-  WiFi.setSleep(true);
+  WiFi.setSleep(false); // Keep touch-to-browser response latency low while serving the local API.
   WiFi.begin(wifiName.c_str(),wifiPassword.c_str());
   wifiAttemptAt=millis();
   screen=Screen::Connecting;
@@ -1182,7 +1181,8 @@ static bool fetchSelectedTle() {
   // The NTP gate in updateSelectedOrbit() ensures the clock is valid first.
   client.setCACert(CELESTRAK_CA_BUNDLE);
   HTTPClient http;
-  http.setTimeout(12000);
+  http.setConnectTimeout(2500);
+  http.setTimeout(2500);
   const String url="https://celestrak.org/NORAD/elements/gp.php?CATNR="+String(selectedNoradId)+"&FORMAT=TLE";
   if(!http.begin(client,url.c_str())) { orbitDataMessage="Не удалось открыть HTTPS CelesTrak"; return false; }
   const int code=http.GET();
@@ -1243,7 +1243,8 @@ static bool fetchSelectedSatelliteImage() {
   WiFiClientSecure client;
   client.setCACert(CELESTRAK_CA_BUNDLE);
   HTTPClient http;
-  http.setTimeout(9000);
+  http.setConnectTimeout(2500);
+  http.setTimeout(2500);
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   if(!http.begin(client,selectedSatelliteImageUrl)) return false;
   const int code=http.GET();
@@ -1319,10 +1320,13 @@ static void updateSelectedOrbit() {
 }
 
 static void sendLocalCorsHeaders() {
-  localServer.sendHeader("Access-Control-Allow-Origin","*");
+  // Echo the HTTPS page origin for Chromium Private Network Access preflights.
+  const String origin=localServer.header("Origin");
+  localServer.sendHeader("Access-Control-Allow-Origin",origin.length()?origin:"*");
   localServer.sendHeader("Access-Control-Allow-Methods","GET, POST, OPTIONS");
   localServer.sendHeader("Access-Control-Allow-Headers","Content-Type");
   localServer.sendHeader("Access-Control-Allow-Private-Network","true");
+  localServer.sendHeader("Access-Control-Max-Age","600");
   localServer.sendHeader("Vary","Origin");
 }
 
@@ -1511,6 +1515,8 @@ refreshStatus();setInterval(refreshStatus,1000);
   localServer.onNotFound([](){
     localServer.send(404,"application/json","{\"ok\":false,\"error\":\"not_found\"}");
   });
+  const char* requestHeaders[]={"Origin","Access-Control-Request-Private-Network","Access-Control-Request-Headers"};
+  localServer.collectHeaders(requestHeaders,3);
   localServer.begin();
   if(MDNS.begin("cyd-tracker")) MDNS.addService("http","tcp",80);
   localApiStarted=true;
@@ -1585,12 +1591,12 @@ void loop() {
     }
   }
   if(!displayDiagnosticActive) handleTouch();
-  if(!displayDiagnosticActive && screen!=Screen::Splash && screen!=Screen::TouchTest && screen!=Screen::WifiSetup &&
-     now-lastHeaderIconsAt>=500) {
+  if(!displayDiagnosticActive && now-lastHeaderIconsAt>=500) {
     drawHeaderConnectionIcons();
     lastHeaderIconsAt=now;
   }
-  if(!displayDiagnosticActive) { serviceLocalApi(); } // Browser and CYD communicate only over the local network.
+  // Service local requests before optional outbound HTTPS work.
+  if(!displayDiagnosticActive) serviceLocalApi();
   if(!displayDiagnosticActive) updateSelectedOrbit();
   if(!displayDiagnosticActive && selectedSatelliteImagePending && WiFi.status()==WL_CONNECTED &&
      selectedSatelliteImageAttempts<3 &&

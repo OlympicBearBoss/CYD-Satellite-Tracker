@@ -482,30 +482,6 @@ static void showConnecting() {
 
 static void showSystemScreen();
 
-// TLS certificate validation requires a sane wall clock. ESP32 starts with
-// an unset clock after boot, so synchronize SNTP before opening HTTPS sessions.
-static bool ensureSystemClock() {
-  time_t now = time(nullptr);
-  if (now >= 1760000000) {
-    Serial.printf("[CLOUD] System clock already valid: epoch=%lu\n",(unsigned long)now);
-    return true;
-  }
-  Serial.printf("[CLOUD] System clock unset (epoch=%lu); starting SNTP\n",(unsigned long)now);
-  configTime(0,0,"pool.ntp.org","time.cloudflare.com","time.google.com");
-  const uint32_t startedAt=millis();
-  while(millis()-startedAt<15000) {
-    now=time(nullptr);
-    if(now>=1760000000) {
-      Serial.printf("[CLOUD] SNTP synchronized: epoch=%lu\n",(unsigned long)now);
-      return true;
-    }
-    delay(250);
-  }
-  now=time(nullptr);
-  Serial.printf("[CLOUD] SNTP FAILED after 15000 ms; epoch=%lu\n",(unsigned long)now);
-  return false;
-}
-
 static void drawNavigation(uint8_t active) {
   const uint16_t activeColor=0x07FF, idleColor=0x001F;
   drawButton(4,207,76,29,"HOME",active==0?activeColor:idleColor);
@@ -876,7 +852,7 @@ static void handleTouch(){
    } else if(x<212) {
      WiFi.disconnect(false,false); editingPassword=false; setupMessage="Edit network, then press CONNECT";
      wifiScreenDrawn=false; showWifiSetup();
-   } else { pairingCode=""; setupMessage=""; showPairingScreen(); }
+   } else { Serial.printf("[LOCAL] API address: http://%s/\\n",WiFi.localIP().toString().c_str()); showSystemScreen(); }
  }
  else if(screen==Screen::Dashboard && y>=160 && y<200) {
    showSatelliteScreen();
@@ -958,7 +934,6 @@ static void sendLocalStatus() {
   }
   if(gps.altitude.isValid()) doc["altitude_m"]=gps.altitude.meters();
   if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
-  doc["cloud_linked"]=false;
   doc["control"]["target_azimuth_deg"]=targetAzimuthDeg;
   doc["control"]["target_elevation_deg"]=targetElevationDeg;
   doc["control"]["tracking_requested"]=trackingRequested;
@@ -997,7 +972,7 @@ button{font:inherit;cursor:pointer}.layout{min-height:100vh}.sidebar{position:fi
  <div class="actions"><button class="btn" onclick="sendTarget()">ОТПРАВИТЬ ЦЕЛЬ</button><button class="btn" id="trackingBtn" onclick="toggleTracking()">СЛЕЖЕНИЕ: ВЫКЛ</button><button class="btn stop" onclick="requestStop()">STOP</button></div>
  <div class="statusline"><span>Принятая цель</span><b id="targetState">Азимут 0° · место 0°</b></div><div class="statusline"><span>Режим слежения</span><b id="trackingState">Выключен</b></div><p class="hint" id="commandMessage">Команды принимаются по локальному Wi‑Fi. Сейчас прошивка только сохраняет целевые углы и флаг слежения — физическое движение двигателей не запускается.</p>
  </article></section>
-<section class="view" id="system"><div class="heading"><div><div class="eyebrow">DEVICE HEALTH / ESP32</div><h1>Система</h1><p>Диагностика платы, GPS и сетевого соединения</p></div></div><div class="grid system-grid"><article class="panel"><div class="panel-head"><h2>Контроллер</h2><span class="micro">ESP32</span></div><div class="statusline"><span>Устройство</span><b>CYD Satellite Tracker</b></div><div class="statusline"><span>Версия ПО</span><b id="sysFirmware">—</b></div><div class="statusline"><span>IP</span><b id="sysIp">—</b></div><div class="statusline"><span>Wi‑Fi RSSI</span><b id="sysRssi">—</b></div></article><article class="panel"><div class="panel-head"><h2>GPS / GNSS</h2><span class="micro">NEO-6M</span></div><div class="statusline"><span>Фиксация</span><b id="sysGps">—</b></div><div class="statusline"><span>Спутники</span><b id="sysSats">—</b></div><div class="statusline"><span>Широта</span><b id="sysLat">—</b></div><div class="statusline"><span>Долгота</span><b id="sysLon">—</b></div></article><article class="panel"><div class="panel-head"><h2>Безопасность управления</h2><span class="micro">ТЕКУЩИЕ ОГРАНИЧЕНИЯ</span></div><div class="badge warn">ДВИЖЕНИЕ ЗАБЛОКИРОВАНО</div><p class="hint">Команды поворота антенны ещё не реализованы. Драйверы и двигатели нельзя включать до проверки концевых выключателей, аппаратного STOP и механических ограничителей.</p><div class="actions"><button class="btn stop" onclick="requestStop()">ТЕСТОВЫЙ ЗАПРОС STOP</button></div><p class="hint">Эта кнопка отправляет диагностический запрос. Она не является аварийной остановкой и не отключает питание двигателей.</p></article><article class="panel"><div class="panel-head"><h2>Облачная связь</h2><span class="micro">CLOUD LINK</span></div><div class="statusline"><span>Привязка</span><b id="sysCloud">—</b></div><p class="hint">Прошивка не обращается к облачным серверам. Телеметрия и команды передаются напрямую между браузером и CYD по локальному Wi‑Fi.</p></article></div></section>
+<section class="view" id="system"><div class="heading"><div><div class="eyebrow">DEVICE HEALTH / ESP32</div><h1>Система</h1><p>Диагностика платы, GPS и сетевого соединения</p></div></div><div class="grid system-grid"><article class="panel"><div class="panel-head"><h2>Контроллер</h2><span class="micro">ESP32</span></div><div class="statusline"><span>Устройство</span><b>CYD Satellite Tracker</b></div><div class="statusline"><span>Версия ПО</span><b id="sysFirmware">—</b></div><div class="statusline"><span>IP</span><b id="sysIp">—</b></div><div class="statusline"><span>Wi‑Fi RSSI</span><b id="sysRssi">—</b></div></article><article class="panel"><div class="panel-head"><h2>GPS / GNSS</h2><span class="micro">NEO-6M</span></div><div class="statusline"><span>Фиксация</span><b id="sysGps">—</b></div><div class="statusline"><span>Спутники</span><b id="sysSats">—</b></div><div class="statusline"><span>Широта</span><b id="sysLat">—</b></div><div class="statusline"><span>Долгота</span><b id="sysLon">—</b></div></article><article class="panel"><div class="panel-head"><h2>Безопасность управления</h2><span class="micro">ТЕКУЩИЕ ОГРАНИЧЕНИЯ</span></div><div class="badge warn">ДВИЖЕНИЕ ЗАБЛОКИРОВАНО</div><p class="hint">Команды поворота антенны ещё не реализованы. Драйверы и двигатели нельзя включать до проверки концевых выключателей, аппаратного STOP и механических ограничителей.</p><div class="actions"><button class="btn stop" onclick="requestStop()">ТЕСТОВЫЙ ЗАПРОС STOP</button></div><p class="hint">Эта кнопка отправляет диагностический запрос. Она не является аварийной остановкой и не отключает питание двигателей.</p></article><article class="panel"><div class="panel-head"><h2>Локальная связь</h2><span class="micro">LOCAL LINK</span></div><div class="statusline"><span>Привязка</span><b id="sysCloud">—</b></div><p class="hint">Прошивка не обращается к облачным серверам. Телеметрия и команды передаются напрямую между браузером и CYD по локальному Wi‑Fi.</p></article></div></section>
 <section class="view" id="connection"><div class="heading"><div><div class="eyebrow">NETWORK / LOCAL ACCESS</div><h1>Подключение</h1><p>Адреса для браузера и мобильного приложения в этой Wi‑Fi сети</p></div></div><article class="panel"><div class="panel-head"><h2>Доступ к контроллеру</h2><span class="badge"><i class="dot"></i> API ДОСТУПЕН</span></div><p class="micro">ЛОКАЛЬНЫЙ HTTP АДРЕС</p><p class="device-address" id="fullAddress">http://192.168.0.48/</p><div class="actions"><button class="btn" onclick="copyAddress()">КОПИРОВАТЬ АДРЕС</button><button class="btn" onclick="window.location.href='/api/v1/status'">ОТКРЫТЬ JSON API</button></div><div class="statusline"><span>mDNS адрес</span><b>http://cyd-tracker.local/</b></div><div class="statusline"><span>Статус API</span><b id="connApi">Работает</b></div><div class="statusline"><span>Обновление данных</span><b>Каждую секунду</b></div><p class="hint">Телефон, планшет или компьютер должны быть подключены к той же Wi‑Fi сети, что и CYD. Для локального управления используйте этот адрес, а не HTTPS-сайт Cloudflare: браузер ограничивает обращения с HTTPS-страницы к локальному HTTP-устройству.</p></article></section>
 </main><nav class="mobile-nav"><button class="active" data-view="overview"><span>⌂</span>Обзор</button><button data-view="system"><span>◈</span>Система</button><button data-view="connection"><span>⌁</span>Сеть</button></nav></div></div>
 <script>
@@ -1140,7 +1115,7 @@ void loop() {
     }
   }
   if(!displayDiagnosticActive) handleTouch();
-  if(!displayDiagnosticActive) { serviceLocalApi(); } // Local-only operation: no cloud polling.
+  if(!displayDiagnosticActive) { serviceLocalApi(); } // Browser and CYD communicate only over the local network.
   // Refresh only the three telemetry tiles; keep the photo, radar and chrome static.
   if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastDashboardRefreshAt>=1000) {
     updateGpsTelemetry();

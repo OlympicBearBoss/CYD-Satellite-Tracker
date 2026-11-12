@@ -1,10 +1,6 @@
 const KNOWN_IMAGES = {
   // NASA image library, public-domain ISS photograph (small rendition).
-  "25544": "https://images-assets.nasa.gov/image/iss056e201248/iss056e201248~small.jpg",
-  // Wikimedia Commons thumbnail of NOAA-19.
-  "33591": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/NOAA-19.jpg/320px-NOAA-19.jpg",
-  // AMSAT-NA's public Fox-1B mission image.
-  "43017": "https://www.amsat.org/wordpress/wp-content/uploads/2017/11/Fox-1B.jpg"
+  "25544": "https://images-assets.nasa.gov/image/iss056e201248/iss056e201248~small.jpg"
 };
 
 const MAX_JPEG_BYTES = 120000;
@@ -16,7 +12,12 @@ const CACHE_HEADERS = {
 function normalizeSource(value) {
   if (typeof value !== "string" || !value.trim()) return "";
   try {
-    const candidate = new URL(value.trim(), "https://db.satnogs.org");
+    const raw = value.trim();
+    // SatNOGS API returns image paths relative to /media/, e.g. satellites/NOAA-19.jpg.
+    const normalized = /^\/?satellites\//.test(raw)
+      ? "https://db.satnogs.org/media/" + raw.replace(/^\//, "")
+      : raw;
+    const candidate = new URL(normalized, "https://db.satnogs.org");
     const allowedHosts = new Set([
       "images-assets.nasa.gov",
       "upload.wikimedia.org",
@@ -86,7 +87,7 @@ export async function onRequestGet({ request }) {
   }
 
   const isDownload = url.searchParams.get("download") === "1";
-  const cacheKey = new Request(new URL("/api/satellite-image?v=2&norad=" + norad + "&download=" + (isDownload ? "1" : "0"), url.origin).toString(), { method: "GET" });
+  const cacheKey = new Request(new URL("/api/satellite-image?v=3&norad=" + norad + "&download=" + (isDownload ? "1" : "0"), url.origin).toString(), { method: "GET" });
   const edgeCache = caches.default;
   const cached = await edgeCache.match(cacheKey);
   if (cached) return cached;

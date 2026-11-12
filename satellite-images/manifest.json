@@ -1,7 +1,1886 @@
 {
   "version": 1,
-  "generatedAt": null,
-  "catalogObjectsSeen": 0,
-  "lastRun": null,
-  "images": {}
+  "generatedAt": "2026-11-12T08:01:13.878Z",
+  "catalogObjectsSeen": 614,
+  "lastRun": {
+    "checked": 300,
+    "downloaded": 93,
+    "missing": 202,
+    "failed": 5,
+    "maxChecks": 300
+  },
+  "images": {
+    "7530": {
+      "status": "available",
+      "path": "/satellite-images/7530.jpg",
+      "source": "https://db.satnogs.org/media/satellites/AMSAT-OSCAR_7.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 4191,
+      "checkedAt": "2026-11-12T07:59:56.866Z",
+      "name": "OSCAR 7"
+    },
+    "14129": {
+      "status": "available",
+      "path": "/satellite-images/14129.jpg",
+      "source": "https://db.satnogs.org/media/satellites/AO-10.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 8645,
+      "checkedAt": "2026-11-12T07:59:57.351Z",
+      "name": "Phase 3-B"
+    },
+    "14781": {
+      "status": "available",
+      "path": "/satellite-images/14781.jpg",
+      "source": "https://db.satnogs.org/media/satellites/UoSat-2.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 5352,
+      "checkedAt": "2026-11-12T07:59:57.743Z",
+      "name": "UOSAT 2"
+    },
+    "20442": {
+      "status": "error",
+      "checkedAt": "2026-11-12T07:59:58.127Z",
+      "error": "unsupported image type: image/gif"
+    },
+    "22825": {
+      "status": "available",
+      "path": "/satellite-images/22825.jpg",
+      "source": "https://db.satnogs.org/media/satellites/AO-27-PreFlight.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 13069,
+      "checkedAt": "2026-11-12T07:59:58.625Z",
+      "name": "EYESAT-1"
+    },
+    "22826": {
+      "status": "available",
+      "path": "/satellite-images/22826.jpg",
+      "source": "https://db.satnogs.org/media/satellites/itamsat_1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 18074,
+      "checkedAt": "2026-11-12T07:59:59.209Z",
+      "name": "ITAMSAT"
+    },
+    "23439": {
+      "status": "available",
+      "path": "/satellite-images/23439.jpg",
+      "source": "https://db.satnogs.org/media/satellites/radio-rosto__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 17035,
+      "checkedAt": "2026-11-12T07:59:59.617Z",
+      "name": "RADIO ROSTO"
+    },
+    "24278": {
+      "status": "error",
+      "checkedAt": "2026-11-12T08:00:00.011Z",
+      "error": "unsupported image type: image/gif"
+    },
+    "25397": {
+      "status": "error",
+      "checkedAt": "2026-11-12T08:00:00.493Z",
+      "error": "unsupported image type: image/gif"
+    },
+    "25544": {
+      "status": "available",
+      "path": "/satellite-images/25544.jpg",
+      "source": "https://db.satnogs.org/media/satellites/ISS.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 16880,
+      "checkedAt": "2026-11-12T07:59:25.745Z",
+      "name": "ISS"
+    },
+    "26407": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:41.681Z",
+      "name": ""
+    },
+    "26931": {
+      "status": "error",
+      "checkedAt": "2026-11-12T08:00:00.968Z",
+      "error": "unsupported image type: image/gif"
+    },
+    "27607": {
+      "status": "available",
+      "path": "/satellite-images/27607.jpg",
+      "source": "https://db.satnogs.org/media/satellites/saudisat-so-50.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 2373,
+      "checkedAt": "2026-11-12T08:00:01.354Z",
+      "name": "SAUDISAT 1C"
+    },
+    "27663": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:41.976Z",
+      "name": ""
+    },
+    "27844": {
+      "status": "available",
+      "path": "/satellite-images/27844.jpg",
+      "source": "https://db.satnogs.org/media/satellites/cute-1__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 7785,
+      "checkedAt": "2026-11-12T08:00:01.744Z",
+      "name": "CUTE-1"
+    },
+    "27848": {
+      "status": "available",
+      "path": "/satellite-images/27848.jpg",
+      "source": "https://db.satnogs.org/media/satellites/xi-4__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 7434,
+      "checkedAt": "2026-11-12T08:00:02.144Z",
+      "name": "CUBESAT XI-IV"
+    },
+    "27939": {
+      "status": "available",
+      "path": "/satellite-images/27939.jpg",
+      "source": "https://db.satnogs.org/media/satellites/zeya__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 16811,
+      "checkedAt": "2026-11-12T08:00:02.636Z",
+      "name": "MOZHAYETS 4"
+    },
+    "28054": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:31.781Z",
+      "name": "DMSP 5F-3 (USA 172)"
+    },
+    "28190": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:42.264Z",
+      "name": ""
+    },
+    "28474": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:42.558Z",
+      "name": "NAVSTAR 56"
+    },
+    "28874": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:42.855Z",
+      "name": ""
+    },
+    "28895": {
+      "status": "available",
+      "path": "/satellite-images/28895.jpg",
+      "source": "https://db.satnogs.org/media/satellites/XI-V-Sai-Five-300x225.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 7407,
+      "checkedAt": "2026-11-12T08:00:03.125Z",
+      "name": "CUBESAT XI-V"
+    },
+    "28899": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:43.141Z",
+      "name": ""
+    },
+    "28912": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:32.075Z",
+      "name": ""
+    },
+    "29486": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:43.439Z",
+      "name": ""
+    },
+    "29522": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:32.381Z",
+      "name": "DMSP 5D-3 F17"
+    },
+    "29601": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:43.740Z",
+      "name": "NAVSTAR 59"
+    },
+    "32260": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:44.029Z",
+      "name": ""
+    },
+    "32275": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:44.314Z",
+      "name": ""
+    },
+    "32384": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:44.600Z",
+      "name": ""
+    },
+    "32393": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:44.886Z",
+      "name": ""
+    },
+    "32395": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:45.172Z",
+      "name": ""
+    },
+    "32711": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:45.457Z",
+      "name": ""
+    },
+    "32785": {
+      "status": "available",
+      "path": "/satellite-images/32785.jpg",
+      "source": "https://db.satnogs.org/media/satellites/CO-65-300x197.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 5959,
+      "checkedAt": "2026-11-12T08:00:03.523Z",
+      "name": "CUTE-1.7+APD II"
+    },
+    "32791": {
+      "status": "error",
+      "checkedAt": "2026-11-12T08:00:03.997Z",
+      "error": "unsupported image type: image/gif"
+    },
+    "32953": {
+      "status": "available",
+      "path": "/satellite-images/32953.jpg",
+      "source": "https://db.satnogs.org/media/satellites/rs30_1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 15502,
+      "checkedAt": "2026-11-12T08:00:04.487Z",
+      "name": "YUBILEINY"
+    },
+    "32958": {
+      "status": "available",
+      "path": "/satellite-images/32958.jpg",
+      "source": "https://db.satnogs.org/media/satellites/FENGYUN-3A_AVnpzkb.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 11884,
+      "checkedAt": "2026-11-12T07:59:32.977Z",
+      "name": "FENGYUN 3A"
+    },
+    "33499": {
+      "status": "available",
+      "path": "/satellite-images/33499.jpg",
+      "source": "https://db.satnogs.org/media/satellites/KKS-FM-4-2.JPG",
+      "contentType": "image/jpeg",
+      "bytes": 24222,
+      "checkedAt": "2026-11-12T08:00:05.085Z",
+      "name": "KKS-1"
+    },
+    "35491": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:33.281Z",
+      "name": "GOES 14"
+    },
+    "35752": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:45.744Z",
+      "name": ""
+    },
+    "35932": {
+      "status": "available",
+      "path": "/satellite-images/35932.jpg",
+      "source": "https://db.satnogs.org/media/satellites/swisscube.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 6135,
+      "checkedAt": "2026-11-12T08:00:05.480Z",
+      "name": "SWISSCUBE"
+    },
+    "35933": {
+      "status": "available",
+      "path": "/satellite-images/35933.jpg",
+      "source": "https://db.satnogs.org/media/satellites/BEESAT.JPG",
+      "contentType": "image/jpeg",
+      "bytes": 11858,
+      "checkedAt": "2026-11-12T08:00:05.966Z",
+      "name": "BEESAT"
+    },
+    "35935": {
+      "status": "available",
+      "path": "/satellite-images/35935.jpg",
+      "source": "https://db.satnogs.org/media/satellites/itupsat1b.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 17142,
+      "checkedAt": "2026-11-12T08:00:06.465Z",
+      "name": "ITUPSAT 1"
+    },
+    "35951": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:33.584Z",
+      "name": "DMSP 5D-3 F18"
+    },
+    "36086": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:26.035Z",
+      "name": ""
+    },
+    "36111": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:46.035Z",
+      "name": ""
+    },
+    "36112": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:46.321Z",
+      "name": ""
+    },
+    "36122": {
+      "status": "available",
+      "path": "/satellite-images/36122.jpg",
+      "source": "https://db.satnogs.org/media/satellites/HO-68-Preassembly.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 20298,
+      "checkedAt": "2026-11-12T08:00:06.955Z",
+      "name": "XIWANG-1"
+    },
+    "36411": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:33.882Z",
+      "name": ""
+    },
+    "36585": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:46.615Z",
+      "name": ""
+    },
+    "36828": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:46.902Z",
+      "name": ""
+    },
+    "37210": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:47.189Z",
+      "name": ""
+    },
+    "37214": {
+      "status": "available",
+      "path": "/satellite-images/37214.jpg",
+      "source": "https://db.satnogs.org/media/satellites/FENGYUN-3B.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 12671,
+      "checkedAt": "2026-11-12T07:59:34.477Z",
+      "name": "FENGYUN 3B"
+    },
+    "37224": {
+      "status": "available",
+      "path": "/satellite-images/37224.jpg",
+      "source": "https://db.satnogs.org/media/satellites/o_oreos.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 9944,
+      "checkedAt": "2026-11-12T08:00:07.445Z",
+      "name": "O/OREOS"
+    },
+    "37256": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:47.474Z",
+      "name": ""
+    },
+    "37384": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:47.766Z",
+      "name": ""
+    },
+    "37605": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:48.056Z",
+      "name": ""
+    },
+    "37763": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:48.342Z",
+      "name": ""
+    },
+    "37839": {
+      "status": "available",
+      "path": "/satellite-images/37839.jpg",
+      "source": "https://db.satnogs.org/media/satellites/jugnu.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 4547,
+      "checkedAt": "2026-11-12T08:00:07.836Z",
+      "name": "JUGNU"
+    },
+    "37841": {
+      "status": "available",
+      "path": "/satellite-images/37841.jpg",
+      "source": "https://db.satnogs.org/media/satellites/srmsat.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 8433,
+      "checkedAt": "2026-11-12T08:00:08.323Z",
+      "name": "SRMSAT"
+    },
+    "37846": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:48.634Z",
+      "name": ""
+    },
+    "37847": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:48.920Z",
+      "name": ""
+    },
+    "37849": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:34.773Z",
+      "name": "SUOMI NPP"
+    },
+    "37867": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:49.216Z",
+      "name": ""
+    },
+    "37868": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:49.500Z",
+      "name": ""
+    },
+    "37869": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:49.793Z",
+      "name": ""
+    },
+    "37948": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:50.079Z",
+      "name": ""
+    },
+    "37951": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:50.366Z",
+      "name": ""
+    },
+    "38091": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:50.651Z",
+      "name": ""
+    },
+    "38250": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:50.939Z",
+      "name": ""
+    },
+    "38251": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:51.234Z",
+      "name": "BEIDOU 13"
+    },
+    "38552": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:35.060Z",
+      "name": ""
+    },
+    "38652": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:51.531Z",
+      "name": ""
+    },
+    "38771": {
+      "status": "available",
+      "path": "/satellite-images/38771.jpg",
+      "source": "https://db.satnogs.org/media/satellites/METOP-B_26NGbXF.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 20522,
+      "checkedAt": "2026-11-12T07:59:35.646Z",
+      "name": "METOP-B"
+    },
+    "38775": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:51.830Z",
+      "name": ""
+    },
+    "38779": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:52.121Z",
+      "name": ""
+    },
+    "38833": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:52.419Z",
+      "name": ""
+    },
+    "38857": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:52.716Z",
+      "name": ""
+    },
+    "38953": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:53.008Z",
+      "name": ""
+    },
+    "38977": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:53.297Z",
+      "name": ""
+    },
+    "39090": {
+      "status": "available",
+      "path": "/satellite-images/39090.jpg",
+      "source": "https://db.satnogs.org/media/satellites/strand1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 13024,
+      "checkedAt": "2026-11-12T08:00:08.735Z",
+      "name": "STRAND-1"
+    },
+    "39155": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:53.590Z",
+      "name": ""
+    },
+    "39166": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:53.877Z",
+      "name": ""
+    },
+    "39199": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:54.164Z",
+      "name": ""
+    },
+    "39216": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:35.933Z",
+      "name": ""
+    },
+    "39260": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:36.228Z",
+      "name": "FENGYUN 3C"
+    },
+    "39417": {
+      "status": "available",
+      "path": "/satellite-images/39417.jpg",
+      "source": "https://db.satnogs.org/media/satellites/index.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 5953,
+      "checkedAt": "2026-11-12T08:00:09.124Z",
+      "name": "ZACUBE-1"
+    },
+    "39430": {
+      "status": "available",
+      "path": "/satellite-images/39430.jpg",
+      "source": "https://db.satnogs.org/media/satellites/GOMX1_AutoE.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 13696,
+      "checkedAt": "2026-11-12T08:00:09.638Z",
+      "name": "GOMX 1"
+    },
+    "39440": {
+      "status": "available",
+      "path": "/satellite-images/39440.jpg",
+      "source": "https://db.satnogs.org/media/satellites/cubebug-1__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 6486,
+      "checkedAt": "2026-11-12T08:00:10.126Z",
+      "name": "CUBEBUG-2"
+    },
+    "39444": {
+      "status": "available",
+      "path": "/satellite-images/39444.jpg",
+      "source": "https://db.satnogs.org/media/satellites/FUNCUBE-1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 8911,
+      "checkedAt": "2026-11-12T08:00:10.704Z",
+      "name": "FUNCUBE-1"
+    },
+    "39446": {
+      "status": "available",
+      "path": "/satellite-images/39446.jpg",
+      "source": "https://db.satnogs.org/media/satellites/uwe-1__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 12252,
+      "checkedAt": "2026-11-12T08:00:11.100Z",
+      "name": "UWE-3"
+    },
+    "39533": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:54.461Z",
+      "name": ""
+    },
+    "39617": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:54.757Z",
+      "name": ""
+    },
+    "39620": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:55.042Z",
+      "name": ""
+    },
+    "39635": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:55.329Z",
+      "name": ""
+    },
+    "39727": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:55.953Z",
+      "name": ""
+    },
+    "39741": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:56.239Z",
+      "name": ""
+    },
+    "40001": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:56.528Z",
+      "name": ""
+    },
+    "40012": {
+      "status": "available",
+      "path": "/satellite-images/40012.jpg",
+      "source": "https://db.satnogs.org/media/satellites/unisat-6__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 14162,
+      "checkedAt": "2026-11-12T08:00:11.588Z",
+      "name": "UNISAT-6"
+    },
+    "40025": {
+      "status": "available",
+      "path": "/satellite-images/40025.jpg",
+      "source": "https://db.satnogs.org/media/satellites/qb50p1__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 8465,
+      "checkedAt": "2026-11-12T08:00:12.074Z",
+      "name": "QB50P1"
+    },
+    "40069": {
+      "status": "available",
+      "path": "/satellite-images/40069.jpg",
+      "source": "https://db.satnogs.org/media/satellites/METEOR-M_2.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 20647,
+      "checkedAt": "2026-11-12T07:59:36.826Z",
+      "name": "METEOR M-2"
+    },
+    "40105": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:56.818Z",
+      "name": ""
+    },
+    "40128": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:57.108Z",
+      "name": ""
+    },
+    "40129": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:57.404Z",
+      "name": ""
+    },
+    "40267": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:37.124Z",
+      "name": ""
+    },
+    "40269": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:57.706Z",
+      "name": ""
+    },
+    "40294": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:58.000Z",
+      "name": ""
+    },
+    "40315": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:58.300Z",
+      "name": "COSMOS 2501"
+    },
+    "40367": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:37.411Z",
+      "name": ""
+    },
+    "40534": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:58.591Z",
+      "name": ""
+    },
+    "40544": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:58.883Z",
+      "name": ""
+    },
+    "40545": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:59.167Z",
+      "name": ""
+    },
+    "40549": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:59.452Z",
+      "name": ""
+    },
+    "40730": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:59.738Z",
+      "name": ""
+    },
+    "40732": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:37.706Z",
+      "name": ""
+    },
+    "40748": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:00.027Z",
+      "name": ""
+    },
+    "40749": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:00.330Z",
+      "name": ""
+    },
+    "40890": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:00.619Z",
+      "name": ""
+    },
+    "40908": {
+      "status": "available",
+      "path": "/satellite-images/40908.jpg",
+      "source": "https://db.satnogs.org/media/satellites/LILACSAT-2.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 10622,
+      "checkedAt": "2026-11-12T08:00:12.565Z",
+      "name": "LILACSAT 2"
+    },
+    "40938": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:00.908Z",
+      "name": ""
+    },
+    "40967": {
+      "status": "available",
+      "path": "/satellite-images/40967.jpg",
+      "source": "https://db.satnogs.org/media/satellites/Fox-1A.png",
+      "contentType": "image/jpeg",
+      "bytes": 10679,
+      "checkedAt": "2026-11-12T08:00:13.147Z",
+      "name": "FOX-1A"
+    },
+    "41019": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:01.200Z",
+      "name": ""
+    },
+    "41028": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:01.497Z",
+      "name": ""
+    },
+    "41105": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:38.007Z",
+      "name": "Elektro-L 2"
+    },
+    "41174": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:01.782Z",
+      "name": ""
+    },
+    "41175": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:02.070Z",
+      "name": ""
+    },
+    "41241": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:02.355Z",
+      "name": ""
+    },
+    "41328": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:02.652Z",
+      "name": ""
+    },
+    "41330": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:02.946Z",
+      "name": ""
+    },
+    "41335": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:38.298Z",
+      "name": ""
+    },
+    "41434": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:03.233Z",
+      "name": ""
+    },
+    "41469": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:03.517Z",
+      "name": ""
+    },
+    "41549": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:03.803Z",
+      "name": ""
+    },
+    "41550": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:04.090Z",
+      "name": ""
+    },
+    "41586": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:04.381Z",
+      "name": ""
+    },
+    "41589": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:04.673Z",
+      "name": ""
+    },
+    "41752": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:38.587Z",
+      "name": ""
+    },
+    "41836": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:38.880Z",
+      "name": ""
+    },
+    "41847": {
+      "status": "available",
+      "path": "/satellite-images/41847.jpg",
+      "source": "https://db.satnogs.org/media/satellites/cas-2t-145-435-mhz-fm-transponder-cubesat.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 16733,
+      "checkedAt": "2026-11-12T08:00:13.552Z",
+      "name": "CAS-2T"
+    },
+    "41859": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:04.975Z",
+      "name": ""
+    },
+    "41860": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:05.266Z",
+      "name": ""
+    },
+    "41861": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:05.554Z",
+      "name": ""
+    },
+    "41862": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:05.846Z",
+      "name": ""
+    },
+    "41866": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:39.177Z",
+      "name": "GOES-16"
+    },
+    "41882": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:39.462Z",
+      "name": ""
+    },
+    "41884": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:39.758Z",
+      "name": ""
+    },
+    "41885": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:40.045Z",
+      "name": ""
+    },
+    "41886": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:40.331Z",
+      "name": ""
+    },
+    "41887": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:40.618Z",
+      "name": ""
+    },
+    "41888": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:40.904Z",
+      "name": ""
+    },
+    "41890": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:41.200Z",
+      "name": ""
+    },
+    "41891": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:41.488Z",
+      "name": ""
+    },
+    "42709": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:06.131Z",
+      "name": ""
+    },
+    "42738": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:06.416Z",
+      "name": ""
+    },
+    "42917": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:06.709Z",
+      "name": ""
+    },
+    "42939": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:06.999Z",
+      "name": ""
+    },
+    "42965": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:07.286Z",
+      "name": ""
+    },
+    "43001": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:07.570Z",
+      "name": ""
+    },
+    "43002": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:07.856Z",
+      "name": ""
+    },
+    "43010": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:41.777Z",
+      "name": "FengYun 3D"
+    },
+    "43013": {
+      "status": "available",
+      "path": "/satellite-images/43013.jpg",
+      "source": "https://db.satnogs.org/media/satellites/NOAA-20-JPSS-1_xG4bUaX.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 31445,
+      "checkedAt": "2026-11-12T07:59:42.661Z",
+      "name": "NOAA 20"
+    },
+    "43017": {
+      "status": "available",
+      "path": "/satellite-images/43017.jpg",
+      "source": "https://db.satnogs.org/media/satellites/RadFxSat_Flight-300x300.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 13679,
+      "checkedAt": "2026-11-12T08:00:13.955Z",
+      "name": "FOX-1B"
+    },
+    "43055": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:08.149Z",
+      "name": ""
+    },
+    "43056": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:08.437Z",
+      "name": ""
+    },
+    "43057": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:08.733Z",
+      "name": ""
+    },
+    "43058": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:09.019Z",
+      "name": ""
+    },
+    "43107": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:09.304Z",
+      "name": ""
+    },
+    "43108": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:09.596Z",
+      "name": ""
+    },
+    "43207": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:09.893Z",
+      "name": ""
+    },
+    "43208": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:10.182Z",
+      "name": ""
+    },
+    "43226": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:42.952Z",
+      "name": "GOES-17"
+    },
+    "43245": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:10.477Z",
+      "name": ""
+    },
+    "43246": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:10.785Z",
+      "name": ""
+    },
+    "43286": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:11.079Z",
+      "name": ""
+    },
+    "43437": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:43.238Z",
+      "name": ""
+    },
+    "43491": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:43.541Z",
+      "name": "FENGYUN 2H"
+    },
+    "43508": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:11.370Z",
+      "name": ""
+    },
+    "43539": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:11.659Z",
+      "name": ""
+    },
+    "43564": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:11.948Z",
+      "name": ""
+    },
+    "43565": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:12.232Z",
+      "name": ""
+    },
+    "43566": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:12.520Z",
+      "name": ""
+    },
+    "43567": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:12.820Z",
+      "name": ""
+    },
+    "43581": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:13.117Z",
+      "name": ""
+    },
+    "43582": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:13.407Z",
+      "name": ""
+    },
+    "43602": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:01:13.698Z",
+      "name": ""
+    },
+    "43678": {
+      "status": "available",
+      "path": "/satellite-images/43678.jpg",
+      "source": "https://db.satnogs.org/media/satellites/diwata-2__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 13891,
+      "checkedAt": "2026-11-12T08:00:14.450Z",
+      "name": "DIWATA-2"
+    },
+    "43689": {
+      "status": "available",
+      "path": "/satellite-images/43689.jpg",
+      "source": "https://db.satnogs.org/media/satellites/MetOp_Auto3F.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 21489,
+      "checkedAt": "2026-11-12T07:59:44.134Z",
+      "name": "METOP-C"
+    },
+    "43700": {
+      "status": "available",
+      "path": "/satellite-images/43700.jpg",
+      "source": "https://db.satnogs.org/media/satellites/Eshail_2.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 9597,
+      "checkedAt": "2026-11-12T08:00:15.123Z",
+      "name": "Es'hail 2"
+    },
+    "43770": {
+      "status": "available",
+      "path": "/satellite-images/43770.jpg",
+      "source": "https://db.satnogs.org/media/satellites/fox-1c__1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 16235,
+      "checkedAt": "2026-11-12T08:00:15.523Z",
+      "name": "FOX-1C"
+    },
+    "43786": {
+      "status": "available",
+      "path": "/satellite-images/43786.jpg",
+      "source": "https://db.satnogs.org/media/satellites/ITASAT-_1.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 13753,
+      "checkedAt": "2026-11-12T08:00:15.926Z",
+      "name": "ITASAT 1"
+    },
+    "43803": {
+      "status": "available",
+      "path": "/satellite-images/43803.jpg",
+      "source": "https://db.satnogs.org/media/satellites/jy1sat-cubesat.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 17013,
+      "checkedAt": "2026-11-12T08:00:16.611Z",
+      "name": "JY1Sat"
+    },
+    "43823": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:44.422Z",
+      "name": ""
+    },
+    "43880": {
+      "status": "available",
+      "path": "/satellite-images/43880.jpg",
+      "source": "https://db.satnogs.org/media/satellites/UWE-4_AutoF.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 23731,
+      "checkedAt": "2026-11-12T08:00:17.013Z",
+      "name": "UWE-4"
+    },
+    "44387": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:44.714Z",
+      "name": "METEOR M-2-2"
+    },
+    "44881": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:17.311Z",
+      "name": "CAS-6 (TO-108)"
+    },
+    "44909": {
+      "status": "available",
+      "path": "/satellite-images/44909.jpg",
+      "source": "https://db.satnogs.org/media/satellites/dosaaf-85.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 17907,
+      "checkedAt": "2026-11-12T08:00:17.719Z",
+      "name": "DOSAAF-85"
+    },
+    "46495": {
+      "status": "available",
+      "path": "/satellite-images/46495.jpg",
+      "source": "https://db.satnogs.org/media/satellites/csm_Mission_Patch_cut_829a68e1ee.png",
+      "contentType": "image/jpeg",
+      "bytes": 11461,
+      "checkedAt": "2026-11-12T08:00:18.305Z",
+      "name": "SALSAT"
+    },
+    "47719": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:45.004Z",
+      "name": "Arktika-M1"
+    },
+    "48274": {
+      "status": "available",
+      "path": "/satellite-images/48274.jpg",
+      "source": "https://db.satnogs.org/media/satellites/css.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 20312,
+      "checkedAt": "2026-11-12T07:59:26.540Z",
+      "name": "CSS (Tianhe)"
+    },
+    "49008": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:45.298Z",
+      "name": "FengYun 3E"
+    },
+    "49044": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:26.833Z",
+      "name": "NAUKA"
+    },
+    "49271": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:27.122Z",
+      "name": ""
+    },
+    "50466": {
+      "status": "available",
+      "path": "/satellite-images/50466.jpg",
+      "source": "https://db.satnogs.org/media/satellites/cas9.png",
+      "contentType": "image/jpeg",
+      "bytes": 12140,
+      "checkedAt": "2026-11-12T08:00:18.800Z",
+      "name": "XW-3"
+    },
+    "51850": {
+      "status": "available",
+      "path": "/satellite-images/51850.jpg",
+      "source": "https://db.satnogs.org/media/satellites/GOES-T_Satellite_at_Processing_Facility_51854351059.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 13336,
+      "checkedAt": "2026-11-12T07:59:46.174Z",
+      "name": "GOES-18"
+    },
+    "53109": {
+      "status": "available",
+      "path": "/satellite-images/53109.jpg",
+      "source": "https://db.satnogs.org/media/satellites/M2C.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 13256,
+      "checkedAt": "2026-11-12T08:00:19.199Z",
+      "name": "MTCube 2"
+    },
+    "53239": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:27.413Z",
+      "name": ""
+    },
+    "54216": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:27.699Z",
+      "name": ""
+    },
+    "54234": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:46.463Z",
+      "name": "NOAA-21 JPSS-2"
+    },
+    "54743": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:46.749Z",
+      "name": ""
+    },
+    "55973": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:47.037Z",
+      "name": ""
+    },
+    "55974": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:47.325Z",
+      "name": ""
+    },
+    "55975": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:47.613Z",
+      "name": ""
+    },
+    "55976": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:47.903Z",
+      "name": ""
+    },
+    "56232": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:48.187Z",
+      "name": ""
+    },
+    "57166": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:48.478Z",
+      "name": "METEOR M2-3"
+    },
+    "57172": {
+      "status": "available",
+      "path": "/satellite-images/57172.jpg",
+      "source": "https://db.satnogs.org/media/satellites/umka.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 8296,
+      "checkedAt": "2026-11-12T08:00:19.690Z",
+      "name": "UmKA-1"
+    },
+    "57178": {
+      "status": "available",
+      "path": "/satellite-images/57178.jpg",
+      "source": "https://db.satnogs.org/media/satellites/large_Sputnik_V_Sh_E_3_ba4794ed8f.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 12778,
+      "checkedAt": "2026-11-12T08:00:20.092Z",
+      "name": "CubeSX-HSE-3"
+    },
+    "57180": {
+      "status": "available",
+      "path": "/satellite-images/57180.jpg",
+      "source": "https://db.satnogs.org/media/satellites/large_Monitor_3_MGU_ee683f3379.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 11572,
+      "checkedAt": "2026-11-12T08:00:20.498Z",
+      "name": "Monitor-3"
+    },
+    "57182": {
+      "status": "available",
+      "path": "/satellite-images/57182.jpg",
+      "source": "https://db.satnogs.org/media/satellites/large_Monitor_4_MGU_545fe1cfd3.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 19085,
+      "checkedAt": "2026-11-12T08:00:21.007Z",
+      "name": "Monitor-4"
+    },
+    "57184": {
+      "status": "available",
+      "path": "/satellite-images/57184.jpg",
+      "source": "https://db.satnogs.org/media/satellites/large_Monitor_2_f718a14fcc.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 27847,
+      "checkedAt": "2026-11-12T08:00:21.513Z",
+      "name": "Monitor-2"
+    },
+    "57187": {
+      "status": "available",
+      "path": "/satellite-images/57187.jpg",
+      "source": "https://db.satnogs.org/media/satellites/large_52794735676_c5827012e0_k_785593a49a.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 18379,
+      "checkedAt": "2026-11-12T08:00:21.941Z",
+      "name": "Svyatobor-1"
+    },
+    "57189": {
+      "status": "available",
+      "path": "/satellite-images/57189.jpg",
+      "source": "https://db.satnogs.org/media/satellites/large_Vizard_meteo_bda37bb6c8.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 13096,
+      "checkedAt": "2026-11-12T08:00:22.341Z",
+      "name": "VIZARD-meteo"
+    },
+    "57191": {
+      "status": "available",
+      "path": "/satellite-images/57191.jpg",
+      "source": "https://db.satnogs.org/media/satellites/large_PU_3_543c54b2af.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 30260,
+      "checkedAt": "2026-11-12T08:00:22.849Z",
+      "name": "Polytech Universe-3"
+    },
+    "57203": {
+      "status": "available",
+      "path": "/satellite-images/57203.jpg",
+      "source": "https://db.satnogs.org/media/satellites/large_OGU_Nanozond_1_acaf98dcd6.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 11951,
+      "checkedAt": "2026-11-12T08:00:23.264Z",
+      "name": "UTMN2"
+    },
+    "57217": {
+      "status": "available",
+      "path": "/satellite-images/57217.jpg",
+      "source": "https://db.satnogs.org/media/satellites/large_Kuz_GTU_1_31ec0dae08.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 13315,
+      "checkedAt": "2026-11-12T08:00:23.756Z",
+      "name": "KuzGTU-1"
+    },
+    "57399": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:48.768Z",
+      "name": ""
+    },
+    "57400": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:49.061Z",
+      "name": ""
+    },
+    "57401": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:49.352Z",
+      "name": ""
+    },
+    "57402": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:49.644Z",
+      "name": ""
+    },
+    "57490": {
+      "status": "available",
+      "path": "/satellite-images/57490.jpg",
+      "source": "https://db.satnogs.org/media/satellites/fengyun_series.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 20736,
+      "checkedAt": "2026-11-12T07:59:50.238Z",
+      "name": "FENGYUN 3F"
+    },
+    "58645": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:50.523Z",
+      "name": ""
+    },
+    "58646": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:50.813Z",
+      "name": ""
+    },
+    "58647": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:51.108Z",
+      "name": ""
+    },
+    "58648": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:51.398Z",
+      "name": ""
+    },
+    "58660": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:51.691Z",
+      "name": ""
+    },
+    "58661": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:51.981Z",
+      "name": ""
+    },
+    "58662": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:52.268Z",
+      "name": ""
+    },
+    "58663": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:52.557Z",
+      "name": ""
+    },
+    "58700": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:52.848Z",
+      "name": ""
+    },
+    "58701": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:53.148Z",
+      "name": ""
+    },
+    "58702": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:53.442Z",
+      "name": ""
+    },
+    "58703": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:53.726Z",
+      "name": ""
+    },
+    "58990": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:54.013Z",
+      "name": ""
+    },
+    "59051": {
+      "status": "available",
+      "path": "/satellite-images/59051.jpg",
+      "source": "https://db.satnogs.org/media/satellites/2922080812.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 23828,
+      "checkedAt": "2026-11-12T07:59:54.705Z",
+      "name": "METEOR M2-4"
+    },
+    "59112": {
+      "status": "available",
+      "path": "/satellite-images/59112.jpg",
+      "source": "https://db.satnogs.org/media/satellites/sonate-2.png",
+      "contentType": "image/jpeg",
+      "bytes": 21217,
+      "checkedAt": "2026-11-12T08:00:24.344Z",
+      "name": "SONATE-2"
+    },
+    "59481": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:55.000Z",
+      "name": "WSF-M"
+    },
+    "60133": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:55.291Z",
+      "name": "GOES-19"
+    },
+    "60209": {
+      "status": "available",
+      "path": "/satellite-images/60209.jpg",
+      "source": "https://db.satnogs.org/media/satellites/IMG_0571-317x422.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 12250,
+      "checkedAt": "2026-11-12T08:00:25.051Z",
+      "name": "MESAT-1"
+    },
+    "60237": {
+      "status": "available",
+      "path": "/satellite-images/60237.jpg",
+      "source": "https://db.satnogs.org/media/satellites/grbbeta.png",
+      "contentType": "image/jpeg",
+      "bytes": 10506,
+      "checkedAt": "2026-11-12T08:00:25.752Z",
+      "name": "GRBBeta"
+    },
+    "60240": {
+      "status": "available",
+      "path": "/satellite-images/60240.jpg",
+      "source": "https://db.satnogs.org/media/satellites/csm_DSC_0254_b7de3e249d.png",
+      "contentType": "image/jpeg",
+      "bytes": 19998,
+      "checkedAt": "2026-11-12T08:00:26.361Z",
+      "name": "OOV-Cube"
+    },
+    "61746": {
+      "status": "available",
+      "path": "/satellite-images/61746.jpg",
+      "source": "https://db.satnogs.org/media/satellites/large_6_B4_A7594_b435d67963.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 18515,
+      "checkedAt": "2026-11-12T08:00:26.768Z",
+      "name": "Colibri-S"
+    },
+    "61753": {
+      "status": "available",
+      "path": "/satellite-images/61753.jpg",
+      "source": "https://db.satnogs.org/media/satellites/khors-1__1_acuSFYs_eVylg7o.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 9746,
+      "checkedAt": "2026-11-12T08:00:27.173Z",
+      "name": "Hors 3"
+    },
+    "61754": {
+      "status": "available",
+      "path": "/satellite-images/61754.jpg",
+      "source": "https://db.satnogs.org/media/satellites/khors-1__1_acuSFYs_VkrcYE8.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 9746,
+      "checkedAt": "2026-11-12T08:00:27.575Z",
+      "name": "Hors 4"
+    },
+    "61764": {
+      "status": "available",
+      "path": "/satellite-images/61764.jpg",
+      "source": "https://db.satnogs.org/media/satellites/large_X7b_L_hk_Qk5_E_5675674c3b.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 10701,
+      "checkedAt": "2026-11-12T08:00:28.069Z",
+      "name": "SIT-2086"
+    },
+    "61779": {
+      "status": "available",
+      "path": "/satellite-images/61779.jpg",
+      "source": "https://db.satnogs.org/media/satellites/altair.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 24297,
+      "checkedAt": "2026-11-12T08:00:28.567Z",
+      "name": "Altair"
+    },
+    "61781": {
+      "status": "available",
+      "path": "/satellite-images/61781.jpg",
+      "source": "https://db.satnogs.org/media/satellites/300px-%E9%98%BF%E6%96%AF%E5%9B%BE%E5%8F%8B%E8%B0%8A%E5%8F%B7_IPvWmAo.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 9816,
+      "checkedAt": "2026-11-12T08:00:28.967Z",
+      "name": "ASRTU-1"
+    },
+    "61784": {
+      "status": "available",
+      "path": "/satellite-images/61784.jpg",
+      "source": "https://db.satnogs.org/media/satellites/SamSat-ION.JPG",
+      "contentType": "image/jpeg",
+      "bytes": 9064,
+      "checkedAt": "2026-11-12T08:00:29.455Z",
+      "name": "SamSat-Ionosphere"
+    },
+    "61785": {
+      "status": "available",
+      "path": "/satellite-images/61785.jpg",
+      "source": "https://db.satnogs.org/media/satellites/large_RTU_MIREA_1_transportnoe_polozhenie_41b7f26ab9.png",
+      "contentType": "image/jpeg",
+      "bytes": 15510,
+      "checkedAt": "2026-11-12T08:00:30.056Z",
+      "name": "RTU MIREA1"
+    },
+    "62391": {
+      "status": "available",
+      "path": "/satellite-images/62391.jpg",
+      "source": "https://db.satnogs.org/media/satellites/lasarsat-7.png",
+      "contentType": "image/jpeg",
+      "bytes": 18471,
+      "checkedAt": "2026-11-12T08:00:30.679Z",
+      "name": "LASARsat"
+    },
+    "62394": {
+      "status": "available",
+      "path": "/satellite-images/62394.jpg",
+      "source": "https://db.satnogs.org/media/satellites/photo-satnogs.png",
+      "contentType": "image/jpeg",
+      "bytes": 10902,
+      "checkedAt": "2026-11-12T08:00:31.108Z",
+      "name": "CroCube"
+    },
+    "63213": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:31.403Z",
+      "name": "TEVEL2-4"
+    },
+    "63214": {
+      "status": "available",
+      "path": "/satellite-images/63214.jpg",
+      "source": "https://db.satnogs.org/media/satellites/%D7%AA%D7%91%D7%9C_2.webp",
+      "contentType": "image/jpeg",
+      "bytes": 15670,
+      "checkedAt": "2026-11-12T08:00:31.808Z",
+      "name": "TEVEL2-5"
+    },
+    "63215": {
+      "status": "available",
+      "path": "/satellite-images/63215.jpg",
+      "source": "https://db.satnogs.org/media/satellites/%D7%AA%D7%91%D7%9C_2_omUStQ8.webp",
+      "contentType": "image/jpeg",
+      "bytes": 15670,
+      "checkedAt": "2026-11-12T08:00:32.214Z",
+      "name": "TEVEL2-6"
+    },
+    "63217": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:32.521Z",
+      "name": "TEVEL2-1"
+    },
+    "63218": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:32.814Z",
+      "name": "TEVEL2-3"
+    },
+    "63219": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:33.110Z",
+      "name": "TEVEL2-2"
+    },
+    "63235": {
+      "status": "available",
+      "path": "/satellite-images/63235.jpg",
+      "source": "https://db.satnogs.org/media/satellites/otp-2_angles_v001_18_copy.png",
+      "contentType": "image/jpeg",
+      "bytes": 11892,
+      "checkedAt": "2026-11-12T08:00:33.789Z",
+      "name": "OTP-2"
+    },
+    "63237": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:34.088Z",
+      "name": "TEVEL2-9"
+    },
+    "63238": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:34.387Z",
+      "name": "TEVEL2-7"
+    },
+    "63239": {
+      "status": "available",
+      "path": "/satellite-images/63239.jpg",
+      "source": "https://db.satnogs.org/media/satellites/%D7%AA%D7%91%D7%9C_2_rs5xhgL.webp",
+      "contentType": "image/jpeg",
+      "bytes": 15670,
+      "checkedAt": "2026-11-12T08:00:34.788Z",
+      "name": "TEVEL2-8"
+    },
+    "64723": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:55.587Z",
+      "name": ""
+    },
+    "64878": {
+      "status": "available",
+      "path": "/satellite-images/64878.jpg",
+      "source": "https://db.satnogs.org/media/satellites/630_-_2025-07-04T145114.159.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 15515,
+      "checkedAt": "2026-11-12T08:00:35.586Z",
+      "name": "InnoSat16"
+    },
+    "64879": {
+      "status": "available",
+      "path": "/satellite-images/64879.jpg",
+      "source": "https://db.satnogs.org/media/satellites/geoscan_8YE54XU.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 6007,
+      "checkedAt": "2026-11-12T08:00:35.984Z",
+      "name": "Geoscan-6"
+    },
+    "64880": {
+      "status": "available",
+      "path": "/satellite-images/64880.jpg",
+      "source": "https://db.satnogs.org/media/satellites/geoscan.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 6007,
+      "checkedAt": "2026-11-12T08:00:36.381Z",
+      "name": "Geoscan-1"
+    },
+    "64881": {
+      "status": "available",
+      "path": "/satellite-images/64881.jpg",
+      "source": "https://db.satnogs.org/media/satellites/239_Alferov_1_878fee3227.png",
+      "contentType": "image/jpeg",
+      "bytes": 17016,
+      "checkedAt": "2026-11-12T08:00:37.238Z",
+      "name": "239Alferov"
+    },
+    "64890": {
+      "status": "available",
+      "path": "/satellite-images/64890.jpg",
+      "source": "https://db.satnogs.org/media/satellites/geoscan_1suQqZN.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 6007,
+      "checkedAt": "2026-11-12T08:00:37.641Z",
+      "name": "Geoscan-2"
+    },
+    "64891": {
+      "status": "available",
+      "path": "/satellite-images/64891.jpg",
+      "source": "https://db.satnogs.org/media/satellites/geoscan_FP4yos3.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 6007,
+      "checkedAt": "2026-11-12T08:00:38.043Z",
+      "name": "Geoscan-5"
+    },
+    "64892": {
+      "status": "available",
+      "path": "/satellite-images/64892.jpg",
+      "source": "https://db.satnogs.org/media/satellites/geoscan_g6FJMhe.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 6007,
+      "checkedAt": "2026-11-12T08:00:38.441Z",
+      "name": "Geoscan-4"
+    },
+    "64893": {
+      "status": "available",
+      "path": "/satellite-images/64893.jpg",
+      "source": "https://db.satnogs.org/media/satellites/geoscan_fsoUFw5.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 6007,
+      "checkedAt": "2026-11-12T08:00:38.844Z",
+      "name": "Geoscan-3"
+    },
+    "64894": {
+      "status": "available",
+      "path": "/satellite-images/64894.jpg",
+      "source": "https://db.satnogs.org/media/satellites/geoscan_sXWCjsg.jpeg",
+      "contentType": "image/jpeg",
+      "bytes": 6007,
+      "checkedAt": "2026-11-12T08:00:39.247Z",
+      "name": "InnoSat3"
+    },
+    "65159": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:55.877Z",
+      "name": ""
+    },
+    "65815": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:56.179Z",
+      "name": "Object A"
+    },
+    "66515": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:27.987Z",
+      "name": ""
+    },
+    "66906": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:28.277Z",
+      "name": ""
+    },
+    "67683": {
+      "status": "available",
+      "path": "/satellite-images/67683.jpg",
+      "source": "https://db.satnogs.org/media/satellites/Knacksat-2_5.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 8342,
+      "checkedAt": "2026-11-12T07:59:28.869Z",
+      "name": "KNACKSAT-2"
+    },
+    "67685": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:29.165Z",
+      "name": "CoRAL"
+    },
+    "67688": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:29.454Z",
+      "name": ""
+    },
+    "68837": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:29.744Z",
+      "name": ""
+    },
+    "69049": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:30.032Z",
+      "name": ""
+    },
+    "69180": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:30.318Z",
+      "name": ""
+    },
+    "69920": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:39.538Z",
+      "name": ""
+    },
+    "69935": {
+      "status": "available",
+      "path": "/satellite-images/69935.jpg",
+      "source": "https://db.satnogs.org/media/satellites/2026_-_YSpace_-_Kostka_JR-501.jpg",
+      "contentType": "image/jpeg",
+      "bytes": 13865,
+      "checkedAt": "2026-11-12T08:00:40.515Z",
+      "name": "KOSTKA"
+    },
+    "100057": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:30.612Z",
+      "name": ""
+    },
+    "100465": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:40.801Z",
+      "name": ""
+    },
+    "100530": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:56.468Z",
+      "name": ""
+    },
+    "100712": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:30.898Z",
+      "name": ""
+    },
+    "100882": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:31.192Z",
+      "name": ""
+    },
+    "101031": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T07:59:31.488Z",
+      "name": ""
+    },
+    "101095": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:41.107Z",
+      "name": ""
+    },
+    "101098": {
+      "status": "not-found",
+      "checkedAt": "2026-11-12T08:00:41.395Z",
+      "name": ""
+    }
+  }
 }

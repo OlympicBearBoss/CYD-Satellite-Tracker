@@ -140,8 +140,10 @@ def build_engineering_splash():
     box = d.textbbox((0, 0), title, font=font)
     tw, th = box[2] - box[0], box[3] - box[1]
     d.text(((W-tw)//2, 195*scale-box[1]), title, font=font, fill=(222, 244, 255))
-    # Crisp 320x240 landscape output.
-    return image.resize((320, 240), Image.Resampling.LANCZOS)
+    # Crisp 320x240 landscape JPEG output for the embedded header.
+    output = BytesIO()
+    image.resize((320, 240), Image.Resampling.LANCZOS).save(output, format="JPEG", quality=95, subsampling=0, optimize=True)
+    return output.getvalue()
 
 # Approved CYD engineering-blueprint splash, 320x240 landscape.
 splash = validate_jpeg(build_engineering_splash(), "generated engineering splash", (320, 240))

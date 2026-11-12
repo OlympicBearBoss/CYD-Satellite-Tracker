@@ -38,65 +38,110 @@ def emit_array(lines, symbol, payload):
 # Build the approved 320x240 engineering-blueprint splash locally at build time.
 # No status icons, timers, buttons, radar or telemetry are placed on this screen.
 def build_engineering_splash():
+    """Render a detailed 4x engineering drawing and downsample for the CYD."""
     from PIL import ImageDraw, ImageFont
-    image = Image.new("RGB", (320, 240), (4, 15, 39))
+    scale = 4
+    W, H = 320 * scale, 240 * scale
+    image = Image.new("RGB", (W, H), (3, 14, 31))
     d = ImageDraw.Draw(image)
-    grid, minor = (12, 43, 78), (8, 29, 57)
-    bright, cyan, pale = (34, 112, 166), (67, 190, 225), (150, 205, 225)
+    def xy(points):
+        return tuple(int(v * scale) for v in points)
+    def line(points, fill, width=1):
+        d.line(xy(points), fill=fill, width=max(1, width * scale), joint="curve")
+    def rect(box, outline, fill=None, width=1):
+        d.rectangle(xy(box), outline=outline, fill=fill, width=max(1, width * scale))
+    def ellipse(box, outline, fill=None, width=1):
+        d.ellipse(xy(box), outline=outline, fill=fill, width=max(1, width * scale))
+    def polygon(points, outline, fill=None, width=1):
+        d.polygon([xy(p) for p in points], outline=outline, fill=fill)
+        if width > 1 and outline:
+            d.line([xy(p) for p in points + [points[0]]], fill=outline, width=width * scale, joint="curve")
+
+    bg_grid = (10, 38, 66)
+    grid = (17, 57, 91)
+    cyan = (61, 184, 226)
+    bright = (160, 222, 246)
+    pale = (213, 241, 252)
+    muted = (37, 111, 157)
+    # Blueprint grid, frame, corner registration marks.
     for x in range(8, 320, 8):
-        d.line((x, 0, x, 239), fill=grid if x % 32 == 0 else minor, width=1)
+        line((x, 0, x, 240), grid if x % 32 == 0 else bg_grid)
     for y in range(8, 240, 8):
-        d.line((0, y, 319, y), fill=grid if y % 32 == 0 else minor, width=1)
-    d.rectangle((5, 5, 314, 234), outline=bright, width=1)
-    # Earth limb and orbit behind the satellite.
-    d.ellipse((158, 119, 366, 327), outline=(21, 88, 137), width=2)
-    d.arc((145, 103, 365, 323), 190, 340, fill=cyan, width=2)
-    d.arc((165, 125, 350, 310), 198, 332, fill=(25, 92, 144), width=1)
-    # Satellite bus, solar panels and segmented photovoltaic cells.
-    d.polygon([(118,77),(148,65),(170,78),(165,111),(137,123),(114,108)],
-              outline=pale, fill=(7,35,67))
-    d.line([(118,77),(148,65),(170,78),(165,111),(137,123),(114,108),(118,77)], fill=cyan, width=2)
-    d.rectangle((130,83,156,105), outline=pale, width=2)
-    d.ellipse((137,88,149,100), outline=cyan, width=1)
-    d.line((143,88,143,100), fill=pale, width=1)
-    d.line((137,94,149,94), fill=pale, width=1)
-    for x0,x1 in ((43,107),(177,241)):
-        d.rectangle((x0,82,x1,110), outline=cyan, width=2)
-        for xx in range(x0+13,x1,13):
-            d.line((xx,84,xx,108), fill=bright, width=1)
-        d.line((x0+2,96,x1-2,96), fill=bright, width=1)
-    d.line((107,96,114,96), fill=pale, width=2)
-    d.line((170,96,177,96), fill=pale, width=2)
-    # Directional antenna and dish.
-    d.line((143,65,143,42), fill=pale, width=2)
-    d.ellipse((134,30,152,48), outline=cyan, width=2)
-    d.line((143,39,143,25), fill=pale, width=1)
-    d.arc((123,17,163,57), 205, 335, fill=bright, width=1)
-    # Dimension ticks and fine engineering leader lines (without labels).
-    d.line((43,72,241,72), fill=bright, width=1)
-    d.line((43,68,43,76), fill=bright, width=1)
-    d.line((241,68,241,76), fill=bright, width=1)
-    d.line((253,82,253,110), fill=bright, width=1)
-    d.line((249,82,257,82), fill=bright, width=1)
-    d.line((249,110,257,110), fill=bright, width=1)
-    d.line((118,77,92,51,64,51), fill=bright, width=1)
-    d.ellipse((61,48,67,54), outline=cyan, width=1)
-    d.line((165,111,194,137,229,137), fill=bright, width=1)
-    d.ellipse((226,134,232,140), outline=cyan, width=1)
-    # The only text on the splash.
+        line((0, y, 320, y), grid if y % 32 == 0 else bg_grid)
+    rect((5, 5, 314, 234), muted, width=1)
+    rect((9, 9, 310, 230), (12, 48, 78), width=1)
+    for x, y, sx, sy in ((13,13,1,1),(307,13,-1,1),(13,227,1,-1),(307,227,-1,-1)):
+        line((x,y,x+7*sx,y),cyan,1); line((x,y,x,y+7*sy),cyan,1)
+
+    # Faint orbital construction arcs behind the spacecraft.
+    ellipse((48, 20, 275, 250), (13, 61, 96), width=1)
+    d.arc(xy((34, 7, 286, 247)), 198, 342, fill=(25, 91, 132), width=2*scale)
+    d.arc(xy((55, 25, 264, 220)), 18, 163, fill=(18, 70, 109), width=1*scale)
+    # Solar arrays with individual photovoltaic cells, bus bars and support rails.
+    for x0, x1 in ((24, 103), (217, 296)):
+        rect((x0, 86, x1, 129), cyan, (5, 34, 59), 1)
+        rect((x0+3, 89, x1-3, 126), muted, None, 1)
+        for xx in range(x0+13, x1-3, 13):
+            line((xx, 90, xx, 125), (44, 126, 174), 1)
+        for yy in (101, 113):
+            line((x0+3, yy, x1-3, yy), (35, 104, 151), 1)
+        line((x0+5, 92, x1-5, 92), (111, 202, 235), 1)
+    line((103, 106, 119, 106), pale, 2)
+    line((201, 106, 217, 106), pale, 2)
+    # Hinges and articulated booms.
+    for cx in (108, 212):
+        ellipse((cx-5, 100, cx+5, 112), bright, (8, 44, 70), 1)
+        ellipse((cx-2, 103, cx+2, 109), cyan, None, 1)
+    # Central bus in isometric projection with three distinct faces.
+    polygon([(119,75),(158,57),(201,76),(161,96)], bright, (9, 48, 76), 2)
+    polygon([(119,75),(161,96),(161,153),(119,132)], cyan, (5, 29, 52), 2)
+    polygon([(161,96),(201,76),(201,132),(161,153)], bright, (7, 38, 63), 2)
+    # Equipment bay seams, radiator panels, latches and fasteners.
+    for x in (128, 138, 148):
+        line((x, 82, x, 127), (43, 116, 157), 1)
+    for y in (105, 117, 129):
+        line((166, y, 195, y-15), (50, 130, 174), 1)
+    rect((135, 100, 154, 120), cyan, (4, 24, 44), 1)
+    ellipse((140, 104, 149, 114), bright, None, 1)
+    for x, y in ((121,77),(158,60),(198,78),(121,130),(161,150),(198,130)):
+        ellipse((x-1.2,y-1.2,x+1.2,y+1.2), pale, pale, 1)
+    # High-gain parabolic dish, feed horn, support struts and RF wavefronts.
+    line((194, 81, 229, 51), bright, 1)
+    ellipse((219, 28, 254, 63), bright, (7, 37, 62), 1)
+    ellipse((224, 33, 249, 58), cyan, None, 1)
+    ellipse((231, 40, 242, 51), muted, None, 1)
+    ellipse((235, 44, 238, 47), pale, pale, 1)
+    line((236, 45, 229, 51), pale, 1)
+    d.arc(xy((212, 19, 265, 72)), 210, 330, fill=(50, 139, 184), width=1*scale)
+    d.arc(xy((204, 11, 273, 80)), 210, 330, fill=(25, 94, 141), width=1*scale)
+    # Star tracker / optical instrument and lower sensor boom.
+    line((161, 153, 161, 169), bright, 2)
+    rect((151, 164, 171, 181), cyan, (5, 31, 52), 1)
+    ellipse((156, 168, 166, 178), bright, None, 1)
+    line((119, 87, 100, 69, 82, 69), muted, 1)
+    ellipse((78, 65, 86, 73), cyan, None, 1)
+    line((201, 127, 225, 145, 246, 145), muted, 1)
+    ellipse((243, 142, 249, 148), cyan, None, 1)
+    # Dimension lines, extension marks and small engineering callouts (no extra text).
+    line((24, 76, 103, 76), muted, 1)
+    line((24, 72, 24, 80), cyan, 1); line((103, 72, 103, 80), cyan, 1)
+    line((217, 137, 296, 137), muted, 1)
+    line((217, 133, 217, 141), cyan, 1); line((296, 133, 296, 141), cyan, 1)
+    line((207, 88, 207, 129), muted, 1)
+    line((203, 88, 211, 88), cyan, 1); line((203, 129, 211, 129), cyan, 1)
+    # Restrained title plate; exact original wording retained.
+    rect((13, 190, 307, 222), (14, 57, 91), (3, 14, 31), 1)
+    line((13, 187, 307, 187), muted, 1)
     try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 17)
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 17 * scale)
     except OSError:
         font = ImageFont.load_default()
-    d.rectangle((13,184,307,221), fill=(4,15,39))
-    d.line((13,181,307,181), fill=bright, width=1)
-    d.text((18,191), "CYD Satellite Tracker", font=font, fill=(222,242,250))
-    for x,y,sx,sy in ((10,10,1,1),(309,10,-1,1),(10,229,1,-1),(309,229,-1,-1)):
-        d.line((x,y,x+8*sx,y), fill=cyan, width=1)
-        d.line((x,y,x,y+8*sy), fill=cyan, width=1)
-    output = BytesIO()
-    image.save(output, format="JPEG", quality=91, optimize=True)
-    return output.getvalue()
+    title = "CYD Satellite Tracker"
+    box = d.textbbox((0, 0), title, font=font)
+    tw, th = box[2] - box[0], box[3] - box[1]
+    d.text(((W-tw)//2, 195*scale-box[1]), title, font=font, fill=(222, 244, 255))
+    # Crisp 320x240 landscape output.
+    return image.resize((320, 240), Image.Resampling.LANCZOS)
 
 # Approved CYD engineering-blueprint splash, 320x240 landscape.
 splash = validate_jpeg(build_engineering_splash(), "generated engineering splash", (320, 240))

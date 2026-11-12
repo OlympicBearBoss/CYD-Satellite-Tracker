@@ -105,7 +105,7 @@ try {
 const ids = new Set();
 for (const group of GROUPS) {
   try {
-    const feed = await json("https://celestrak.org/NORAD/elements/gp.php?GROUP=" + encodeURIComponent(group.toUpperCase()) + "&FORMAT=JSON");
+    const feed = await json("https://celestrak.org/NORAD/elements/gp.php?GROUP=" + encodeURIComponent(group) + "&FORMAT=JSON");
     if (Array.isArray(feed)) {
       for (const item of feed) {
         const id = String(item.NORAD_CAT_ID || "");

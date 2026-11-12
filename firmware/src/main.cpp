@@ -536,7 +536,7 @@ static void showWifiSetup() {
     tft.setTextDatum(TR_DATUM);tft.setTextColor(MUTED,0x0862);tft.drawString("WI-FI SETUP",263,8,1);
   }
   tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(russianLayout?"RU":"EN",260,6,2);
+  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(russianLayout?"RU":"EN",250,6,2);
   drawField(37,"NETWORK / SSID",wifiName,!editingPassword,false);
   drawField(68,"PASSWORD",wifiPassword,editingPassword,true);
   tft.fillRoundRect(7,96,306,10,4,0x1028);
@@ -864,7 +864,7 @@ static void showDashboard() {
   tft.fillScreen(BG);
   // Premium Space Dark home: real ISS photo, luminous radar and live receiver telemetry.
   const bool wifi=WiFi.status()==WL_CONNECTED;
-  const uint16_t top=0x0010;
+  const uint16_t top=0x0862;
   tft.fillRect(0,0,320,27,top);
   tft.fillRect(0,26,320,2,0x03BF);
   tft.drawCircle(15,13,7,TFT_CYAN); tft.fillCircle(15,13,3,TFT_WHITE);

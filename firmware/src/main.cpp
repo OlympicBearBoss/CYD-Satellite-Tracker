@@ -67,6 +67,11 @@ static String cloudStatus="NOT LINKED";
 static const char* API_BASE="https://cyd-satellite-tracker.pages.dev";
 static WebServer localServer(80);
 static bool localApiStarted=false;
+// Local browser control state. Targets are stored only; motors remain disabled.
+static float targetAzimuthDeg=0.0f;
+static float targetElevationDeg=0.0f;
+static bool trackingRequested=false;
+static uint32_t localCommandSequence=0;
 
 // Space Dark palette: deep navy background, layered blue panels and cyan telemetry.
 static constexpr uint16_t BG = 0x0841;
@@ -1289,7 +1294,12 @@ static void sendLocalStatus() {
   }
   if(gps.altitude.isValid()) doc["altitude_m"]=gps.altitude.meters();
   if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
-  doc["cloud_linked"]=deviceToken.length()>0;
+  doc["cloud_linked"]=false;
+  doc["control"]["target_azimuth_deg"]=targetAzimuthDeg;
+  doc["control"]["target_elevation_deg"]=targetElevationDeg;
+  doc["control"]["tracking_requested"]=trackingRequested;
+  doc["control"]["motors_enabled"]=false;
+  doc["last_command_sequence"]=localCommandSequence;
   String body; serializeJson(doc,body);
   localServer.sendHeader("Cache-Control","no-store");
   localServer.send(200,"application/json; charset=utf-8",body);
@@ -1343,14 +1353,44 @@ refreshStatus();setInterval(refreshStatus,3000);
       String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
     }
     const String command=req["command"]| "";
+    String message;
     if(command=="stop") {
-      out["ok"]=true; out["message"]="STOP принят. Двигатели сейчас заблокированы прошивкой.";
-      Serial.println("[LOCAL] STOP command received");
-      String body; serializeJson(out,body); localServer.send(200,"application/json",body); return;
+      trackingRequested=false;
+      message="STOP принят. Двигатели заблокированы; аппаратное движение не включено.";
+    } else if(command=="set_target") {
+      if(!req["azimuth_deg"].is<float>() || !req["elevation_deg"].is<float>()) {
+        out["ok"]=false; out["error"]="invalid_target";
+        out["message"]="Нужны числовые azimuth_deg и elevation_deg.";
+        String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
+      }
+      const float az=req["azimuth_deg"].as<float>();
+      const float el=req["elevation_deg"].as<float>();
+      if(!isfinite(az) || !isfinite(el) || az<0.0f || az>=360.0f || el<0.0f || el>90.0f) {
+        out["ok"]=false; out["error"]="target_out_of_range";
+        out["message"]="Азимут: 0–менее 360°, угол места: 0–90°.";
+        String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
+      }
+      targetAzimuthDeg=az; targetElevationDeg=el;
+      message="Целевые углы сохранены. Моторы пока не задействованы.";
+    } else if(command=="tracking") {
+      if(!req["enabled"].is<bool>()) {
+        out["ok"]=false; out["error"]="invalid_enabled";
+        String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
+      }
+      trackingRequested=req["enabled"].as<bool>();
+      message=trackingRequested ? "Запрос слежения принят; движение моторов заблокировано." : "Слежение выключено.";
+    } else {
+      out["ok"]=false; out["error"]="unsupported_command";
+      out["message"]="Допустимые команды: stop, set_target, tracking.";
+      String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
     }
-    out["ok"]=false; out["error"]="unsupported_command";
-    out["message"]="Команда не поддерживается текущей версией прошивки";
-    String body; serializeJson(out,body); localServer.send(400,"application/json",body);
+    ++localCommandSequence;
+    out["ok"]=true; out["command"]=command; out["sequence"]=localCommandSequence;
+    out["message"]=message; out["motors_enabled"]=false;
+    String body; serializeJson(out,body);
+    localServer.sendHeader("Cache-Control","no-store");
+    localServer.send(200,"application/json; charset=utf-8",body);
+    Serial.printf("[LOCAL] command=%s seq=%lu motors=LOCKED\\n",command.c_str(),(unsigned long)localCommandSequence);
   });
   localServer.onNotFound([](){
     localServer.send(404,"application/json","{\"ok\":false,\"error\":\"not_found\"}");
@@ -1431,7 +1471,7 @@ void loop() {
     }
   }
   if(!displayDiagnosticActive) handleTouch();
-  if(!displayDiagnosticActive) { serviceLocalApi(); updateCloudServices(now); }
+  if(!displayDiagnosticActive) { serviceLocalApi(); } // Local-only operation: no cloud polling.
   // Refresh only the three telemetry tiles; keep the photo, radar and chrome static.
   if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastDashboardRefreshAt>=1000) {
     updateGpsTelemetry();

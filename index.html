@@ -608,40 +608,48 @@ async function connectCydDevice(){
   setCydDeviceStatus("Нет связи с CYD: "+error.message+". Проверьте IP, Wi-Fi и разрешение браузера на доступ к локальной сети.");
  }
 }
-function isAllowedSatellitePhotoUrl(value){
+async function sendSelectedSatelliteImageToCyd(norad){
  try{
-  const url=new URL(value,"https://db.satnogs.org");
-  return url.protocol==="https:"&&
-   ((url.hostname==="db.satnogs.org"||url.hostname==="db-satnogs.freetls.fastly.net")&&url.pathname.startsWith("/media/"));
- }catch(error){return false;}
-}
-async function findPublicSatelliteImage(norad,record){
- // The Pages Function validates the public source and serves a compact JPEG
- // from our own HTTPS origin, so the CYD needs to trust only one host.
- try{
-  if(location.protocol==="file:")return "";
-  const response=await fetch("/api/satellite-image?norad="+encodeURIComponent(norad),{cache:"no-store"});
-  if(!response.ok)return "";
-  const payload=await response.json();
-  const image=payload&&payload.image;
-  if(typeof image==="string"&&image.trim()&&isAllowedSatellitePhotoUrl(image))return image;
- }catch(error){console.warn("Satellite photo lookup failed:",error);}
- return "";
+  const response=await fetch("/api/satellite-image?norad="+encodeURIComponent(norad)+"&download=1",{cache:"force-cache"});
+  if(!response.ok)throw new Error("Сайт не смог получить изображение · HTTP "+response.status);
+  const type=(response.headers.get("content-type")||"").toLowerCase();
+  if(!type.startsWith("image/jpeg"))throw new Error("Для этого спутника пока нет доступной фотографии в открытых каталогах");
+  const bitmap=await createImageBitmap(await response.blob());
+  const canvas=document.createElement("canvas");canvas.width=320;canvas.height=160;
+  const ctx=canvas.getContext("2d");
+  const scale=Math.max(320/bitmap.width,160/bitmap.height);
+  const sw=320/scale,sh=160/scale,sx=(bitmap.width-sw)/2,sy=(bitmap.height-sh)/2;
+  ctx.drawImage(bitmap,sx,sy,sw,sh,0,0,320,160);
+  if(bitmap.close)bitmap.close();
+  let jpeg=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.72));
+  if(!jpeg)throw new Error("Не удалось подготовить JPEG для экрана CYD");
+  if(jpeg.size>36000)jpeg=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.48));
+  if(!jpeg||jpeg.size>36000)throw new Error("Изображение не удалось сжать до размера для CYD");
+  const upload=await fetch(cydDeviceBaseUrl+"/api/v1/image?norad="+encodeURIComponent(norad),{
+   method:"POST",mode:"cors",cache:"no-store",headers:{"Content-Type":"image/jpeg"},body:jpeg
+  });
+  const result=await upload.json();
+  if(!upload.ok||!result.ok)throw new Error(result.error||("HTTP "+upload.status));
+  setCydDeviceStatus("CYD: цель выбрана · фото "+(jpeg.size/1024).toFixed(1)+" КБ передано на экран",true);
+ }catch(error){
+  setCydDeviceStatus("CYD: спутник выбран; фото не передано ("+error.message+"). Сенсор и управление остаются доступны.",false);
+ }
 }
 async function sendSelectedSatelliteToCyd(record){
  if(!cydDeviceBaseUrl||!record)return;
  const norad=Number(record.NORAD_CAT_ID);
  if(!Number.isInteger(norad)||norad<1||norad>999999)return;
  try{
-  const imageUrl=await findPublicSatelliteImage(norad,record);
+  // Send the tracking command immediately; image work happens in the browser.
   const response=await fetch(cydDeviceBaseUrl+"/api/v1/command",{
    method:"POST",mode:"cors",cache:"no-store",
    headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({command:"follow_satellite",norad_id:norad,name:String(record.OBJECT_NAME||("NORAD "+norad)),image_url:imageUrl})
+   body:JSON.stringify({command:"follow_satellite",norad_id:norad,name:String(record.OBJECT_NAME||("NORAD "+norad))})
   });
   const result=await response.json();
   if(!response.ok||!result.ok)throw new Error(result.message||result.error||("HTTP "+response.status));
-  setCydDeviceStatus("CYD принял цель: "+String(record.OBJECT_NAME||"спутник")+" · NORAD "+norad+(imageUrl?" · фото SatNOGS":" · фото не найдено в каталоге"),true);
+  setCydDeviceStatus("CYD принял цель: "+String(record.OBJECT_NAME||"спутник")+" · NORAD "+norad+" · готовлю фото отдельно",true);
+  sendSelectedSatelliteImageToCyd(norad);
  }catch(error){
   setCydDeviceStatus("Не удалось передать цель на CYD: "+error.message+". Проверьте разрешение браузера на локальную сеть.");
  }

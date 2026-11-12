@@ -212,12 +212,9 @@ static double observerLatitude=DEMO_OBSERVER_LAT,observerLongitude=DEMO_OBSERVER
 static double issAzimuthDeg=0,issElevationDeg=0,issRangeKm=0;
 static uint32_t selectedNoradId=25544;
 static String selectedSatelliteName="ISS (ZARYA)";
-static String selectedSatelliteImageUrl="https://cyd-satellite-tracker.pages.dev/api/satellite-image?norad=25544&download=1";
 static uint8_t* selectedSatelliteImageData=nullptr;
 static uint32_t selectedSatelliteImageSize=0;
-static bool selectedSatelliteImagePending=false;
-static uint8_t selectedSatelliteImageAttempts=0;
-static uint32_t selectedSatelliteImageLastAttemptMs=0;
+static uint32_t selectedSatelliteImageNorad=0;
 static String orbitDataMessage="Ожидание подключения Wi-Fi";
 
 // Space Dark palette: deep navy background, layered blue panels and cyan telemetry.
@@ -726,7 +723,7 @@ static void drawSelectedSatellitePhoto() {
     TJpgDec.setJpgScale(2);
     TJpgDec.setSwapBytes(true);
     TJpgDec.setCallback(uiImageOutput);
-    TJpgDec.drawJpg(12,-35,selectedSatelliteImageData,selectedSatelliteImageSize); // center-crop square source into the 175x80 card
+    TJpgDec.drawJpg(15,34,selectedSatelliteImageData,selectedSatelliteImageSize); // pre-cropped 320x160 JPEG fits the card without extra crop
     tft.resetViewport();
   } else {
     drawSatelliteArtwork(96,74,2);
@@ -1231,44 +1228,6 @@ static bool fetchSelectedTle() {
   Serial.printf("[ORBIT] TLE accepted NORAD %lu: %s\\n",(unsigned long)selectedNoradId,tleName);
   return true;
 }
-static bool isAllowedSatelliteImageUrl(const String& url) {
-  // The Cloudflare Pages Function proxies approved public images and caps
-  // them to a compact JPEG. Keep the device allow-list on this single host.
-  return url.startsWith("https://cyd-satellite-tracker.pages.dev/api/satellite-image?norad=") &&
-         url.indexOf("download=1") >= 0;
-}
-static bool fetchSelectedSatelliteImage() {
-  if(!isAllowedSatelliteImageUrl(selectedSatelliteImageUrl) || WiFi.status()!=WL_CONNECTED) return false;
-  WiFiClientSecure client;
-  client.setCACert(CELESTRAK_CA_BUNDLE);
-  HTTPClient http;
-  http.setConnectTimeout(2500);
-  http.setTimeout(2500);
-  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-  if(!http.begin(client,selectedSatelliteImageUrl)) return false;
-  const int code=http.GET();
-  const int length=http.getSize();
-  if(code!=HTTP_CODE_OK || length<4 || length>120000) {
-    http.end();
-    Serial.printf("[PHOTO] download rejected code=%d size=%d\\n",code,length);
-    return false;
-  }
-  uint8_t* buffer=(uint8_t*)malloc((size_t)length);
-  if(!buffer) { http.end(); return false; }
-  WiFiClient* stream=http.getStreamPtr();
-  const size_t received=stream->readBytes((char*)buffer,(size_t)length);
-  http.end();
-  if(received!=(size_t)length || buffer[0]!=0xFF || buffer[1]!=0xD8) {
-    free(buffer);
-    Serial.printf("[PHOTO] invalid JPEG bytes=%u/%d\\n",(unsigned)received,length);
-    return false;
-  }
-  if(selectedSatelliteImageData) free(selectedSatelliteImageData);
-  selectedSatelliteImageData=buffer;
-  selectedSatelliteImageSize=(uint32_t)length;
-  Serial.printf("[PHOTO] loaded %u bytes for NORAD %lu\\n",(unsigned)length,(unsigned long)selectedNoradId);
-  return true;
-}
 static void updateSelectedOrbit() {
   // Give the local control page and touch UI a clean startup window before
   // starting any blocking outbound HTTPS/TLE work.
@@ -1338,7 +1297,7 @@ static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V90";
+  doc["firmware"]="V91";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
@@ -1442,6 +1401,41 @@ refreshStatus();setInterval(refreshStatus,1000);
   });
   localServer.on("/api/v1/status",HTTP_GET,sendLocalStatus);
   localServer.on("/api/v1/status",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
+  localServer.on("/api/v1/image",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
+  localServer.on("/api/v1/image",HTTP_POST,[](){
+    lastSiteClientAt=millis();
+    sendLocalCorsHeaders();
+    const uint32_t norad=localServer.arg("norad").toInt();
+    String payload=localServer.arg("plain");
+    const size_t length=payload.length();
+    if(norad==0 || norad!=selectedNoradId) {
+      localServer.send(409,"application/json","{\"ok\":false,\"error\":\"satellite_selection_mismatch\"}");
+      return;
+    }
+    if(length<4 || length>36000) {
+      localServer.send(413,"application/json","{\"ok\":false,\"error\":\"jpeg_size_out_of_range\"}");
+      return;
+    }
+    const uint8_t* source=(const uint8_t*)payload.c_str();
+    if(source[0]!=0xFF || source[1]!=0xD8 || source[length-2]!=0xFF || source[length-1]!=0xD9) {
+      localServer.send(400,"application/json","{\"ok\":false,\"error\":\"invalid_jpeg\"}");
+      return;
+    }
+    uint8_t* image=(uint8_t*)malloc(length);
+    if(!image) {
+      localServer.send(503,"application/json","{\"ok\":false,\"error\":\"insufficient_memory\"}");
+      return;
+    }
+    memcpy(image,source,length);
+    if(selectedSatelliteImageData) free(selectedSatelliteImageData);
+    selectedSatelliteImageData=image;
+    selectedSatelliteImageSize=(uint32_t)length;
+    selectedSatelliteImageNorad=norad;
+    if(screen==Screen::Dashboard) drawSelectedSatellitePhoto();
+    localServer.sendHeader("Cache-Control","no-store");
+    localServer.send(200,"application/json","{\"ok\":true,\"image_received\":true}");
+    Serial.printf("[PHOTO] local JPEG received: NORAD %lu, %u bytes\\n",(unsigned long)norad,(unsigned)length);
+  });
   localServer.on("/api/v1/command",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
   localServer.on("/api/v1/command",HTTP_POST,[](){
     lastSiteClientAt=millis();
@@ -1482,13 +1476,10 @@ refreshStatus();setInterval(refreshStatus,1000);
       selectedNoradId=norad;
       const String requestedName=req["name"]| "";
       selectedSatelliteName=requestedName.length()?requestedName:("NORAD "+String(norad));
-      selectedSatelliteImageUrl=req["image_url"]|"";
-      if(!isAllowedSatelliteImageUrl(selectedSatelliteImageUrl)) selectedSatelliteImageUrl="";
-      selectedSatelliteImagePending=selectedSatelliteImageUrl.length()>0;
-      selectedSatelliteImageAttempts=0;
-      selectedSatelliteImageLastAttemptMs=0;
+      // The browser sends a cached, pre-sized JPEG over local Wi-Fi. No cloud image fetch in loop.
       if(selectedSatelliteImageData) { free(selectedSatelliteImageData); selectedSatelliteImageData=nullptr; }
       selectedSatelliteImageSize=0;
+      selectedSatelliteImageNorad=0;
       if(screen==Screen::Dashboard) drawSelectedSatellitePhoto();
       issTleValid=false; issPositionValid=false;
       lastTleAttemptMs=0; lastTleSuccessMs=0; lastOrbitCalcMs=0;
@@ -1605,20 +1596,6 @@ void loop() {
   // Service local requests before optional outbound HTTPS work.
   if(!displayDiagnosticActive) serviceLocalApi();
   if(!displayDiagnosticActive) updateSelectedOrbit();
-  if(!displayDiagnosticActive && selectedSatelliteImagePending && WiFi.status()==WL_CONNECTED &&
-     firstSiteClientAt!=0 && now-firstSiteClientAt>=15000 &&
-     selectedSatelliteImageAttempts<3 &&
-     (selectedSatelliteImageLastAttemptMs==0 || now-selectedSatelliteImageLastAttemptMs>=30000)) {
-    selectedSatelliteImageLastAttemptMs=now;
-    ++selectedSatelliteImageAttempts;
-    if(fetchSelectedSatelliteImage()) {
-      selectedSatelliteImagePending=false;
-      if(screen==Screen::Dashboard) drawSelectedSatellitePhoto();
-    } else if(selectedSatelliteImageAttempts>=3) {
-      selectedSatelliteImagePending=false;
-      Serial.println("[PHOTO] no public image available after 3 attempts");
-    }
-  }
   // Refresh only dynamic telemetry; keep artwork and navigation static.
   if(!displayDiagnosticActive && now-lastDashboardRefreshAt>=1000) {
     if(screen==Screen::Dashboard) { updateGpsTelemetry(); updateTargetTelemetry(); }

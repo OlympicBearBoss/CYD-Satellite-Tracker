@@ -9,7 +9,7 @@ const KNOWN_IMAGES = {
 
 const MAX_JPEG_BYTES = 120000;
 const CACHE_HEADERS = {
-  "Cache-Control": "public, max-age=300, s-maxage=3600",
+  "Cache-Control": "public, max-age=86400, s-maxage=31536000, stale-while-revalidate=604800",
   "X-Content-Type-Options": "nosniff"
 };
 
@@ -42,7 +42,7 @@ async function resolveImageSources(norad) {
     apiUrl.searchParams.set("norad_cat_id", String(norad));
     const upstream = await fetch(apiUrl.toString(), {
       headers: { Accept: "application/json" },
-      cf: { cacheTtl: 3600, cacheEverything: true }
+      cf: { cacheTtl: 31536000, cacheEverything: true }
     });
     if (upstream.ok) {
       const payload = await upstream.json();
@@ -61,7 +61,7 @@ async function resolveImageSources(norad) {
 async function fetchCompactJpeg(source) {
   const response = await fetch(source, {
     headers: { Accept: "image/jpeg,image/*;q=0.8" },
-    cf: { cacheTtl: 3600, cacheEverything: true }
+    cf: { cacheTtl: 31536000, cacheEverything: true }
   });
   if (!response.ok) throw new Error("image_upstream_" + response.status);
   const contentType = (response.headers.get("content-type") || "").toLowerCase();
@@ -85,13 +85,21 @@ export async function onRequestGet({ request }) {
     return Response.json({ ok: false, error: "invalid_norad_id" }, { status: 400 });
   }
 
+  const isDownload = url.searchParams.get("download") === "1";
+  const cacheKey = new Request(new URL("/api/satellite-image?v=2&norad=" + norad + "&download=" + (isDownload ? "1" : "0"), url.origin).toString(), { method: "GET" });
+  const edgeCache = caches.default;
+  const cached = await edgeCache.match(cacheKey);
+  if (cached) return cached;
+
   try {
     const sources = await resolveImageSources(norad);
     if (!sources.length) {
-      return Response.json(
+      const missing = Response.json(
         { ok: true, norad_id: norad, image: "", error: "photo_not_found" },
-        { headers: CACHE_HEADERS }
+        { headers: { ...CACHE_HEADERS, "Cache-Control": "public, max-age=3600, s-maxage=86400" } }
       );
+      await edgeCache.put(cacheKey, missing.clone());
+      return missing;
     }
 
     if (url.searchParams.get("download") === "1") {
@@ -107,7 +115,7 @@ export async function onRequestGet({ request }) {
         }
       }
       if (!bytes) throw new Error("no_usable_jpeg_source");
-      return new Response(bytes, {
+      const imageResponse = new Response(bytes, {
         status: 200,
         headers: {
           ...CACHE_HEADERS,
@@ -117,15 +125,19 @@ export async function onRequestGet({ request }) {
           "X-Satellite-Image-Source": new URL(selectedSource).hostname
         }
       });
+      await edgeCache.put(cacheKey, imageResponse.clone());
+      return imageResponse;
     }
 
     // Verify at least one source is a real, compact JPEG before advertising
     // a photo to the browser and the ESP32.
     let usableSource = false;
+    let selectedSource = "";
     for (const source of sources) {
       try {
         await fetchCompactJpeg(source);
         usableSource = true;
+        selectedSource = source;
         break;
       } catch (_) {
         // Continue through the approved source list.
@@ -143,10 +155,12 @@ export async function onRequestGet({ request }) {
     const imageUrl = new URL("https://cyd-satellite-tracker.pages.dev/api/satellite-image");
     imageUrl.searchParams.set("norad", String(norad));
     imageUrl.searchParams.set("download", "1");
-    return Response.json(
-      { ok: true, norad_id: norad, image: imageUrl.toString(), sources: sources.length },
+    const metadata = Response.json(
+      { ok: true, norad_id: norad, image: imageUrl.toString(), sources: sources.length, source: selectedSource ? new URL(selectedSource).hostname : "" },
       { headers: CACHE_HEADERS }
     );
+    await edgeCache.put(cacheKey, metadata.clone());
+    return metadata;
   } catch (error) {
     return Response.json(
       { ok: false, error: error.message || "satellite_image_unavailable" },

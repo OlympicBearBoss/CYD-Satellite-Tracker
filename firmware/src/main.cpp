@@ -374,6 +374,30 @@ static const UiTextEntry UI_TEXT[] = {
  {"TRACKING","СЛЕЖЕНИЕ","跟踪中"},
  {"TLE PENDING","ОЖИДАНИЕ TLE","等待 TLE"},
  {"WEATHER  /  APT","ПОГОДНЫЙ / APT","气象 / APT"},
+ {"NETWORK / SSID","СЕТЬ / SSID","网络 / SSID"},
+ {"PASSWORD","ПАРОЛЬ","密码"},
+ {"SELECT A FIELD  /  TYPE YOUR WI-FI DETAILS","ВЫБЕРИТЕ ПОЛЕ / ВВЕДИТЕ ПАРАМЕТРЫ WI-FI","选择字段 / 输入 Wi-Fi 信息"},
+ {"HIDE","СКРЫТЬ","隐藏"},
+ {"SHOW","ПОКАЗАТЬ","显示"},
+ {"CONNECTED","ПОДКЛЮЧЕНО","已连接"},
+ {"DATA","ДАННЫЕ","数据"},
+ {"SEARCHING","ПОИСК","搜索中"},
+ {"LOCKED","ЗАБЛОКИРОВАНО","已锁定"},
+ {"TLE OK","TLE ЗАГРУЖЕН","TLE 已加载"},
+ {"TLE WAIT","ОЖИДАНИЕ TLE","等待 TLE"},
+ {"GPS FIX","ФИКС GPS","GPS 定位"},
+ {"DEMO: YEKATERINBURG","ДЕМО: ЕКАТЕРИНБУРГ","演示：叶卡捷琳堡"},
+ {"Enter a network name first","Сначала введите имя сети","请先输入网络名称"},
+ {"Edit network name or password","Измените имя сети или пароль","编辑网络名称或密码"},
+ {"Edit network, then press CONNECT","Измените сеть и нажмите ПОДКЛЮЧИТЬ","编辑网络后点击连接"},
+ {"Check password, then connect","Проверьте пароль и подключитесь","检查密码后重新连接"},
+ {"Enter your router details","Введите параметры маршрутизатора","输入路由器信息"},
+ {"RED  F800","КРАСНЫЙ F800","红色 F800"},
+ {"GREEN 07E0","ЗЕЛЁНЫЙ 07E0","绿色 07E0"},
+ {"BLUE 001F","СИНИЙ 001F","蓝色 001F"},
+ {"WHITE FFFF","БЕЛЫЙ FFFF","白色 FFFF"},
+ {"CYAN 07FF","ГОЛУБОЙ 07FF","青色 07FF"},
+ {"MAGENTA F81F","ПУРПУРНЫЙ F81F","品红 F81F"},
  {"UTC --:--","UTC --:--","UTC --:--"}
 };
 static const char* translateUi(const char* source) {
@@ -392,13 +416,18 @@ static void setUiTextDatum(uint8_t datum) {
 static void drawUiString(const String& original,int16_t x,int16_t y,uint8_t font) {
   const char* source=original.c_str();
   const char* value=translateUi(source);
-  // Keep large instrument numerals on the original TFT font; they are ASCII-only.
-  if(font>=4) { tft.drawString(value,x,y,font); return; }
   uiFont.setFontMode(1);
   uiFont.setForegroundColor(uiTextFg);
-  if(uiLanguage==2) uiFont.setFont(font>=2?u8g2_font_wqy14_t_gb2312:u8g2_font_wqy12_t_gb2312);
-  else if(uiLanguage==1) uiFont.setFont(font>=2?u8g2_font_7x13_t_cyrillic:u8g2_font_6x12_t_cyrillic);
-  else uiFont.setFont(font>=2?u8g2_font_7x14_tf:u8g2_font_6x12_tf);
+  if(uiLanguage==2) {
+    if(font>=4) uiFont.setFont(u8g2_font_wqy16_t_gb2312);
+    else uiFont.setFont(font>=2?u8g2_font_wqy14_t_gb2312:u8g2_font_wqy12_t_gb2312);
+  } else if(uiLanguage==1) {
+    if(font>=4) uiFont.setFont(u8g2_font_10x20_t_cyrillic);
+    else uiFont.setFont(font>=2?u8g2_font_7x13_t_cyrillic:u8g2_font_6x12_t_cyrillic);
+  } else {
+    if(font>=4) uiFont.setFont(u8g2_font_10x20_tf);
+    else uiFont.setFont(font>=2?u8g2_font_7x14_tf:u8g2_font_6x12_tf);
+  }
   const int16_t width=uiFont.getUTF8Width(value);
   const int16_t ascent=uiFont.getFontAscent();
   const int16_t descent=uiFont.getFontDescent();

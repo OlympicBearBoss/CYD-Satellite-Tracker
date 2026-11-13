@@ -1031,7 +1031,7 @@ static void updatePassCountdown() {
   const time_t now=time(nullptr);
   if(!passPredictionValid || nextPassEventEpoch<=now) {
     if(satelliteCurrentlyVisible) {
-      snprintf(line,sizeof(line),"SATELLITE VISIBLE NOW");
+      snprintf(line,sizeof(line),"СПУТНИК ВИДЕН");
       setUiTextColor(TFT_GREEN,0x0010);
     } else {
       snprintf(line,sizeof(line),"WAITING FOR ORBIT PASS");

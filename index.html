@@ -1183,6 +1183,13 @@ if(host){
    const showAll=orbitLiveList.querySelector('[data-orbit-show-all]'),hideAll=orbitLiveList.querySelector('[data-orbit-hide-all]');
    if(showAll)showAll.addEventListener('click',()=>{Object.keys(orbitObjects).forEach(id=>setOrbitObjectVisibility(id,true));renderOrbitLiveInfo();});
    if(hideAll)hideAll.addEventListener('click',()=>{Object.keys(orbitObjects).forEach(id=>setOrbitObjectVisibility(id,false));renderOrbitLiveInfo();});
+   // Передаём в радар тот же набор объектов, который присутствует в 3D-орбитальной сцене.
+   window.dispatchEvent(new CustomEvent('cyd-orbit-scene-objects',{detail:{
+    objects:Object.values(orbitObjects).map(item=>{
+     const pos=window.cydRadarPositions&&window.cydRadarPositions[item.id];
+     return {id:item.id,name:item.name||item.id,norad:item.norad||'',az:pos&&pos.az,el:pos&&pos.el,real:!!(item.satrec&&pos),orbitVisible:item.group.visible!==false};
+    })
+   }}));
   }
   const orbitVisibilityPanel=document.getElementById('orbitVisibilityPanel');
   const orbitVisibilityCollapse=document.getElementById('orbitVisibilityCollapse');

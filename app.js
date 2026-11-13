@@ -85,35 +85,39 @@ $("openDevicePairing").addEventListener("click",()=>{const trigger=$("accountPro
 function renderRadarObjects(updateList=false){
  const list=$("radarObjects"),rotor=$("radarRotor"),cardinals=$("radarCardinals");
  if(!rotor||!cardinals)return;
- // Создаём строки списка один раз: обновления компаса не должны пересоздавать DOM.
- if(list&&!list.dataset.initialized){
-  list.innerHTML=Object.entries(objectData).map(([id,o])=>'<div class="object-row" data-radar-object="'+id+'"><div><b><i class="radar-object-dot '+id+'"></i><span data-object-name></span></b><small data-object-meta></small></div><strong data-object-position></strong></div>').join("");
-  list.dataset.initialized="1";
- }
+ // Создаём строки один раз, затем добавляем только новые объекты из орбитальной сцены.
+ if(list&&!list.dataset.initialized){list.dataset.initialized="1";}
+ const ensureRow=(id)=>{
+  let row=list&&list.querySelector('[data-radar-object="'+id+'"]');
+  if(!row&&list){
+   row=document.createElement("div");row.className="object-row";row.dataset.radarObject=id;
+   const left=document.createElement("div"),title=document.createElement("b"),dot=document.createElement("i"),name=document.createElement("span"),meta=document.createElement("small"),position=document.createElement("strong");
+   dot.className="radar-object-dot "+id;title.append(dot,name);left.append(title,meta);row.append(left,position);list.appendChild(row);
+   row._name=name;row._meta=meta;row._position=position;
+  }
+  return row;
+ };
  const heading=Number.isFinite(window.demoDeviceHeading)?window.demoDeviceHeading:0;
  [["N","С"],["E","В"],["S","Ю"],["W","З"]].forEach(([key,label],i)=>{
   const angle=(i*90-heading)*Math.PI/180,r=.465,el=cardinals.querySelector('[data-dir="'+key+'"]');
   if(el){el.textContent=label;el.style.left=(50+Math.sin(angle)*r*100)+"%";el.style.top=(50-Math.cos(angle)*r*100)+"%";}
  });
  Object.entries(objectData).forEach(([id,o])=>{
-  const visible=o.real&&o.aboveHorizon===true;
-  if(updateList&&list){
-   const row=list.querySelector('[data-radar-object="'+id+'"]');
-   if(row){
-    const name=row.querySelector("[data-object-name]"),meta=row.querySelector("[data-object-meta]"),position=row.querySelector("[data-object-position]");
-    const nextMeta=o.norad+" · "+(o.real?(o.aboveHorizon?"ВИДЕН":"НИЖЕ ГОРИЗОНТА"):"ОЖИДАНИЕ GPS / ОРБИТ");
-    const nextPosition=o.real?o.az.toFixed(1)+"° / "+o.el.toFixed(1)+"°":"—";
-    if(name.textContent!==o.name)name.textContent=o.name;
-    if(meta.textContent!==nextMeta)meta.textContent=nextMeta;
-    if(position.textContent!==nextPosition)position.textContent=nextPosition;
-   }
+  const row=ensureRow(id);
+  const visible=o.real&&o.aboveHorizon===true&&o.orbitVisible!==false;
+  if(updateList&&row){
+   const name=row._name||row.querySelector("[data-object-name]"),meta=row._meta||row.querySelector("[data-object-meta]"),position=row._position||row.querySelector("[data-object-position]");
+   const nextMeta=(o.norad||"")+(o.norad?" · ":"")+(o.real?(o.aboveHorizon?"ВИДЕН":"НИЖЕ ГОРИЗОНТА"):"ОЖИДАНИЕ ОРБИТ");
+   const nextPosition=o.real&&Number.isFinite(o.az)&&Number.isFinite(o.el)?o.az.toFixed(1)+"° / "+o.el.toFixed(1)+"°":"—";
+   if(name&&name.textContent!==o.name)name.textContent=o.name;
+   if(meta&&meta.textContent!==nextMeta)meta.textContent=nextMeta;
+   if(position&&position.textContent!==nextPosition)position.textContent=nextPosition;
   }
   let dot=rotor.querySelector('.radar-dot[data-satellite="'+id+'"]');
   if(!visible){if(dot)dot.remove();return;}
   if(!dot){
    dot=document.createElement("span");dot.className="radar-dot "+id;dot.dataset.satellite=id;
-   const label=document.createElement("span");label.className="radar-dot-label";
-   label.textContent=id==="iss"?"МКС":id==="noaa"?"NOAA 19":id==="ao91"?"AO-91":"STARLINK";
+   const label=document.createElement("span");label.className="radar-dot-label";label.textContent=o.name||id;
    dot.appendChild(label);rotor.appendChild(dot);
   }
   const rel=((o.az-heading+360)%360)*Math.PI/180,radius=.88-(Math.min(90,o.el)/90)*.65;
@@ -121,7 +125,22 @@ function renderRadarObjects(updateList=false){
   dot.style.top=(50-Math.cos(rel)*radius*45)+"%";
  });
 }
-window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.entries(positions).forEach(([id,p])=>{if(!objectData[id]||!Number.isFinite(p.az)||!Number.isFinite(p.el))return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;if(objectData[id].aboveHorizon===undefined)objectData[id].aboveHorizon=p.el>0.75;else if(objectData[id].aboveHorizon&&p.el< -0.75)objectData[id].aboveHorizon=false;else if(!objectData[id].aboveHorizon&&p.el>0.75)objectData[id].aboveHorizon=true;});renderRadarObjects(true);});
+window.addEventListener("cyd-orbit-scene-objects",event=>{
+ const items=event.detail&&Array.isArray(event.detail.objects)?event.detail.objects:[];
+ items.forEach(item=>{
+  if(!item||!item.id)return;
+  if(!objectData[item.id])objectData[item.id]={name:item.name||item.id,norad:item.norad?"NORAD "+item.norad:"",az:0,el:0,real:false,aboveHorizon:false,orbitVisible:item.orbitVisible!==false};
+  const o=objectData[item.id];o.name=item.name||o.name;o.norad=item.norad?"NORAD "+item.norad:o.norad;o.orbitVisible=item.orbitVisible!==false;
+  if(Number.isFinite(item.az)&&Number.isFinite(item.el)){
+   o.az=item.az;o.el=item.el;o.real=item.real!==false;
+   if(o.aboveHorizon===undefined)o.aboveHorizon=item.el>0.75;
+   else if(o.aboveHorizon&&item.el< -0.75)o.aboveHorizon=false;
+   else if(!o.aboveHorizon&&item.el>0.75)o.aboveHorizon=true;
+  }
+ });
+ renderRadarObjects(true);
+});
+window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.entries(positions).forEach(([id,p])=>{if(!Number.isFinite(p.az)||!Number.isFinite(p.el))return;if(!objectData[id])objectData[id]={name:id,norad:'',az:p.az,el:p.el,real:true,aboveHorizon:p.el>0.75,orbitVisible:true};objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;if(objectData[id].aboveHorizon===undefined)objectData[id].aboveHorizon=p.el>0.75;else if(objectData[id].aboveHorizon&&p.el< -0.75)objectData[id].aboveHorizon=false;else if(!objectData[id].aboveHorizon&&p.el>0.75)objectData[id].aboveHorizon=true;});renderRadarObjects(true);});
 const compassNames=["СЕВЕР","СЕВЕРО-ВОСТОК","ВОСТОК","ЮГО-ВОСТОК","ЮГ","ЮГО-ЗАПАД","ЗАПАД","СЕВЕРО-ЗАПАД"];
 let deviceHeading=null,geoWatchId=null;
 function setDeviceHeading(value){

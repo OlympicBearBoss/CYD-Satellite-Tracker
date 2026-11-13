@@ -194,7 +194,7 @@ static bool calibrationFromSystem = false;
 static uint16_t rawTouchX = 0, rawTouchY = 0;
 static bool rawTouchDetected = false;
 static bool symbolsPage = false;
-static bool russianLayout = false;
+static bool russianLayout = true;
 static bool shiftKey = false;
 static bool passwordVisible = false;
 static bool editingPassword = false;
@@ -241,8 +241,8 @@ static constexpr uint16_t BG = 0x0841;
 static constexpr uint16_t PANEL = 0x10A3;
 static constexpr uint16_t BLUE = 0x03B9;
 static constexpr uint16_t MUTED = 0x9CF3;
-static constexpr uint16_t KEY_BG = 0x10A3;
-static constexpr uint16_t KEY_NUM = 0x035F;
+static constexpr uint16_t KEY_BG = 0x0010;  // Deep navy for white-label contrast.
+static constexpr uint16_t KEY_NUM = 0x001F; // Dark blue numeric keys.
 static constexpr uint16_t KEY_EDGE = 0x07FF;
 static uint16_t touchCal[5];
 static constexpr int TOUCH_CLK_PIN=25, TOUCH_MISO_PIN=39, TOUCH_MOSI_PIN=32, TOUCH_IRQ_PIN=36;
@@ -675,9 +675,22 @@ static void drawKey(int x,int y,int w,int h,const char* label, uint16_t fill=0x0
   drawUiString(label,x+w/2,y+h/2,2);
 }
 static void drawLetterRow(const char* keys,int y,int x,int keyW,int gap) {
+  static const char* ruRows[3][10] = {
+    {"й","ц","у","к","е","н","г","ш","щ","з"},
+    {"ф","ы","в","а","п","р","о","л","д",nullptr},
+    {"я","ч","с","м","и","т","ь",nullptr,nullptr,nullptr}
+  };
+  static const char* ruUpper[3][10] = {
+    {"Й","Ц","У","К","Е","Н","Г","Ш","Щ","З"},
+    {"Ф","Ы","В","А","П","Р","О","Л","Д",nullptr},
+    {"Я","Ч","С","М","И","Т","Ь",nullptr,nullptr,nullptr}
+  };
+  const int row=(y==108)?0:((y==133)?1:2);
   for(int i=0;keys[i];++i) {
-    char label[2]={keys[i],0};
-    if(shiftKey && !symbolsPage && label[0]>='a' && label[0]<='z') label[0]=toupper(label[0]);
+    char ascii[2]={keys[i],0};
+    const char* label=ascii;
+    if(russianLayout && !symbolsPage) label=shiftKey?ruUpper[row][i]:ruRows[row][i];
+    else if(shiftKey && !symbolsPage && ascii[0]>='a' && ascii[0]<='z') { ascii[0]=toupper(ascii[0]); label=ascii; }
     drawKey(x+i*(keyW+gap),y,keyW,22,label,KEY_BG);
   }
 }
@@ -697,11 +710,10 @@ static void flashKeyboardKey(uint16_t x,uint16_t y) {
     else { int c=(x-40)/25;if(c<0||c>=7)return;kx=40+c*25;kw=22;label[0]=(symbolsPage?".,?/'\\\\|~":"zxcvbnm")[c]; }
   } else if(y>=183&&y<=205) {
     ky=184;kh=19;
-    if(x>=5&&x<45){kx=5;kw=40;strcpy(label,russianLayout?"RU":"EN");}
-    else if(x>=48&&x<91){kx=48;kw=43;strcpy(label,"SHIFT");}
-    else if(x>=94&&x<156){kx=94;kw=62;strcpy(label,"SPACE");}
-    else if(x>=159&&x<198){kx=159;kw=39;strcpy(label,symbolsPage?"ABC":"SYM");}
-    else if(x>=201&&x<243){kx=201;kw=42;strcpy(label,"DEL");}
+    if(x>=5&&x<53){kx=5;kw=48;strcpy(label,"SHIFT");}
+    else if(x>=56&&x<134){kx=56;kw=78;strcpy(label,"SPACE");}
+    else if(x>=137&&x<185){kx=137;kw=48;strcpy(label,symbolsPage?"ABC":"SYM");}
+    else if(x>=188&&x<243){kx=188;kw=55;strcpy(label,"DEL");}
     else if(x>=270&&x<292){kx=270;kw=22;strcpy(label,"0");}
     else return;
   } else return;
@@ -744,11 +756,10 @@ static void showWifiSetup() {
       char k[2]={nums[r][col],0}; drawKey(246+col*24,108+r*25,22,22,k,KEY_NUM);
     }
     drawKey(270,183,22,19,"0",KEY_NUM);
-    drawKey(5,184,40,19,russianLayout?"RU":"EN",KEY_BG);
-    drawKey(48,184,43,19,"SHIFT",KEY_BG);
-    drawKey(94,184,62,19,"SPACE",KEY_BG);
-    drawKey(159,184,39,19,symbolsPage?"ABC":"SYM",KEY_BG);
-    drawKey(201,184,42,19,"DEL",KEY_BG);
+    drawKey(5,184,48,19,"SHIFT",KEY_BG);
+    drawKey(56,184,78,19,"SPACE",KEY_BG);
+    drawKey(137,184,48,19,symbolsPage?"ABC":"SYM",KEY_BG);
+    drawKey(188,184,55,19,"DEL",KEY_BG);
     drawButton(5,209,190,27,"CONNECT",0x07FF);
   
     keyboardNeedsRedraw=false;
@@ -822,11 +833,10 @@ static void handleKeyboardTap(uint16_t x,uint16_t y) {
     showWifiSetup(); return;
   }
   if(y>=183 && y<=205) {
-    if(x>=5&&x<45) { russianLayout=!russianLayout; keyboardNeedsRedraw=true; }
-    else if(x>=48&&x<91) { shiftKey=!shiftKey; keyboardNeedsRedraw=true; }
-    else if(x>=94&&x<156) appendKeyUtf8(" ");
-    else if(x>=159&&x<198) { symbolsPage=!symbolsPage; keyboardNeedsRedraw=true; }
-    else if(x>=201&&x<243) backspace();
+    if(x>=5&&x<53) { shiftKey=!shiftKey; keyboardNeedsRedraw=true; }
+    else if(x>=56&&x<134) appendKeyUtf8(" ");
+    else if(x>=137&&x<185) { symbolsPage=!symbolsPage; keyboardNeedsRedraw=true; }
+    else if(x>=188&&x<243) backspace();
     else if(x>=270&&x<292) appendMappedKey('0');
     showWifiSetup();
   }

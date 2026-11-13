@@ -2652,9 +2652,20 @@
       "name": "SIRION PATHFINDER-2"
     },
     "43767": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:14:23.588Z",
-      "name": "CORVUS BC4"
+      "status": "available",
+      "path": "https://img-cdn.isstracker.pl/static/cache/corvus-bc-4-a-43767.png?data=eyJzb3VyY2UiOiJodHRwczpcL1wvc3RhdGljLmlzc3RyYWNrZXIucGxcL2ltYWdlc1wvc2F0ZWxsaXRlc1wvN1wvNjdcL2NvcnZ1cy1iYy00LWEtNDM3NjcucG5nIiwicXVhbGl0eSI6ODAsIndpZHRoIjo2MDAsImhlaWdodCI6NDUwLCJjbGllbnQiOiJpc3N0cmFja2VyIn0%3D",
+      "source": "https://img-cdn.isstracker.pl/static/cache/corvus-bc-4-a-43767.png?data=eyJzb3VyY2UiOiJodHRwczpcL1wvc3RhdGljLmlzc3RyYWNrZXIucGxcL2ltYWdlc1wvc2F0ZWxsaXRlc1wvN1wvNjdcL2NvcnZ1cy1iYy00LWEtNDM3NjcucG5nIiwicXVhbGl0eSI6ODAsIndpZHRoIjo2MDAsImhlaWdodCI6NDUwLCJjbGllbnQiOiJpc3N0cmFja2VyIn0%3D",
+      "provider": "ISS Tracker",
+      "sourcePage": "https://isstracker.pl/en/satellites/43767",
+      "articlePage": "https://isstracker.pl/en/satellites/43767",
+      "title": "CORVUS BC4 spacecraft rendering",
+      "description": "Фото для примера — компьютерная визуализация 6U CubeSat CORVUS BC4; это не фотография аппарата на орбите.",
+      "credit": "ISS Tracker; original image credit not specified on source page",
+      "license": "Условия повторного использования отдельно не указаны; использовать с атрибуцией и учитывать права источника.",
+      "name": "CORVUS BC4",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T17:30:00.000Z"
     },
     "43770": {
       "status": "available",
@@ -4016,9 +4027,20 @@
       "name": ""
     },
     "67232": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:15:19.796Z",
-      "name": "Bluebird 06"
+      "status": "available",
+      "path": "https://www.satellitetoday.com/wp-content/uploads/2026/02/Deployment_graphic.jpg",
+      "source": "https://www.satellitetoday.com/wp-content/uploads/2026/02/Deployment_graphic.jpg",
+      "provider": "AST SpaceMobile (image reproduced by Via Satellite)",
+      "sourcePage": "https://www.satellitetoday.com/connectivity/2026/02/11/ast-spacemobiles-bluebird-6-array-successfully-unfolds-in-leo/",
+      "articlePage": "https://www.satellitetoday.com/connectivity/2026/02/11/ast-spacemobiles-bluebird-6-array-successfully-unfolds-in-leo/",
+      "title": "BlueBird 6 deployed communications array",
+      "description": "Фото для примера — опубликованное AST SpaceMobile изображение полностью раскрытой антенной решётки BlueBird 6 на орбите; показана конфигурация раскрытой системы, а не отдельный студийный портрет спутника.",
+      "credit": "AST SpaceMobile",
+      "license": "Права на изображение принадлежат AST SpaceMobile; разрешение на повторное использование отдельно не указано.",
+      "name": "Bluebird 06",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T17:30:00.000Z"
     },
     "67291": {
       "status": "available",

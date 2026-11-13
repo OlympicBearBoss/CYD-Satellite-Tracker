@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T07:30:00.000Z",
+  "generatedAt": "2026-11-13T07:45:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -2906,9 +2906,19 @@
       "name": ""
     },
     "57800": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:15:16.902Z",
-      "name": "SLiM"
+      "status": "available",
+      "path": "https://s3-ap-northeast-1.amazonaws.com/jaxa-jda/http_root/common/P100014664/ffcfd03daa3e1ee46ac2faf50ff0666a.jpg",
+      "source": "https://s3-ap-northeast-1.amazonaws.com/jaxa-jda/http_root/common/P100014664/ffcfd03daa3e1ee46ac2faf50ff0666a.jpg",
+      "provider": "JAXA Digital Archives",
+      "sourcePage": "https://jda.jaxa.jp/result.php?id=a2928f40dee48454cfd7630c21cc57c5+&lang=e",
+      "articlePage": "https://jda.jaxa.jp/result.php?id=a2928f40dee48454cfd7630c21cc57c5+&lang=e",
+      "title": "SLIM flight model, Tanegashima Space Center",
+      "description": "Photograph of the SLIM flight model in the Spacecraft and Fairing Assembly Building, June 2023.",
+      "credit": "JAXA",
+      "license": "JAXA Digital Archives: permitted for media, educational and commercial use; follow JAXA material-use conditions",
+      "name": "SLiM",
+      "imageType": "photograph",
+      "checkedAt": "2026-11-13T07:45:00.000Z"
     },
     "58645": {
       "status": "not-found",
@@ -3605,5 +3615,5 @@
       "name": ""
     }
   },
-  "curatedExternalImages": 4
+  "curatedExternalImages": 5
 }

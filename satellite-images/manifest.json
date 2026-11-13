@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-12T08:15:22.262Z",
+  "generatedAt": "2026-11-13T07:30:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -1296,9 +1296,19 @@
       "name": ""
     },
     "39197": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:14:00.521Z",
-      "name": "IRIS"
+      "status": "available",
+      "path": "https://www.nasa.gov/wp-content/uploads/2023/03/744544main_2013-04-17-13_full.jpg?w=1041",
+      "source": "https://www.nasa.gov/wp-content/uploads/2023/03/744544main_2013-04-17-13_full.jpg?w=1041",
+      "provider": "NASA",
+      "sourcePage": "https://www.nasa.gov/image-article/iris-spacecraft/",
+      "articlePage": "https://www.nasa.gov/image-article/iris-spacecraft/",
+      "title": "IRIS spacecraft in clean room",
+      "description": "Photograph of the complete IRIS observatory during pre-launch preparation at Vandenberg.",
+      "credit": "NASA/Randy Beaudoin, VAFB (17 April 2013)",
+      "license": "NASA media usage guidelines; credit required",
+      "name": "IRIS",
+      "imageType": "photograph",
+      "checkedAt": "2026-11-13T07:30:00.000Z"
     },
     "39199": {
       "status": "not-found",
@@ -1944,9 +1954,19 @@
       "name": ""
     },
     "41866": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:39.177Z",
-      "name": "GOES-16"
+      "status": "available",
+      "path": "https://www.nesdis.noaa.gov/s3/2026-09/GOES-16-known-as-GOES-East-with-Earth-in-background.png",
+      "source": "https://www.nesdis.noaa.gov/s3/2026-09/GOES-16-known-as-GOES-East-with-Earth-in-background.png",
+      "provider": "NOAA NESDIS",
+      "sourcePage": "https://www.nesdis.noaa.gov/our-satellites/currently-flying/goes-east-west/goes-r-series-spacecraft-renderings",
+      "articlePage": "https://www.nesdis.noaa.gov/our-satellites/currently-flying/goes-east-west/goes-r-series-spacecraft-renderings",
+      "title": "GOES-16 known as GOES East with Earth in background",
+      "description": "Official artist rendering of GOES-16 above Earth; not a photograph.",
+      "credit": "NOAA/NESDIS",
+      "license": "Public domain (NOAA album statement)",
+      "name": "GOES-16",
+      "imageType": "render",
+      "checkedAt": "2026-11-13T07:30:00.000Z"
     },
     "41882": {
       "status": "not-found",
@@ -2219,9 +2239,19 @@
       "name": ""
     },
     "43641": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:15:14.698Z",
-      "name": "SAOCOM 1-A"
+      "status": "available",
+      "path": "https://upload.wikimedia.org/wikipedia/commons/e/e2/SAOCOM_1A_%40_Invap_October_2017.jpg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/e/e2/SAOCOM_1A_%40_Invap_October_2017.jpg",
+      "provider": "Wikimedia Commons",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:SAOCOM_1A_%40_Invap_October_2017.jpg",
+      "articlePage": "https://commons.wikimedia.org/wiki/File:SAOCOM_1A_%40_Invap_October_2017.jpg",
+      "title": "SAOCOM 1A at INVAP, October 2017",
+      "description": "Photograph of the SAOCOM 1A spacecraft in the INVAP cleanroom.",
+      "credit": "Casa Rosada (Argentina Presidency of the Nation)",
+      "license": "CC BY 2.5 Argentina",
+      "name": "SAOCOM 1-A",
+      "imageType": "photograph",
+      "checkedAt": "2026-11-13T07:30:00.000Z"
     },
     "43647": {
       "status": "not-found",
@@ -2642,9 +2672,19 @@
       "name": ""
     },
     "54234": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:46.463Z",
-      "name": "NOAA-21 JPSS-2"
+      "status": "available",
+      "path": "https://www.nesdis.noaa.gov/s3/2023-10/Approved-22-0213-1-P2120001.jpg",
+      "source": "https://www.nesdis.noaa.gov/s3/2023-10/Approved-22-0213-1-P2120001.jpg",
+      "provider": "NOAA NESDIS",
+      "sourcePage": "https://www.nesdis.noaa.gov/imagery/media-stills-animation/jpss/mission-satellite/jpss-2-fully-integrated",
+      "articlePage": "https://www.nesdis.noaa.gov/imagery/media-stills-animation/jpss/mission-satellite/jpss-2-fully-integrated",
+      "title": "JPSS-2 fully integrated",
+      "description": "Photograph of the fully integrated NOAA-21/JPSS-2 spacecraft in a cleanroom.",
+      "credit": "NOAA/NESDIS",
+      "license": "U.S. government work; public-domain status to be confirmed for this asset",
+      "name": "NOAA-21 JPSS-2",
+      "imageType": "photograph",
+      "checkedAt": "2026-11-13T07:30:00.000Z"
     },
     "54377": {
       "status": "not-found",
@@ -3564,5 +3604,6 @@
       "checkedAt": "2026-11-12T08:13:52.048Z",
       "name": ""
     }
-  }
+  },
+  "curatedExternalImages": 4
 }

@@ -29,6 +29,8 @@ NC loop polarity, and driver carrier before flashing.
 
 ## GPS NEO-6M wiring (V95)
 
+V95 CI build verification trigger.
+
 For the ESP32-2432S028R profile used by this firmware:
 - NEO-6M TX -> CYD GPIO34 (UART2 RX, 9600 baud).
 - NEO-6M VCC -> 3.3 V; GND -> GND.

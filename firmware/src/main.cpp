@@ -626,7 +626,9 @@ static void drawButton(int x,int y,int w,int h,const char* label,uint16_t color)
   tft.fillRoundRect(x,y,w,h,5,color);
   tft.drawRoundRect(x,y,w,h,5,TFT_WHITE);
   setUiTextDatum(MC_DATUM);
-  setUiTextColor(TFT_WHITE,color);
+  // Dark text on bright cyan buttons; white text remains on dark buttons.
+  const uint16_t textColor=(color==0x07FF || color==TFT_CYAN)?TFT_BLACK:TFT_WHITE;
+  setUiTextColor(textColor,color);
   drawUiString(label,x+w/2,y+h/2,2);
 }
 
@@ -710,7 +712,7 @@ static void flashKeyboardKey(uint16_t x,uint16_t y) {
     else { int c=(x-40)/25;if(c<0||c>=7)return;kx=40+c*25;kw=22;label[0]=(symbolsPage?".,?/'\\\\|~":"zxcvbnm")[c]; }
   } else if(y>=183&&y<=205) {
     ky=184;kh=19;
-    if(x>=5&&x<53){kx=5;kw=48;strcpy(label,"SHIFT");}
+    if(x>=5&&x<53){kx=5;kw=48;strcpy(label,"Aa");}
     else if(x>=56&&x<134){kx=56;kw=78;strcpy(label,"SPACE");}
     else if(x>=137&&x<185){kx=137;kw=48;strcpy(label,symbolsPage?"ABC":"SYM");}
     else if(x>=188&&x<243){kx=188;kw=55;strcpy(label,"DEL");}
@@ -756,7 +758,7 @@ static void showWifiSetup() {
       char k[2]={nums[r][col],0}; drawKey(246+col*24,108+r*25,22,22,k,KEY_NUM);
     }
     drawKey(270,183,22,19,"0",KEY_NUM);
-    drawKey(5,184,48,19,"SHIFT",KEY_BG);
+    drawKey(5,184,48,19,"Aa",KEY_BG);
     drawKey(56,184,78,19,"SPACE",KEY_BG);
     drawKey(137,184,48,19,symbolsPage?"ABC":"SYM",KEY_BG);
     drawKey(188,184,55,19,"DEL",KEY_BG);

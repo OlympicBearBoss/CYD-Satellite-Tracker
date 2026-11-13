@@ -31,6 +31,8 @@ NC loop polarity, and driver carrier before flashing.
 
 V95 CI build verification trigger.
 
+V95 validation: CI checks the NEO-6M UART2 RX mapping on GPIO34, a 9600-baud receive-only UART, and fresh GPS fixes before accepting observer coordinates. A build is accepted only when its workflow run belongs to this branch head and reports success.
+
 For the ESP32-2432S028R profile used by this firmware:
 - NEO-6M TX -> CYD GPIO34 (UART2 RX, 9600 baud).
 - NEO-6M VCC -> 3.3 V; GND -> GND.

@@ -32,14 +32,43 @@ $("targetSelect").addEventListener("change",e=>{selected=e.target.value;renderTa
 $("centerBtn").addEventListener("click",()=>{setAxes(180,45);$("controlStatus").textContent=t("centered");addLog("CTRL",t("centered"));});
 $("trackBtn").addEventListener("click",()=>{const o=objectData[selected];setAxes(o.az,o.el);$("controlStatus").textContent=t("tracking")+o.name;addLog("CTRL",t("tracking")+o.name);});
 $("stopBtn").addEventListener("click",()=>{$("controlStatus").textContent=t("stopped");addLog("STOP",t("stopped"));});
+let mobileObserverLocation=null;
+let activeObserverSource=null;
+function applyObserverLocation(location,source){
+ const valid=location&&Number.isFinite(location.latitude)&&Number.isFinite(location.longitude)&&location.latitude>=-90&&location.latitude<=90&&location.longitude>=-180&&location.longitude<=180;
+ const next=valid?{latitude:location.latitude,longitude:location.longitude,height:Number.isFinite(location.height)?location.height:0,accuracy:location.accuracy??null,timestamp:location.timestamp??Date.now()}:null;
+ const signature=next?source+":"+next.latitude.toFixed(6)+":"+next.longitude.toFixed(6):"none";
+ if(signature===(window.cydObserverSignature||""))return;
+ window.cydObserverSignature=signature;activeObserverSource=next?source:null;window.cydObserverLocation=next;
+ if(next){
+  if($("observerLat"))$("observerLat").value=next.latitude.toFixed(6);
+  if($("observerLon"))$("observerLon").value=next.longitude.toFixed(6);
+  if($("observerAltitude"))$("observerAltitude").value=Math.round(next.height*1000);
+  $("gpsLat").textContent=Math.abs(next.latitude).toFixed(5)+"° "+(next.latitude>=0?"N":"S");
+  $("gpsLon").textContent=Math.abs(next.longitude).toFixed(5)+"° "+(next.longitude>=0?"E":"W");
+  $("gpsAlt").textContent=Math.round(next.height*1000)+" м";
+  $("gpsAccuracy").textContent=Number.isFinite(next.accuracy)?"±"+Math.round(next.accuracy)+" м":"—";
+  $("gpsTime").textContent=new Date(next.timestamp).toLocaleTimeString("ru-RU");
+  $("gpsStatus").innerHTML="<i></i>"+(source==="CYD"?"GPS CYD · NEO-6M":"GPS УСТРОЙСТВА");
+  $("deviceSensorNote").textContent=source==="CYD"?"Используются реальные координаты GPS-приёмника NEO-6M подключённой платы CYD.":"CYD не передаёт действительный GPS FIX. Используется геолокация планшета или телефона.";
+ }else{$("gpsStatus").textContent="GPS НЕДОСТУПЕН";$("deviceSensorNote").textContent="Нет действительных координат ни от CYD, ни от геолокации устройства.";}
+ window.dispatchEvent(new Event("cyd-observer-change"));
+}
+function selectObserverSource(device){
+ const t=device?.telemetry||{};
+ const fix=device?.status==="online"&&t.gps_valid===true&&Number.isFinite(t.latitude)&&Number.isFinite(t.longitude);
+ if(fix)applyObserverLocation({latitude:t.latitude,longitude:t.longitude,height:Number.isFinite(t.altitude)?t.altitude/1000:0,timestamp:device.telemetry_at?Number(device.telemetry_at)*1000:Date.now()},"CYD");
+ else if(mobileObserverLocation)applyObserverLocation(mobileObserverLocation,"DEVICE");
+ else applyObserverLocation(null,null);
+}
 async function refreshLiveDevice(){
  const result=$("connectionResult");if(result)result.textContent="Запрос данных…";
  try{
   const response=await fetch("/api/devices/telemetry",{credentials:"same-origin",cache:"no-store"});
   const data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error||"Не удалось получить состояние");
   const device=(data.devices||[]).find(d=>d.status==="online")||(data.devices||[])[0];
-  if(!device){$("liveDeviceBadge").querySelector("span").textContent="Нет привязанной платы";$("liveDeviceInfo").textContent="Создайте код в профиле → Мои устройства.";["liveDeviceIp","liveDeviceRssi","liveDeviceGps","liveDeviceCoords","liveDeviceSeen"].forEach(id=>$(id).textContent="—");if(result)result.textContent="Сервер доступен. Устройство пока не передаёт телеметрию.";return;}
-  const tdata=device.telemetry||{},online=device.status==="online";
+  if(!device){$("liveDeviceBadge").querySelector("span").textContent="Нет привязанной платы";$("liveDeviceInfo").textContent="Создайте код в профиле → Мои устройства.";["liveDeviceIp","liveDeviceRssi","liveDeviceGps","liveDeviceCoords","liveDeviceSeen"].forEach(id=>$(id).textContent="—");selectObserverSource(null);if(result)result.textContent="Сервер доступен. Устройство пока не передаёт телеметрию.";return;}
+  const tdata=device.telemetry||{},online=device.status==="online";selectObserverSource(device);
   $("liveDeviceBadge").querySelector("span").textContent=online?"Устройство в сети":"Устройство не в сети";
   $("liveDeviceInfo").textContent=device.device_name+" · "+(tdata.firmware||"прошивка не указана");
   $("liveDeviceIp").textContent=tdata.ip||"—";$("liveDeviceRssi").textContent=Number.isFinite(tdata.wifi_rssi)?tdata.wifi_rssi+" dBm":"—";
@@ -50,6 +79,7 @@ async function refreshLiveDevice(){
  }catch(e){if(result)result.textContent=e.message;}
 }
 $("testConnection").addEventListener("click",refreshLiveDevice);
+refreshLiveDevice();setInterval(refreshLiveDevice,5000);
 $("openDevicePairing").addEventListener("click",()=>{const trigger=$("accountProfileOpen");if(trigger)trigger.click();else $("connectionResult").textContent="Сначала войдите в аккаунт.";});
 
 function renderRadarObjects(){
@@ -90,16 +120,17 @@ function startDeviceLocation(){
  status.innerHTML="<i></i>ЗАПРОС GPS";
  note.textContent="Ожидаю разрешение браузера и координаты устройства. На телефоне включите системную геолокацию и разрешите доступ этому сайту.";
  const onPosition=pos=>{
-  const c=pos.coords,lat=c.latitude,lon=c.longitude;window.cydObserverLocation={latitude:lat,longitude:lon,height:Number.isFinite(c.altitude)?c.altitude/1000:0,accuracy:c.accuracy,timestamp:pos.timestamp};if($("observerLat"))$("observerLat").value=lat.toFixed(6);if($("observerLon"))$("observerLon").value=lon.toFixed(6);if($("observerAltitude")&&Number.isFinite(c.altitude))$("observerAltitude").value=Math.round(c.altitude);window.dispatchEvent(new Event("cyd-observer-change"));
+  const c=pos.coords,lat=c.latitude,lon=c.longitude;mobileObserverLocation={latitude:lat,longitude:lon,height:Number.isFinite(c.altitude)?c.altitude/1000:0,accuracy:c.accuracy,timestamp:pos.timestamp};if(activeObserverSource!=="CYD")selectObserverSource(null);
   $("gpsLat").textContent=Math.abs(lat).toFixed(5)+"° "+(lat>=0?"N":"S");
   $("gpsLon").textContent=Math.abs(lon).toFixed(5)+"° "+(lon>=0?"E":"W");
   $("gpsAlt").textContent=Number.isFinite(c.altitude)?Math.round(c.altitude)+" м":"—";
   $("gpsAccuracy").textContent="±"+Math.round(c.accuracy)+" м";
   $("gpsTime").textContent=new Date(pos.timestamp).toLocaleTimeString("ru-RU");
-  status.innerHTML="<i></i>GPS УСТРОЙСТВА";
-  note.textContent="Координаты получены от службы геолокации устройства. Точность зависит от GPS, Wi-Fi, мобильной сети и разрешений ОС.";
+  if(activeObserverSource!=="CYD")status.innerHTML="<i></i>GPS УСТРОЙСТВА";
+  if(activeObserverSource!=="CYD")note.textContent="CYD без действительного FIX — используется геолокация планшета или телефона.";
  };
  const onError=err=>{
+  if(activeObserverSource==="CYD"){note.textContent="Используется GPS подключённой платы CYD; геолокация мобильного устройства недоступна.";return;}
   status.textContent=err.code===1?"ДОСТУП ЗАПРЕЩЁН":err.code===2?"НЕТ СИГНАЛА":"ТАЙМ-АУТ";
   const details=err.code===1?"Браузер или система запретили геолокацию. В настройках устройства откройте разрешения сайта и включите «Местоположение»."
    :err.code===2?"Устройство не смогло определить координаты. Включите службы геолокации, выйдите к открытому небу и повторите запрос."

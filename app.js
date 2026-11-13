@@ -16,7 +16,7 @@ const $=id=>document.getElementById(id);
 document.querySelectorAll("[data-i18n]").forEach(el=>{translations.ru[el.dataset.i18n]=el.innerHTML;});
 Object.assign(translations.ru,{centered:"Оси установлены в центр (демо).",stopped:"Движение остановлено (демо).",tracking:"Демонстрационное наведение на цель: ",connection_test_ok:"Проверка демо завершена: отображаются тестовые параметры подключения.",});
 function t(key){return translations[lang][key]||translations.ru[key]||key}
-function setLanguage(next){lang=next;document.documentElement.lang=lang;document.querySelectorAll("[data-i18n]").forEach(el=>{const val=t(el.dataset.i18n);if(val.includes("<br>"))el.innerHTML=val;else el.textContent=val});$("language").textContent=lang==="ru"?"EN":"RU";document.querySelectorAll("[data-lang]").forEach(b=>b.classList.toggle("selected",b.dataset.lang===lang));const active=document.querySelector(".view.active");if(active){const key=active.id.replace("view-","");const nav=document.querySelector('[data-view="'+key+'"]');$("crumbTitle").textContent=nav?nav.querySelector("i").textContent:"";}renderLog();renderRadarObjects();renderTarget();}
+function setLanguage(next){lang=next;document.documentElement.lang=lang;document.querySelectorAll("[data-i18n]").forEach(el=>{const val=t(el.dataset.i18n);if(val.includes("<br>"))el.innerHTML=val;else el.textContent=val});$("language").textContent=lang==="ru"?"EN":"RU";document.querySelectorAll("[data-lang]").forEach(b=>b.classList.toggle("selected",b.dataset.lang===lang));const active=document.querySelector(".view.active");if(active){const key=active.id.replace("view-","");const nav=document.querySelector('[data-view="'+key+'"]');$("crumbTitle").textContent=nav?nav.querySelector("i").textContent:"";}renderLog();renderRadarObjects(true);renderTarget();}
 function go(view){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));document.querySelectorAll(".nav-item").forEach(b=>b.classList.toggle("active",b.dataset.view===view));const nav=document.querySelector('[data-view="'+view+'"]');$("crumbTitle").textContent=nav?nav.querySelector("i").textContent:"";window.scrollTo({top:0,behavior:"smooth"});if(view==="connection"&&typeof refreshLiveDevice==="function")refreshLiveDevice();}
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.view)));
 document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
@@ -82,7 +82,7 @@ $("testConnection").addEventListener("click",refreshLiveDevice);
 refreshLiveDevice();setInterval(refreshLiveDevice,5000);
 $("openDevicePairing").addEventListener("click",()=>{const trigger=$("accountProfileOpen");if(trigger)trigger.click();else $("connectionResult").textContent="Сначала войдите в аккаунт.";});
 
-function renderRadarObjects(){
+function renderRadarObjects(updateList=false){
  const list=$("radarObjects"),rotor=$("radarRotor"),cardinals=$("radarCardinals");
  if(!rotor||!cardinals)return;
  // Создаём строки списка один раз: обновления компаса не должны пересоздавать DOM.
@@ -122,7 +122,7 @@ function renderRadarObjects(){
  }
  });
 }
-window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.entries(positions).forEach(([id,p])=>{if(!objectData[id]||!Number.isFinite(p.az)||!Number.isFinite(p.el))return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;if(objectData[id].aboveHorizon===undefined)objectData[id].aboveHorizon=p.el>0.75;else if(objectData[id].aboveHorizon&&p.el< -0.75)objectData[id].aboveHorizon=false;else if(!objectData[id].aboveHorizon&&p.el>0.75)objectData[id].aboveHorizon=true;});renderRadarObjects();});
+window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.entries(positions).forEach(([id,p])=>{if(!objectData[id]||!Number.isFinite(p.az)||!Number.isFinite(p.el))return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;if(objectData[id].aboveHorizon===undefined)objectData[id].aboveHorizon=p.el>0.75;else if(objectData[id].aboveHorizon&&p.el< -0.75)objectData[id].aboveHorizon=false;else if(!objectData[id].aboveHorizon&&p.el>0.75)objectData[id].aboveHorizon=true;});renderRadarObjects(true);});
 const compassNames=["СЕВЕР","СЕВЕРО-ВОСТОК","ВОСТОК","ЮГО-ВОСТОК","ЮГ","ЮГО-ЗАПАД","ЗАПАД","СЕВЕРО-ЗАПАД"];
 let deviceHeading=null,geoWatchId=null;
 function setDeviceHeading(value){
@@ -186,4 +186,4 @@ function addLog(code,message){const d=new Date();logItems.unshift([d.toLocaleTim
 function renderLog(){$("fullLog").innerHTML=logItems.map(row=>'<div class="log-row"><i class="event-dot '+(row[1]==="STOP"?"orange":row[1]==="NET"?"green":"blue")+'"></i><time>'+row[0]+'</time><code>'+row[1]+'</code><p>'+(lang==="en"?row[3]:row[2])+'</p></div>').join("");$("logCount").textContent=logItems.length+" EVENTS";}
 $("clearLog").addEventListener("click",()=>{logItems=[];renderLog();});
 function tick(){const d=new Date();$("clock").textContent=d.toLocaleTimeString(lang==="ru"?"ru-RU":"en-GB");$("today").textContent=d.toLocaleDateString(lang==="ru"?"ru-RU":"en-GB",{day:"2-digit",month:"long",year:"numeric"});}
-tick();setInterval(tick,1000);setAxes(objectData.iss.az,objectData.iss.el);updateDemoNavigation();renderRadarObjects();renderLog();setLanguage("ru");
+tick();setInterval(tick,1000);setAxes(objectData.iss.az,objectData.iss.el);updateDemoNavigation();renderRadarObjects(true);renderLog();setLanguage("ru");

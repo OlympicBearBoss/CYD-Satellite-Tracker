@@ -121,13 +121,15 @@ function startDeviceLocation(){
  note.textContent="Ожидаю разрешение браузера и координаты устройства. На телефоне включите системную геолокацию и разрешите доступ этому сайту.";
  const onPosition=pos=>{
   const c=pos.coords,lat=c.latitude,lon=c.longitude;mobileObserverLocation={latitude:lat,longitude:lon,height:Number.isFinite(c.altitude)?c.altitude/1000:0,accuracy:c.accuracy,timestamp:pos.timestamp};if(activeObserverSource!=="CYD")selectObserverSource(null);
-  $("gpsLat").textContent=Math.abs(lat).toFixed(5)+"° "+(lat>=0?"N":"S");
-  $("gpsLon").textContent=Math.abs(lon).toFixed(5)+"° "+(lon>=0?"E":"W");
-  $("gpsAlt").textContent=Number.isFinite(c.altitude)?Math.round(c.altitude)+" м":"—";
-  $("gpsAccuracy").textContent="±"+Math.round(c.accuracy)+" м";
-  $("gpsTime").textContent=new Date(pos.timestamp).toLocaleTimeString("ru-RU");
-  if(activeObserverSource!=="CYD")status.innerHTML="<i></i>GPS УСТРОЙСТВА";
-  if(activeObserverSource!=="CYD")note.textContent="CYD без действительного FIX — используется геолокация планшета или телефона.";
+   if(activeObserverSource!=="CYD"){
+ $("gpsLat").textContent=Math.abs(lat).toFixed(5)+"° "+(lat>=0?"N":"S");
+ $("gpsLon").textContent=Math.abs(lon).toFixed(5)+"° "+(lon>=0?"E":"W");
+ $("gpsAlt").textContent=Number.isFinite(c.altitude)?Math.round(c.altitude)+" м":"—";
+ $("gpsAccuracy").textContent="±"+Math.round(c.accuracy)+" м";
+ $("gpsTime").textContent=new Date(pos.timestamp).toLocaleTimeString("ru-RU");
+ if(activeObserverSource!=="CYD")status.innerHTML="<i></i>GPS УСТРОЙСТВА";
+ if(activeObserverSource!=="CYD")note.textContent="CYD без действительного FIX — используется геолокация планшета или телефона.";
+   }
  };
  const onError=err=>{
   if(activeObserverSource==="CYD"){note.textContent="Используется GPS подключённой платы CYD; геолокация мобильного устройства недоступна.";return;}

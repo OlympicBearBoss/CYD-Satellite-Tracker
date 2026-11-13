@@ -1,13 +1,14 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T16:00:00.000Z",
+  "generatedAt": "2026-11-13T17:00:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
     "downloaded": 28,
     "missing": 285,
     "failed": 6,
-    "maxChecks": 600
+    "maxChecks": 600,
+    "manualCatalogImageUpdates": 6
   },
   "images": {
     "694": {
@@ -3738,9 +3739,20 @@
       "name": ""
     },
     "63213": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:00:31.403Z",
-      "name": "TEVEL2-4"
+      "status": "available",
+      "path": "https://english.tau.ac.il/sites/default/files/media_server/English/articles2/MARCH%2025/spacebox580.jpg",
+      "source": "https://english.tau.ac.il/sites/default/files/media_server/English/articles2/MARCH%2025/spacebox580.jpg",
+      "provider": "Tel Aviv University",
+      "sourcePage": "https://english.tau.ac.il/node/3765",
+      "articlePage": "https://english.tau.ac.il/node/3765",
+      "title": "Tevel 2 nanosatellites before launch",
+      "description": "Фото для примера — групповая фотография спутников Tevel 2 после испытаний в лаборатории Тель-Авивского университета; изображение показывает аппараты семейства, а не индивидуальный борт.",
+      "credit": "Ronen Horesh / Tel Aviv University",
+      "license": "Права на повторное использование отдельно не указаны; требуется соблюдение условий Tel Aviv University и правообладателя.",
+      "name": "TEVEL2-4",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T17:00:00.000Z"
     },
     "63214": {
       "status": "available",
@@ -3761,19 +3773,52 @@
       "name": "TEVEL2-6"
     },
     "63217": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:00:32.521Z",
-      "name": "TEVEL2-1"
+      "status": "available",
+      "path": "https://english.tau.ac.il/sites/default/files/media_server/English/articles2/MARCH%2025/spacebox580.jpg",
+      "source": "https://english.tau.ac.il/sites/default/files/media_server/English/articles2/MARCH%2025/spacebox580.jpg",
+      "provider": "Tel Aviv University",
+      "sourcePage": "https://english.tau.ac.il/node/3765",
+      "articlePage": "https://english.tau.ac.il/node/3765",
+      "title": "Tevel 2 nanosatellites before launch",
+      "description": "Фото для примера — групповая фотография спутников Tevel 2 после испытаний в лаборатории Тель-Авивского университета; изображение показывает аппараты семейства, а не индивидуальный борт.",
+      "credit": "Ronen Horesh / Tel Aviv University",
+      "license": "Права на повторное использование отдельно не указаны; требуется соблюдение условий Tel Aviv University и правообладателя.",
+      "name": "TEVEL2-1",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T17:00:00.000Z"
     },
     "63218": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:00:32.814Z",
-      "name": "TEVEL2-3"
+      "status": "available",
+      "path": "https://english.tau.ac.il/sites/default/files/media_server/English/articles2/MARCH%2025/spacebox580.jpg",
+      "source": "https://english.tau.ac.il/sites/default/files/media_server/English/articles2/MARCH%2025/spacebox580.jpg",
+      "provider": "Tel Aviv University",
+      "sourcePage": "https://english.tau.ac.il/node/3765",
+      "articlePage": "https://english.tau.ac.il/node/3765",
+      "title": "Tevel 2 nanosatellites before launch",
+      "description": "Фото для примера — групповая фотография спутников Tevel 2 после испытаний в лаборатории Тель-Авивского университета; изображение показывает аппараты семейства, а не индивидуальный борт.",
+      "credit": "Ronen Horesh / Tel Aviv University",
+      "license": "Права на повторное использование отдельно не указаны; требуется соблюдение условий Tel Aviv University и правообладателя.",
+      "name": "TEVEL2-3",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T17:00:00.000Z"
     },
     "63219": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:00:33.110Z",
-      "name": "TEVEL2-2"
+      "status": "available",
+      "path": "https://english.tau.ac.il/sites/default/files/media_server/English/articles2/MARCH%2025/spacebox580.jpg",
+      "source": "https://english.tau.ac.il/sites/default/files/media_server/English/articles2/MARCH%2025/spacebox580.jpg",
+      "provider": "Tel Aviv University",
+      "sourcePage": "https://english.tau.ac.il/node/3765",
+      "articlePage": "https://english.tau.ac.il/node/3765",
+      "title": "Tevel 2 nanosatellites before launch",
+      "description": "Фото для примера — групповая фотография спутников Tevel 2 после испытаний в лаборатории Тель-Авивского университета; изображение показывает аппараты семейства, а не индивидуальный борт.",
+      "credit": "Ronen Horesh / Tel Aviv University",
+      "license": "Права на повторное использование отдельно не указаны; требуется соблюдение условий Tel Aviv University и правообладателя.",
+      "name": "TEVEL2-2",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T17:00:00.000Z"
     },
     "63235": {
       "status": "available",
@@ -3785,14 +3830,36 @@
       "name": "OTP-2"
     },
     "63237": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:00:34.088Z",
-      "name": "TEVEL2-9"
+      "status": "available",
+      "path": "https://english.tau.ac.il/sites/default/files/media_server/English/articles2/MARCH%2025/spacebox580.jpg",
+      "source": "https://english.tau.ac.il/sites/default/files/media_server/English/articles2/MARCH%2025/spacebox580.jpg",
+      "provider": "Tel Aviv University",
+      "sourcePage": "https://english.tau.ac.il/node/3765",
+      "articlePage": "https://english.tau.ac.il/node/3765",
+      "title": "Tevel 2 nanosatellites before launch",
+      "description": "Фото для примера — групповая фотография спутников Tevel 2 после испытаний в лаборатории Тель-Авивского университета; изображение показывает аппараты семейства, а не индивидуальный борт.",
+      "credit": "Ronen Horesh / Tel Aviv University",
+      "license": "Права на повторное использование отдельно не указаны; требуется соблюдение условий Tel Aviv University и правообладателя.",
+      "name": "TEVEL2-9",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T17:00:00.000Z"
     },
     "63238": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:00:34.387Z",
-      "name": "TEVEL2-7"
+      "status": "available",
+      "path": "https://english.tau.ac.il/sites/default/files/media_server/English/articles2/MARCH%2025/spacebox580.jpg",
+      "source": "https://english.tau.ac.il/sites/default/files/media_server/English/articles2/MARCH%2025/spacebox580.jpg",
+      "provider": "Tel Aviv University",
+      "sourcePage": "https://english.tau.ac.il/node/3765",
+      "articlePage": "https://english.tau.ac.il/node/3765",
+      "title": "Tevel 2 nanosatellites before launch",
+      "description": "Фото для примера — групповая фотография спутников Tevel 2 после испытаний в лаборатории Тель-Авивского университета; изображение показывает аппараты семейства, а не индивидуальный борт.",
+      "credit": "Ronen Horesh / Tel Aviv University",
+      "license": "Права на повторное использование отдельно не указаны; требуется соблюдение условий Tel Aviv University и правообладателя.",
+      "name": "TEVEL2-7",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T17:00:00.000Z"
     },
     "63239": {
       "status": "available",

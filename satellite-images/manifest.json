@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T12:00:00.000Z",
+  "generatedAt": "2026-11-13T12:05:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -820,8 +820,8 @@
     },
     "28474": {
       "status": "available",
-      "path": "https://upload.wikimedia.org/wikipedia/commons/5/5d/GPS-IIR.jpg",
-      "source": "https://upload.wikimedia.org/wikipedia/commons/5/5d/GPS-IIR.jpg",
+      "path": "https://upload.wikimedia.org/wikipedia/commons/0/08/GPS-IIR.jpg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/0/08/GPS-IIR.jpg",
       "provider": "U.S. Government / Wikimedia Commons",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:GPS-IIR.jpg",
       "articlePage": "https://commons.wikimedia.org/wiki/File:GPS-IIR.jpg",
@@ -942,8 +942,8 @@
     },
     "29601": {
       "status": "available",
-      "path": "https://upload.wikimedia.org/wikipedia/commons/1/1b/GPS-IIRM.jpg",
-      "source": "https://upload.wikimedia.org/wikipedia/commons/1/1b/GPS-IIRM.jpg",
+      "path": "https://upload.wikimedia.org/wikipedia/commons/8/86/GPS-IIRM.jpg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/8/86/GPS-IIRM.jpg",
       "provider": "U.S. Government / Wikimedia Commons",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:GPS-IIRM.jpg",
       "articlePage": "https://commons.wikimedia.org/wiki/File:GPS-IIRM.jpg",

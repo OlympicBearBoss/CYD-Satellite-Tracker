@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T10:25:00.000Z",
+  "generatedAt": "2026-11-13T11:30:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -709,9 +709,20 @@
       "name": "SAUDISAT 1C"
     },
     "27640": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:13:55.087Z",
-      "name": "Coriolis"
+      "status": "available",
+      "path": "https://upload.wikimedia.org/wikipedia/commons/5/5c/Coriolis_satellite.jpg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/5/5c/Coriolis_satellite.jpg",
+      "provider": "NASA / Wikimedia Commons",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Coriolis_satellite.jpg",
+      "articlePage": "https://commons.wikimedia.org/wiki/File:Coriolis_satellite.jpg",
+      "title": "Coriolis spacecraft illustration",
+      "description": "Фото для примера — небольшая иллюстрация спутника Coriolis из архива NASA; изображение низкого разрешения.",
+      "credit": "NASA",
+      "license": "Public domain (NASA)",
+      "name": "Coriolis",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T11:30:00.000Z"
     },
     "27651": {
       "status": "not-found",
@@ -747,9 +758,20 @@
       "name": "CUBESAT XI-IV"
     },
     "27858": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:13:56.038Z",
-      "name": "SCISAT 1"
+      "status": "available",
+      "path": "https://www.asc-csa.gc.ca/images/recherche//hi-res/scisat110502_hr.jpg",
+      "source": "https://www.asc-csa.gc.ca/images/recherche//hi-res/scisat110502_hr.jpg",
+      "provider": "Canadian Space Agency",
+      "sourcePage": "https://www.asc-csa.gc.ca/eng/multimedia/search/image/796",
+      "articlePage": "https://www.asc-csa.gc.ca/eng/multimedia/search/image/796",
+      "title": "SCISAT during spacecraft testing",
+      "description": "Фото для примера — реальная фотография SCISAT во время наземных испытаний в лаборатории CSA; авторство снимка указано как CRC.",
+      "credit": "Communications Research Center Canada (CRC)",
+      "license": "Условия использования CSA/CRC уточняются; см. страницу источника",
+      "name": "SCISAT 1",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T11:30:00.000Z"
     },
     "27939": {
       "status": "available",
@@ -761,9 +783,20 @@
       "name": "MOZHAYETS 4"
     },
     "28054": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:31.781Z",
-      "name": "DMSP 5F-3 (USA 172)"
+      "status": "available",
+      "path": "https://www.nesdis.noaa.gov/s3/styles/webp/s3/migrated/dmsp.jpg.webp?itok=bR6-k2uQ",
+      "source": "https://www.nesdis.noaa.gov/s3/styles/webp/s3/migrated/dmsp.jpg.webp?itok=bR6-k2uQ",
+      "provider": "NOAA / NESDIS",
+      "sourcePage": "https://www.nesdis.noaa.gov/our-satellites/currently-flying/defense-meteorological-satellite-program",
+      "articlePage": "https://www.nesdis.noaa.gov/our-satellites/currently-flying/defense-meteorological-satellite-program",
+      "title": "DMSP satellite rendering",
+      "description": "Фото для примера — типовой рендер спутника семейства DMSP; не подтверждает конкретный борт F-17/USA 172.",
+      "credit": "NOAA / NESDIS",
+      "license": "NOAA public-domain image; check NOAA usage guidance",
+      "name": "DMSP 5F-3 (USA 172)",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T11:30:00.000Z"
     },
     "28059": {
       "status": "not-found",
@@ -881,9 +914,20 @@
       "name": ""
     },
     "29522": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:32.381Z",
-      "name": "DMSP 5D-3 F17"
+      "status": "available",
+      "path": "https://www.nesdis.noaa.gov/s3/styles/webp/s3/migrated/dmsp.jpg.webp?itok=bR6-k2uQ",
+      "source": "https://www.nesdis.noaa.gov/s3/styles/webp/s3/migrated/dmsp.jpg.webp?itok=bR6-k2uQ",
+      "provider": "NOAA / NESDIS",
+      "sourcePage": "https://www.nesdis.noaa.gov/our-satellites/currently-flying/defense-meteorological-satellite-program",
+      "articlePage": "https://www.nesdis.noaa.gov/our-satellites/currently-flying/defense-meteorological-satellite-program",
+      "title": "DMSP satellite rendering",
+      "description": "Фото для примера — типовой рендер спутника семейства DMSP; не подтверждает конкретный борт F-17.",
+      "credit": "NOAA / NESDIS",
+      "license": "NOAA public-domain image; check NOAA usage guidance",
+      "name": "DMSP 5D-3 F17",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T11:30:00.000Z"
     },
     "29601": {
       "status": "not-found",
@@ -1034,9 +1078,20 @@
       "name": "ITUPSAT 1"
     },
     "35951": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:33.584Z",
-      "name": "DMSP 5D-3 F18"
+      "status": "available",
+      "path": "https://www.nesdis.noaa.gov/s3/styles/webp/s3/migrated/dmsp.jpg.webp?itok=bR6-k2uQ",
+      "source": "https://www.nesdis.noaa.gov/s3/styles/webp/s3/migrated/dmsp.jpg.webp?itok=bR6-k2uQ",
+      "provider": "NOAA / NESDIS",
+      "sourcePage": "https://www.nesdis.noaa.gov/our-satellites/currently-flying/defense-meteorological-satellite-program",
+      "articlePage": "https://www.nesdis.noaa.gov/our-satellites/currently-flying/defense-meteorological-satellite-program",
+      "title": "DMSP satellite rendering",
+      "description": "Фото для примера — типовой рендер спутника семейства DMSP; не подтверждает конкретный борт F-18.",
+      "credit": "NOAA / NESDIS",
+      "license": "NOAA public-domain image; check NOAA usage guidance",
+      "name": "DMSP 5D-3 F18",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T11:30:00.000Z"
     },
     "36086": {
       "status": "not-found",
@@ -1392,9 +1447,20 @@
       "name": ""
     },
     "39260": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:36.228Z",
-      "name": "FENGYUN 3C"
+      "status": "available",
+      "path": "https://upload.wikimedia.org/wikipedia/commons/6/61/Fengyun_3_satellite_mockup.jpg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/6/61/Fengyun_3_satellite_mockup.jpg",
+      "provider": "Wikimedia Commons",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Fengyun_3_satellite_mockup.jpg",
+      "articlePage": "https://commons.wikimedia.org/wiki/File:Fengyun_3_satellite_mockup.jpg",
+      "title": "Fengyun-3 satellite mockup",
+      "description": "Фото для примера — фотография музейного макета семейства метеоспутников Fengyun-3; это не отдельный снимок аппарата FY-3C.",
+      "credit": "Hibiki Watabe",
+      "license": "CC BY 2.0; attribution required",
+      "name": "FENGYUN 3C",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T11:30:00.000Z"
     },
     "39265": {
       "status": "available",
@@ -1876,9 +1942,20 @@
       "name": ""
     },
     "41105": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:38.007Z",
-      "name": "Elektro-L 2"
+      "status": "available",
+      "path": "https://upload.wikimedia.org/wikipedia/commons/0/0f/Model_of_Electro-L_Meteo-cropped.jpg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/0/0f/Model_of_Electro-L_Meteo-cropped.jpg",
+      "provider": "Wikimedia Commons",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Model_of_Electro-L_Meteo-cropped.jpg",
+      "articlePage": "https://commons.wikimedia.org/wiki/File:Model_of_Electro-L_Meteo-cropped.jpg",
+      "title": "Elektro-L satellite model",
+      "description": "Фото для примера — фотография уменьшенной модели российского метеоспутника Elektro-L на авиасалоне Paris Air Show 2011, не сам аппарат в полёте.",
+      "credit": "Pavel Kolotilov",
+      "license": "CC BY-SA 3.0; attribution and share-alike required",
+      "name": "Elektro-L 2",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T11:30:00.000Z"
     },
     "41173": {
       "status": "not-found",
@@ -2142,9 +2219,20 @@
       "name": ""
     },
     "43010": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:41.777Z",
-      "name": "FengYun 3D"
+      "status": "available",
+      "path": "https://upload.wikimedia.org/wikipedia/commons/6/61/Fengyun_3_satellite_mockup.jpg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/6/61/Fengyun_3_satellite_mockup.jpg",
+      "provider": "Wikimedia Commons",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Fengyun_3_satellite_mockup.jpg",
+      "articlePage": "https://commons.wikimedia.org/wiki/File:Fengyun_3_satellite_mockup.jpg",
+      "title": "Fengyun-3 satellite mockup",
+      "description": "Фото для примера — фотография музейного макета семейства метеоспутников Fengyun-3; точная модификация FY-3D на снимке не подтверждена.",
+      "credit": "Hibiki Watabe",
+      "license": "CC BY 2.0; attribution required",
+      "name": "FengYun 3D",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T11:30:00.000Z"
     },
     "43013": {
       "status": "available",
@@ -2652,9 +2740,20 @@
       "name": ""
     },
     "49008": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:45.298Z",
-      "name": "FengYun 3E"
+      "status": "available",
+      "path": "https://upload.wikimedia.org/wikipedia/commons/6/61/Fengyun_3_satellite_mockup.jpg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/6/61/Fengyun_3_satellite_mockup.jpg",
+      "provider": "Wikimedia Commons",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Fengyun_3_satellite_mockup.jpg",
+      "articlePage": "https://commons.wikimedia.org/wiki/File:Fengyun_3_satellite_mockup.jpg",
+      "title": "Fengyun-3 satellite mockup",
+      "description": "Фото для примера — фотография музейного макета семейства метеоспутников Fengyun-3; точная модификация FY-3E на снимке не подтверждена.",
+      "credit": "Hibiki Watabe",
+      "license": "CC BY 2.0; attribution required",
+      "name": "FengYun 3E",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T11:30:00.000Z"
     },
     "49044": {
       "status": "not-found",

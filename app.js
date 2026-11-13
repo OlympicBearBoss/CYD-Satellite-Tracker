@@ -4,7 +4,7 @@ workspace:"WORKSPACE",nav_overview:"Overview",nav_radar:"Radar",nav_control:"Ant
 },
 ru:{}
 };
-const objectData={iss:{name:"МКС (ZARYA)",norad:"NORAD 25544 · НОО",az:132.4,el:67.8},noaa:{name:"NOAA 19",norad:"NORAD 33591 · МЕТЕОСПУТНИК",az:218.6,el:34.2},ao91:{name:"AO-91 (Fox-1B)",norad:"NORAD 43017 · ЛЮБИТЕЛЬСКИЙ",az:74.2,el:21.5,real:false},starlink:{name:"Starlink",norad:"ГРУППА · LEO",az:305,el:18,real:false}};
+const objectData={iss:{name:"МКС (ZARYA)",norad:"NORAD 25544 · НОО",az:0,el:-90,real:false},noaa:{name:"NOAA 19",norad:"NORAD 33591 · МЕТЕОСПУТНИК",az:0,el:-90,real:false},ao91:{name:"AO-91 (Fox-1B)",norad:"NORAD 43017 · ЛЮБИТЕЛЬСКИЙ",az:0,el:-90,real:false},starlink:{name:"Starlink",norad:"ГРУППА · LEO",az:0,el:-90,real:false}};
 let lang="ru",selected="iss",logItems=[
 ["19:42:15","INFO","Сопровождение МКС запущено","ISS tracking started"],
 ["19:40:32","SCAN","Обнаружен спутник NOAA 19","NOAA 19 satellite detected"],
@@ -54,13 +54,13 @@ $("openDevicePairing").addEventListener("click",()=>{const trigger=$("accountPro
 
 function renderRadarObjects(){
  const list=$("radarObjects");
- if(list)list.innerHTML=Object.entries(objectData).map(([id,o])=>'<div class="object-row"><div><b><i class="radar-object-dot '+id+'"></i>'+o.name+'</b><small>'+o.norad+' · '+(o.real?(o.el>0?"ВИДЕН":"НИЖЕ ГОРИЗОНТА"):"ДЕМО")+'</small></div><strong>'+o.az.toFixed(1)+'° / '+o.el.toFixed(1)+'°</strong></div>').join("");
+ if(list)list.innerHTML=Object.entries(objectData).map(([id,o])=>'<div class="object-row"><div><b><i class="radar-object-dot '+id+'"></i>'+o.name+'</b><small>'+o.norad+' · '+(o.real?(o.el>0?"ВИДЕН":"НИЖЕ ГОРИЗОНТА"):"ОЖИДАНИЕ GPS / ОРБИТ")+'</small></div><strong>'+(o.real?o.az.toFixed(1)+'° / '+o.el.toFixed(1)+'°':'—')+'</strong></div>').join("");
  const rotor=$("radarRotor"),cardinals=$("radarCardinals");if(!rotor||!cardinals)return;
  rotor.querySelectorAll(".radar-dot").forEach(n=>n.remove());const heading=Number.isFinite(window.demoDeviceHeading)?window.demoDeviceHeading:0;
  [["N","С"],["E","В"],["S","Ю"],["W","З"]].forEach(([key,label],i)=>{const angle=(i*90-heading)*Math.PI/180,r=.465,el=cardinals.querySelector('[data-dir="'+key+'"]');el.textContent=label;el.style.left=(50+Math.sin(angle)*r*100)+"%";el.style.top=(50-Math.cos(angle)*r*100)+"%";});
- Object.entries(objectData).forEach(([id,o])=>{if(o.el<=0)return;const rel=o.az*Math.PI/180,radius=.88-(Math.min(90,o.el)/90)*.65,dot=document.createElement("span");dot.className="radar-dot "+id;dot.style.left=(50+Math.sin(rel)*radius*45)+"%";dot.style.top=(50-Math.cos(rel)*radius*45)+"%";const label=document.createElement("span");label.className="radar-dot-label";label.textContent=id==="iss"?"МКС":id==="noaa"?"NOAA 19":id==="ao91"?"AO-91":"STARLINK";dot.appendChild(label);rotor.appendChild(dot);});
+ Object.entries(objectData).forEach(([id,o])=>{if(!o.real||o.el<=0)return;const rel=((o.az-heading+360)%360)*Math.PI/180,radius=.88-(Math.min(90,o.el)/90)*.65,dot=document.createElement("span");dot.className="radar-dot "+id;dot.style.left=(50+Math.sin(rel)*radius*45)+"%";dot.style.top=(50-Math.cos(rel)*radius*45)+"%";const label=document.createElement("span");label.className="radar-dot-label";label.textContent=id==="iss"?"МКС":id==="noaa"?"NOAA 19":id==="ao91"?"AO-91":"STARLINK";dot.appendChild(label);rotor.appendChild(dot);});
 }
-window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.entries(positions).forEach(([id,p])=>{if(!objectData[id])return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;});renderRadarObjects();});
+window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.values(objectData).forEach(o=>o.real=false);Object.entries(positions).forEach(([id,p])=>{if(!objectData[id])return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;});renderRadarObjects();});
 const compassNames=["СЕВЕР","СЕВЕРО-ВОСТОК","ВОСТОК","ЮГО-ВОСТОК","ЮГ","ЮГО-ЗАПАД","ЗАПАД","СЕВЕРО-ЗАПАД"];
 let deviceHeading=null,geoWatchId=null;
 function setDeviceHeading(value){
@@ -74,7 +74,7 @@ function startDeviceOrientation(){
   let heading=null;
   if(Number.isFinite(e.webkitCompassHeading))heading=e.webkitCompassHeading;
   else if(e.absolute===true&&Number.isFinite(e.alpha))heading=(360-e.alpha)%360;
-  if(heading!==null){setDeviceHeading(heading);$("deviceSensorNote").textContent="Компас получает курс от датчика ориентации устройства. Углы объектов на радаре остаются демонстрационными.";}
+  if(heading!==null){setDeviceHeading(heading);$("deviceSensorNote").textContent="Компас и радар ориентированы по датчикам устройства; положение спутников рассчитывается по GPS и актуальным орбитальным данным.";}
  };
  window.addEventListener("deviceorientationabsolute",onOrientation,true);
  window.addEventListener("deviceorientation",onOrientation,true);
@@ -90,7 +90,7 @@ function startDeviceLocation(){
  status.innerHTML="<i></i>ЗАПРОС GPS";
  note.textContent="Ожидаю разрешение браузера и координаты устройства. На телефоне включите системную геолокацию и разрешите доступ этому сайту.";
  const onPosition=pos=>{
-  const c=pos.coords,lat=c.latitude,lon=c.longitude;window.cydObserverLocation={latitude:lat,longitude:lon,height:Number.isFinite(c.altitude)?c.altitude/1000:0};window.dispatchEvent(new Event("cyd-observer-change"));
+  const c=pos.coords,lat=c.latitude,lon=c.longitude;window.cydObserverLocation={latitude:lat,longitude:lon,height:Number.isFinite(c.altitude)?c.altitude/1000:0,accuracy:c.accuracy,timestamp:pos.timestamp};if($("observerLat"))$("observerLat").value=lat.toFixed(6);if($("observerLon"))$("observerLon").value=lon.toFixed(6);if($("observerAltitude")&&Number.isFinite(c.altitude))$("observerAltitude").value=Math.round(c.altitude);window.dispatchEvent(new Event("cyd-observer-change"));
   $("gpsLat").textContent=Math.abs(lat).toFixed(5)+"° "+(lat>=0?"N":"S");
   $("gpsLon").textContent=Math.abs(lon).toFixed(5)+"° "+(lon>=0?"E":"W");
   $("gpsAlt").textContent=Number.isFinite(c.altitude)?Math.round(c.altitude)+" м":"—";

@@ -4,7 +4,7 @@ workspace:"WORKSPACE",nav_overview:"Overview",nav_radar:"Radar",nav_control:"Ant
 },
 ru:{}
 };
-const objectData={iss:{name:"МКС (ZARYA)",norad:"NORAD 25544 · НОО",az:0,el:-90,real:false},noaa:{name:"NOAA 19",norad:"NORAD 33591 · МЕТЕОСПУТНИК",az:0,el:-90,real:false},ao91:{name:"AO-91 (Fox-1B)",norad:"NORAD 43017 · ЛЮБИТЕЛЬСКИЙ",az:0,el:-90,real:false},starlink:{name:"Starlink",norad:"ГРУППА · LEO",az:0,el:-90,real:false}};
+const objectData={iss:{name:"МКС (ZARYA)",norad:"NORAD 25544 · НОО",az:132.4,el:67.8,real:false},noaa:{name:"NOAA 19",norad:"NORAD 33591 · МЕТЕОСПУТНИК",az:218.6,el:34.2,real:false},ao91:{name:"AO-91 (Fox-1B)",norad:"NORAD 43017 · ЛЮБИТЕЛЬСКИЙ",az:74.2,el:21.5,real:false},starlink:{name:"Starlink",norad:"ГРУППА · LEO",az:305,el:18,real:false}};
 let lang="ru",selected="iss",logItems=[
 ["19:42:15","INFO","Сопровождение МКС запущено","ISS tracking started"],
 ["19:40:32","SCAN","Обнаружен спутник NOAA 19","NOAA 19 satellite detected"],

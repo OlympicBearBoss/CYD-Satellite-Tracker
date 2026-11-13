@@ -88,6 +88,52 @@ async function searchNasaImage(name, id) {
   return null;
 }
 
+async function searchWikipediaImage(name, id) {
+  if (!name || normalizedText(name).length < 4) return null;
+  const search = new URLSearchParams({
+    action: "query", list: "search", srsearch: name + " satellite",
+    srnamespace: "0", srlimit: "8", format: "json"
+  });
+  const results = await json("https://en.wikipedia.org/w/api.php?" + search.toString());
+  for (const article of results?.query?.search || []) {
+    const params = new URLSearchParams({
+      action: "query", prop: "pageimages|extracts",
+      titles: article.title, piprop: "name", exintro: "1",
+      explaintext: "1", exchars: "1800", format: "json"
+    });
+    const pageData = await json("https://en.wikipedia.org/w/api.php?" + params.toString());
+    const page = Object.values(pageData?.query?.pages || {})[0];
+    if (!page?.pageimage || !matchesSatellite([page.title, page.extract].join(" "), name, id)) continue;
+    const fileParams = new URLSearchParams({
+      action: "query", prop: "imageinfo", titles: "File:" + page.pageimage,
+      iiprop: "url|extmetadata", iiurlwidth: "1200", format: "json"
+    });
+    const fileData = await json("https://en.wikipedia.org/w/api.php?" + fileParams.toString());
+    const filePage = Object.values(fileData?.query?.pages || {})[0];
+    const info = (filePage?.imageinfo || [])[0];
+    if (!info) continue;
+    const ext = info.extmetadata || {};
+    const description = ext.ImageDescription?.value || "";
+    const fileTitle = filePage.title || page.pageimage;
+    if (!matchesSatellite([page.title, page.extract, fileTitle, description].join(" "), name, id)) continue;
+    const license = ext.LicenseShortName?.value || "";
+    if (!/^(CC0|Public domain|PD|CC BY(?:-SA)?)/i.test(license)) continue;
+    const source = normalizeImageUrl(info.thumburl || info.url);
+    if (!source) continue;
+    return {
+      url: source,
+      provider: "Wikipedia",
+      sourcePage: info.descriptionurl || ("https://en.wikipedia.org/wiki/" + encodeURIComponent(page.title.replace(/ /g, "_"))),
+      articlePage: "https://en.wikipedia.org/wiki/" + encodeURIComponent(page.title.replace(/ /g, "_")),
+      title: page.title + " — " + fileTitle,
+      description: String(description).replace(/<[^>]*>/g, "").slice(0, 700),
+      credit: ext.Artist?.value || ext.Credit?.value || "",
+      license
+    };
+  }
+  return null;
+}
+
 async function searchCommonsImage(name, id) {
   if (!name || normalizedText(name).length < 4) return null;
   const params = new URLSearchParams({
@@ -122,7 +168,7 @@ async function searchCommonsImage(name, id) {
 }
 
 async function findExternalImage(name, id) {
-  for (const finder of [searchNasaImage, searchCommonsImage]) {
+  for (const finder of [searchNasaImage, searchWikipediaImage, searchCommonsImage]) {
     try {
       const result = await finder(name, id);
       if (result) return result;
@@ -243,7 +289,7 @@ for (const id of due) {
         status: "available",
         path: "/satellite-images/" + filename,
         source,
-        sourcePage: provenance.sourcePage,
+        sourcePage: provenance.sourcePage,\n        articlePage: provenance.articlePage || "",
         provider: provenance.provider,
         title: provenance.title || name,
         description: provenance.description || "",

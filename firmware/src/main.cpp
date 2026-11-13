@@ -1572,6 +1572,19 @@ static void updatePassPrediction(time_t now) {
   }
 }
 static void updateSelectedOrbit() {
+  // Keep the observer position current even before Wi-Fi, NTP, or TLE is ready.
+  // This also makes the local API report the real GPS observer immediately.
+  observerUsesGps=gps.location.isValid() && gps.location.age()<10000;
+  if(observerUsesGps) {
+    observerLatitude=gps.location.lat();
+    observerLongitude=gps.location.lng();
+    observerAltitudeM=gps.altitude.isValid()?gps.altitude.meters():0.0;
+  } else {
+    observerLatitude=DEMO_OBSERVER_LAT;
+    observerLongitude=DEMO_OBSERVER_LON;
+    observerAltitudeM=DEMO_OBSERVER_ALT_M;
+  }
+
   // Give the local control page and touch UI a clean startup window before
   // starting any blocking outbound HTTPS/TLE work.
   if(WiFi.status()!=WL_CONNECTED || !localApiStarted || firstSiteClientAt==0 ||
@@ -1590,16 +1603,6 @@ static void updateSelectedOrbit() {
   }
   if(!issTleValid || millis()-lastOrbitCalcMs<1000) return;
   lastOrbitCalcMs=millis();
-  observerUsesGps=gps.location.isValid() && gps.location.age()<10000;
-  if(observerUsesGps) {
-    observerLatitude=gps.location.lat();
-    observerLongitude=gps.location.lng();
-    observerAltitudeM=gps.altitude.isValid()?gps.altitude.meters():0.0;
-  } else {
-    observerLatitude=DEMO_OBSERVER_LAT;
-    observerLongitude=DEMO_OBSERVER_LON;
-    observerAltitudeM=DEMO_OBSERVER_ALT_M;
-  }
   issSgp4.site(observerLatitude,observerLongitude,observerAltitudeM);
   issSgp4.findsat((unsigned long)now);
   orbitUtcEpoch=now;
@@ -1688,7 +1691,7 @@ static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V91";
+  doc["firmware"]="V95";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;

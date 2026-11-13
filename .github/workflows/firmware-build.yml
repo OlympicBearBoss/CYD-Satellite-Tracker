@@ -1,4 +1,4 @@
-name: CYD firmware build # V94 opaque text rendering and translated countdown and pass radar without ESP32 HTTPS downloads
+name: CYD firmware build # V95 GPS observer integration on tested V94 satellite radar base
 
 on:
   pull_request:
@@ -43,6 +43,9 @@ jobs:
           grep -q 'USERTrust RSA Certification Authority' src/main.cpp
           grep -q 'Sectigo Public Server Authentication Root R46' src/main.cpp
           grep -q 'GTS Root R1' src/main.cpp
+          grep -q 'constexpr int GPS_RX = 34;' include/BoardConfig.h
+          grep -q 'Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1)' src/main.cpp
+          grep -q 'gps.location.age()<10000' src/main.cpp
 
       - name: Build CYD firmware
         working-directory: firmware
@@ -52,7 +55,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.12.94"
+          FW_VERSION="v2026.11.13.95"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 
@@ -113,7 +116,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CYD-Satellite-Tracker-firmware-v2026.11.12.94
+          name: CYD-Satellite-Tracker-firmware-v2026.11.13.95
           path: release/
           if-no-files-found: error
           retention-days: 30

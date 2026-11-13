@@ -13,7 +13,10 @@ constexpr int AZ_DIR  = 18;
 constexpr int EL_STEP = 19;
 constexpr int EL_DIR  = 23;
 
-// NEO-6M TX -> ESP32 RX. GPS RX is not used.
+// NEO-6M TX -> ESP32 UART2 RX on GPIO34 (input-only).
+// GPIO34 is also connected to the CYD light sensor; firmware does not use the LDR.
+// Do not use GPIO26 (on-board speaker amplifier input) or GPIO4 (RGB LED / AZ_STEP).
+// NEO-6M RX is not required for one-way NMEA reception.
 constexpr int GPS_RX = 34;
 constexpr int GPS_TX_UNUSED = -1;
 

@@ -96,12 +96,12 @@ function renderRadarObjects(){
   if(el){el.textContent=label;el.style.left=(50+Math.sin(angle)*r*100)+"%";el.style.top=(50-Math.cos(angle)*r*100)+"%";}
  });
  Object.entries(objectData).forEach(([id,o])=>{
-  const visible=o.real&&o.el>0;
+  const visible=o.real&&o.aboveHorizon===true;
   if(list){
    const row=list.querySelector('[data-radar-object="'+id+'"]');
    if(row){
     const name=row.querySelector("[data-object-name]"),meta=row.querySelector("[data-object-meta]"),position=row.querySelector("[data-object-position]");
-    const nextMeta=o.norad+" · "+(o.real?(o.el>0?"ВИДЕН":"НИЖЕ ГОРИЗОНТА"):"ОЖИДАНИЕ GPS / ОРБИТ");
+    const nextMeta=o.norad+" · "+(o.real?(o.aboveHorizon?"ВИДЕН":"НИЖЕ ГОРИЗОНТА"):"ОЖИДАНИЕ GPS / ОРБИТ");
     const nextPosition=o.real?o.az.toFixed(1)+"° / "+o.el.toFixed(1)+"°":"—";
     if(name.textContent!==o.name)name.textContent=o.name;
     if(meta.textContent!==nextMeta)meta.textContent=nextMeta;
@@ -122,7 +122,7 @@ function renderRadarObjects(){
  }
  });
 }
-window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.entries(positions).forEach(([id,p])=>{if(!objectData[id]||!Number.isFinite(p.az)||!Number.isFinite(p.el))return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;});renderRadarObjects();});
+window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.entries(positions).forEach(([id,p])=>{if(!objectData[id]||!Number.isFinite(p.az)||!Number.isFinite(p.el))return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;if(objectData[id].aboveHorizon===undefined)objectData[id].aboveHorizon=p.el>0.75;else if(objectData[id].aboveHorizon&&p.el< -0.75)objectData[id].aboveHorizon=false;else if(!objectData[id].aboveHorizon&&p.el>0.75)objectData[id].aboveHorizon=true;});renderRadarObjects();});
 const compassNames=["СЕВЕР","СЕВЕРО-ВОСТОК","ВОСТОК","ЮГО-ВОСТОК","ЮГ","ЮГО-ЗАПАД","ЗАПАД","СЕВЕРО-ЗАПАД"];
 let deviceHeading=null,geoWatchId=null;
 function setDeviceHeading(value){

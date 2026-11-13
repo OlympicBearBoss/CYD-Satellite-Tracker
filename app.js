@@ -76,7 +76,7 @@ async function refreshLiveDevice(){
   $("liveDeviceCoords").textContent=tdata.gps_valid&&Number.isFinite(tdata.latitude)&&Number.isFinite(tdata.longitude)?tdata.latitude.toFixed(5)+", "+tdata.longitude.toFixed(5):"—";
   $("liveDeviceSeen").textContent=device.last_seen_at?new Date(device.last_seen_at*1000).toLocaleString():"—";
   if(result)result.textContent=online?"Телеметрия получена с устройства.":"Последняя связь: "+(device.last_seen_at?new Date(device.last_seen_at*1000).toLocaleString():"нет данных");
- }catch(e){if(result)result.textContent=e.message;}
+ }catch(e){selectObserverSource(null);if(result)result.textContent=e.message;}
 }
 $("testConnection").addEventListener("click",refreshLiveDevice);
 refreshLiveDevice();setInterval(refreshLiveDevice,5000);

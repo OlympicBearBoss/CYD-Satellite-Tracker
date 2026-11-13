@@ -122,7 +122,7 @@ function renderRadarObjects(){
  }
  });
 }
-window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.values(objectData).forEach(o=>o.real=false);Object.entries(positions).forEach(([id,p])=>{if(!objectData[id])return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;});renderRadarObjects();});
+window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.entries(positions).forEach(([id,p])=>{if(!objectData[id]||!Number.isFinite(p.az)||!Number.isFinite(p.el))return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;});renderRadarObjects();});
 const compassNames=["СЕВЕР","СЕВЕРО-ВОСТОК","ВОСТОК","ЮГО-ВОСТОК","ЮГ","ЮГО-ЗАПАД","ЗАПАД","СЕВЕРО-ЗАПАД"];
 let deviceHeading=null,geoWatchId=null;
 function setDeviceHeading(value){

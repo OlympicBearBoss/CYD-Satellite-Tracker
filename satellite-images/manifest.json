@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T08:30:00.000Z",
+  "generatedAt": "2026-11-13T09:20:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -2737,9 +2737,20 @@
       "name": ""
     },
     "57166": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:48.478Z",
-      "name": "METEOR M2-3"
+      "status": "available",
+      "path": "https://www.russianspaceweb.com/images/spacecraft/application/weather/meteor/meteor_m2_3/meteor_m2_3_assembly_2.jpg",
+      "source": "https://www.russianspaceweb.com/images/spacecraft/application/weather/meteor/meteor_m2_3/meteor_m2_3_assembly_2.jpg",
+      "provider": "RussianSpaceWeb / VNIIEM",
+      "sourcePage": "https://www.russianspaceweb.com/meteor-m2-3.html",
+      "articlePage": "https://www.russianspaceweb.com/meteor-m2-3.html",
+      "title": "Meteor-M2-3 during assembly",
+      "description": "Фото для примера — фотография Meteor-M2-3 во время сборки; показан аппарат в предстартовой конфигурации.",
+      "credit": "VNIIEM (указано на странице источника)",
+      "license": "Все права защищены; использование изображения на сайте требует проверки разрешения",
+      "name": "METEOR M2-3",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T09:20:00.000Z"
     },
     "57172": {
       "status": "available",
@@ -3034,9 +3045,20 @@
       "name": "SONATE-2"
     },
     "59481": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:55.000Z",
-      "name": "WSF-M"
+      "status": "available",
+      "path": "https://www.baesystems.com/dam/jcr%3Aa0136076-11d7-4462-8318-614723d40453",
+      "source": "https://www.baesystems.com/dam/jcr%3Aa0136076-11d7-4462-8318-614723d40453",
+      "provider": "BAE Systems",
+      "sourcePage": "https://www.baesystems.com/en-us/product/wsf-m",
+      "articlePage": "https://www.baesystems.com/en-us/product/wsf-m",
+      "title": "WSF-M satellite in cleanroom",
+      "description": "Фото для примера — официальный снимок спутника WSF-M во время сборки и испытаний; не изображение аппарата на орбите.",
+      "credit": "BAE Systems",
+      "license": "Условия использования уточняются; см. страницу источника",
+      "name": "WSF-M",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T09:20:00.000Z"
     },
     "59588": {
       "status": "available",
@@ -3115,29 +3137,84 @@
       "name": "ROBUSTA-3A"
     },
     "61045": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:15:17.538Z",
-      "name": "Bluebird 03"
+      "status": "available",
+      "path": "https://ast-science.com/wp-content/uploads/2025/12/AST_OP1-7-1024x1024.webp",
+      "source": "https://ast-science.com/wp-content/uploads/2025/12/AST_OP1-7-1024x1024.webp",
+      "provider": "AST SpaceMobile",
+      "sourcePage": "https://ast-science.com/bluebird-1-5/",
+      "articlePage": "https://ast-science.com/bluebird-1-5/",
+      "title": "BlueBird 1-5 representative satellite rendering",
+      "description": "Фото для примера — общий рендер семейства BlueBird 1-5. Изображение не позволяет определить конкретный аппарат NORAD.",
+      "credit": "AST SpaceMobile",
+      "license": "Условия использования уточняются; см. страницу источника",
+      "name": "Bluebird 03",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T09:20:00.000Z"
     },
     "61046": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:15:17.857Z",
-      "name": "Bluebird 05"
+      "status": "available",
+      "path": "https://ast-science.com/wp-content/uploads/2025/12/AST_OP1-7-1024x1024.webp",
+      "source": "https://ast-science.com/wp-content/uploads/2025/12/AST_OP1-7-1024x1024.webp",
+      "provider": "AST SpaceMobile",
+      "sourcePage": "https://ast-science.com/bluebird-1-5/",
+      "articlePage": "https://ast-science.com/bluebird-1-5/",
+      "title": "BlueBird 1-5 representative satellite rendering",
+      "description": "Фото для примера — общий рендер семейства BlueBird 1-5. Изображение не позволяет определить конкретный аппарат NORAD.",
+      "credit": "AST SpaceMobile",
+      "license": "Условия использования уточняются; см. страницу источника",
+      "name": "Bluebird 05",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T09:20:00.000Z"
     },
     "61047": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:15:18.175Z",
-      "name": "Bluebird 01"
+      "status": "available",
+      "path": "https://ast-science.com/wp-content/uploads/2025/12/AST_OP1-7-1024x1024.webp",
+      "source": "https://ast-science.com/wp-content/uploads/2025/12/AST_OP1-7-1024x1024.webp",
+      "provider": "AST SpaceMobile",
+      "sourcePage": "https://ast-science.com/bluebird-1-5/",
+      "articlePage": "https://ast-science.com/bluebird-1-5/",
+      "title": "BlueBird 1-5 representative satellite rendering",
+      "description": "Фото для примера — общий рендер семейства BlueBird 1-5. Изображение не позволяет определить конкретный аппарат NORAD.",
+      "credit": "AST SpaceMobile",
+      "license": "Условия использования уточняются; см. страницу источника",
+      "name": "Bluebird 01",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T09:20:00.000Z"
     },
     "61048": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:15:18.502Z",
-      "name": "Bluebird 02"
+      "status": "available",
+      "path": "https://ast-science.com/wp-content/uploads/2025/12/AST_OP1-7-1024x1024.webp",
+      "source": "https://ast-science.com/wp-content/uploads/2025/12/AST_OP1-7-1024x1024.webp",
+      "provider": "AST SpaceMobile",
+      "sourcePage": "https://ast-science.com/bluebird-1-5/",
+      "articlePage": "https://ast-science.com/bluebird-1-5/",
+      "title": "BlueBird 1-5 representative satellite rendering",
+      "description": "Фото для примера — общий рендер семейства BlueBird 1-5. Изображение не позволяет определить конкретный аппарат NORAD.",
+      "credit": "AST SpaceMobile",
+      "license": "Условия использования уточняются; см. страницу источника",
+      "name": "Bluebird 02",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T09:20:00.000Z"
     },
     "61049": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:15:18.837Z",
-      "name": "Bluebird 04"
+      "status": "available",
+      "path": "https://ast-science.com/wp-content/uploads/2025/12/AST_OP1-7-1024x1024.webp",
+      "source": "https://ast-science.com/wp-content/uploads/2025/12/AST_OP1-7-1024x1024.webp",
+      "provider": "AST SpaceMobile",
+      "sourcePage": "https://ast-science.com/bluebird-1-5/",
+      "articlePage": "https://ast-science.com/bluebird-1-5/",
+      "title": "BlueBird 1-5 representative satellite rendering",
+      "description": "Фото для примера — общий рендер семейства BlueBird 1-5. Изображение не позволяет определить конкретный аппарат NORAD.",
+      "credit": "AST SpaceMobile",
+      "license": "Условия использования уточняются; см. страницу источника",
+      "name": "Bluebird 04",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T09:20:00.000Z"
     },
     "61182": {
       "status": "not-found",
@@ -3504,9 +3581,20 @@
       "name": "KNACKSAT-2"
     },
     "67685": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:29.165Z",
-      "name": "CoRAL"
+      "status": "available",
+      "path": "https://www.s5lab.space/_astro/coral-team-jaxa.Dbp6f6SF_kTjem.webp",
+      "source": "https://www.s5lab.space/_astro/coral-team-jaxa.Dbp6f6SF_kTjem.webp",
+      "provider": "S5Lab / Sapienza University of Rome",
+      "sourcePage": "https://www.s5lab.space/coral/",
+      "articlePage": "https://www.s5lab.space/coral/",
+      "title": "CoRAL team with flight model and deployer",
+      "description": "Фото для примера — на снимке команда и flight model CoRAL с контейнером; сам спутник виден в нижней центральной части.",
+      "credit": "S5Lab / Sapienza University of Rome",
+      "license": "Условия повторного использования на странице не указаны; ссылка на источник",
+      "name": "CoRAL",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T09:20:00.000Z"
     },
     "67688": {
       "status": "not-found",

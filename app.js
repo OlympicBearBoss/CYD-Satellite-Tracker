@@ -83,12 +83,44 @@ refreshLiveDevice();setInterval(refreshLiveDevice,5000);
 $("openDevicePairing").addEventListener("click",()=>{const trigger=$("accountProfileOpen");if(trigger)trigger.click();else $("connectionResult").textContent="Сначала войдите в аккаунт.";});
 
 function renderRadarObjects(){
- const list=$("radarObjects");
- if(list)list.innerHTML=Object.entries(objectData).map(([id,o])=>'<div class="object-row"><div><b><i class="radar-object-dot '+id+'"></i>'+o.name+'</b><small>'+o.norad+' · '+(o.real?(o.el>0?"ВИДЕН":"НИЖЕ ГОРИЗОНТА"):"ОЖИДАНИЕ GPS / ОРБИТ")+'</small></div><strong>'+(o.real?o.az.toFixed(1)+'° / '+o.el.toFixed(1)+'°':'—')+'</strong></div>').join("");
- const rotor=$("radarRotor"),cardinals=$("radarCardinals");if(!rotor||!cardinals)return;
- rotor.querySelectorAll(".radar-dot").forEach(n=>n.remove());const heading=Number.isFinite(window.demoDeviceHeading)?window.demoDeviceHeading:0;
- [["N","С"],["E","В"],["S","Ю"],["W","З"]].forEach(([key,label],i)=>{const angle=(i*90-heading)*Math.PI/180,r=.465,el=cardinals.querySelector('[data-dir="'+key+'"]');el.textContent=label;el.style.left=(50+Math.sin(angle)*r*100)+"%";el.style.top=(50-Math.cos(angle)*r*100)+"%";});
- Object.entries(objectData).forEach(([id,o])=>{if(!o.real||o.el<=0)return;const rel=((o.az-heading+360)%360)*Math.PI/180,radius=.88-(Math.min(90,o.el)/90)*.65,dot=document.createElement("span");dot.className="radar-dot "+id;dot.style.left=(50+Math.sin(rel)*radius*45)+"%";dot.style.top=(50-Math.cos(rel)*radius*45)+"%";const label=document.createElement("span");label.className="radar-dot-label";label.textContent=id==="iss"?"МКС":id==="noaa"?"NOAA 19":id==="ao91"?"AO-91":"STARLINK";dot.appendChild(label);rotor.appendChild(dot);});
+ const list=$("radarObjects"),rotor=$("radarRotor"),cardinals=$("radarCardinals");
+ if(!rotor||!cardinals)return;
+ // Создаём строки списка один раз: обновления компаса не должны пересоздавать DOM.
+ if(list&&!list.dataset.initialized){
+  list.innerHTML=Object.entries(objectData).map(([id,o])=>'<div class="object-row" data-radar-object="'+id+'"><div><b><i class="radar-object-dot '+id+'"></i><span data-object-name></span></b><small data-object-meta></small></div><strong data-object-position></strong></div>').join("");
+  list.dataset.initialized="1";
+ }
+ const heading=Number.isFinite(window.demoDeviceHeading)?window.demoDeviceHeading:0;
+ [["N","С"],["E","В"],["S","Ю"],["W","З"]].forEach(([key,label],i)=>{
+  const angle=(i*90-heading)*Math.PI/180,r=.465,el=cardinals.querySelector('[data-dir="'+key+'"]');
+  if(el){el.textContent=label;el.style.left=(50+Math.sin(angle)*r*100)+"%";el.style.top=(50-Math.cos(angle)*r*100)+"%";}
+ });
+ Object.entries(objectData).forEach(([id,o])=>{
+  const visible=o.real&&o.el>0;
+  if(list){
+   const row=list.querySelector('[data-radar-object="'+id+'"]');
+   if(row){
+    const name=row.querySelector("[data-object-name]"),meta=row.querySelector("[data-object-meta]"),position=row.querySelector("[data-object-position]");
+    const nextMeta=o.norad+" · "+(o.real?(o.el>0?"ВИДЕН":"НИЖЕ ГОРИЗОНТА"):"ОЖИДАНИЕ GPS / ОРБИТ");
+    const nextPosition=o.real?o.az.toFixed(1)+"° / "+o.el.toFixed(1)+"°":"—";
+    if(name.textContent!==o.name)name.textContent=o.name;
+    if(meta.textContent!==nextMeta)meta.textContent=nextMeta;
+    if(position.textContent!==nextPosition)position.textContent=nextPosition;
+   }
+  }
+  let dot=rotor.querySelector('.radar-dot[data-satellite="'+id+'"]');
+  if(!visible){if(dot)dot.remove();return;}
+  if(!dot){
+   dot=document.createElement("span");dot.className="radar-dot "+id;dot.dataset.satellite=id;
+   const label=document.createElement("span");label.className="radar-dot-label";
+   label.textContent=id==="iss"?"МКС":id==="noaa"?"NOAA 19":id==="ao91"?"AO-91":"STARLINK";
+   dot.appendChild(label);rotor.appendChild(dot);
+  }
+  const rel=((o.az-heading+360)%360)*Math.PI/180,radius=.88-(Math.min(90,o.el)/90)*.65;
+  dot.style.left=(50+Math.sin(rel)*radius*45)+"%";
+  dot.style.top=(50-Math.cos(rel)*radius*45)+"%";
+ }
+ });
 }
 window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.values(objectData).forEach(o=>o.real=false);Object.entries(positions).forEach(([id,p])=>{if(!objectData[id])return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;});renderRadarObjects();});
 const compassNames=["СЕВЕР","СЕВЕРО-ВОСТОК","ВОСТОК","ЮГО-ВОСТОК","ЮГ","ЮГО-ЗАПАД","ЗАПАД","СЕВЕРО-ЗАПАД"];

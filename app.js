@@ -97,7 +97,7 @@ function renderRadarObjects(updateList=false){
  });
  Object.entries(objectData).forEach(([id,o])=>{
   const visible=o.real&&o.aboveHorizon===true;
-  if(list){
+  if(updateList&&list){
    const row=list.querySelector('[data-radar-object="'+id+'"]');
    if(row){
     const name=row.querySelector("[data-object-name]"),meta=row.querySelector("[data-object-meta]"),position=row.querySelector("[data-object-position]");
@@ -119,7 +119,6 @@ function renderRadarObjects(updateList=false){
   const rel=((o.az-heading+360)%360)*Math.PI/180,radius=.88-(Math.min(90,o.el)/90)*.65;
   dot.style.left=(50+Math.sin(rel)*radius*45)+"%";
   dot.style.top=(50-Math.cos(rel)*radius*45)+"%";
- }
  });
 }
 window.addEventListener("cyd-orbit-update",()=>{const positions=window.cydRadarPositions||{};Object.entries(positions).forEach(([id,p])=>{if(!objectData[id]||!Number.isFinite(p.az)||!Number.isFinite(p.el))return;objectData[id].az=p.az;objectData[id].el=p.el;objectData[id].real=true;if(objectData[id].aboveHorizon===undefined)objectData[id].aboveHorizon=p.el>0.75;else if(objectData[id].aboveHorizon&&p.el< -0.75)objectData[id].aboveHorizon=false;else if(!objectData[id].aboveHorizon&&p.el>0.75)objectData[id].aboveHorizon=true;});renderRadarObjects(true);});

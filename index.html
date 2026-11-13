@@ -833,17 +833,44 @@ function renderRadarPassOverlay(){
  }
 }
 function renderRadarObjects(){
- const rows=Object.entries(objectData).filter(([id,o])=>!cydLiveConnected||o.real);
- const list=$("radarObjects");
- if(list)list.innerHTML=rows.length?rows.map(([id,o])=>'<div class="object-row"><div><b><i class="radar-object-dot '+id+'"></i>'+o.name+'</b><small>'+o.norad+' · '+(o.real?(o.el>0?"ВИДЕН":"НИЖЕ ГОРИЗОНТА"):"ДЕМО")+'</small></div><strong>'+o.az.toFixed(1)+'° / '+o.el.toFixed(1)+'°</strong></div>').join(""):cydLiveConnected?'<div class="note">CYD подключён, но плата пока не передала валидное положение спутника. Синтетические позиции скрыты.</div>':"";
- const rotor=$("radarRotor");
+ const list=$("radarObjects"),rotor=$("radarRotor");
+ if(list){
+  // Строки списка создаются один раз. Повторные события компаса не меняют DOM-структуру.
+  if(!list.dataset.stableRows){
+   list.innerHTML=Object.entries(objectData).map(([id])=>'<div class="object-row" data-radar-object="'+id+'"><div><b><i class="radar-object-dot '+id+'"></i><span data-object-name></span></b><small data-object-meta></small></div><strong data-object-position></strong></div>').join("");
+   list.dataset.stableRows="1";
+  }
+  Object.entries(objectData).forEach(([id,o])=>{
+   const row=list.querySelector('[data-radar-object="'+id+'"]');
+   if(!row)return;
+   const show=!cydLiveConnected||o.real;
+   row.hidden=!show;
+   if(!show)return;
+   const name=row.querySelector("[data-object-name]");
+   const meta=row.querySelector("[data-object-meta]");
+   const position=row.querySelector("[data-object-position]");
+   const nextName=o.name||id;
+   const nextMeta=(o.norad||"")+' · '+(o.real?(o.el>0?"ВИДЕН":"НИЖЕ ГОРИЗОНТА"):"ДЕМО");
+   const nextPosition=Number.isFinite(o.az)&&Number.isFinite(o.el)?o.az.toFixed(1)+"° / "+o.el.toFixed(1)+"°":"—";
+   if(name&&name.textContent!==nextName)name.textContent=nextName;
+   if(meta&&meta.textContent!==nextMeta)meta.textContent=nextMeta;
+   if(position&&position.textContent!==nextPosition)position.textContent=nextPosition;
+  });
+ }
  if(rotor){
-  rotor.querySelectorAll(".radar-dot").forEach(n=>n.remove());
-  rows.forEach(([id,o])=>{
-   if(o.el<=0)return;
-   const rel=o.az*Math.PI/180,radius=.88-(Math.min(90,o.el)/90)*.65,dot=document.createElement("span");
-   dot.className="radar-dot "+id;dot.style.left=(50+Math.sin(rel)*radius*45)+"%";dot.style.top=(50-Math.cos(rel)*radius*45)+"%";
-   const label=document.createElement("span");label.className="radar-dot-label";label.textContent=id==="iss"?"МКС":id==="noaa"?"NOAA 19":id==="ao91"?"AO-91":(objectData[id]?objectData[id].name:"STARLINK");dot.appendChild(label);rotor.appendChild(dot);
+  Object.entries(objectData).forEach(([id,o])=>{
+   const visible=(!cydLiveConnected||o.real)&&Number.isFinite(o.el)&&o.el>0;
+   let dot=rotor.querySelector('.radar-dot[data-satellite="'+id+'"]');
+   if(!visible){if(dot)dot.remove();return;}
+   if(!dot){
+    dot=document.createElement("span");dot.className="radar-dot "+id;dot.dataset.satellite=id;
+    const label=document.createElement("span");label.className="radar-dot-label";
+    label.textContent=id==="iss"?"МКС":id==="noaa"?"NOAA 19":id==="ao91"?"AO-91":o.name||id;
+    dot.appendChild(label);rotor.appendChild(dot);
+   }
+   const rel=o.az*Math.PI/180,radius=.88-(Math.min(90,o.el)/90)*.65;
+   dot.style.left=(50+Math.sin(rel)*radius*45)+"%";
+   dot.style.top=(50-Math.cos(rel)*radius*45)+"%";
   });
  }
  renderRadarPassOverlay();

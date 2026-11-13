@@ -157,7 +157,7 @@
   // Images are served as static repository assets; the API remains a fallback
   // for objects not yet included in the checked-in image library.
   let satelliteImageManifest = {};
-  const satelliteImageManifestReady = fetch("/satellite-images/manifest.json?v=20261113-1400", {cache:"no-store"})
+  const satelliteImageManifestReady = fetch("/satellite-images/manifest.json?v=20261113-1500", {cache:"no-store"})
     .then(response => response.ok ? response.json() : null)
     .then(data => {
       satelliteImageManifest = data && data.images && typeof data.images === "object" ? data.images : {};

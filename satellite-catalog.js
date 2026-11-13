@@ -195,45 +195,33 @@
     cubesat:{history:"CubeSat — стандартизированный формат малых спутников для университетских, научных и коммерческих миссий.",tech:"Модульная платформа; базовый модуль 1U имеет размер около 10×10×10 см.",frequencies:"Радиочастоты индивидуальны для миссии. Без подтверждённой координации оператора не указываются."},
     visual:{history:"Объект включён в каталог наблюдаемых спутников проекта.",tech:"Орбитальные элементы загружаются из OMM/CelesTrak и рассчитываются методом SGP4.",frequencies:"Рабочие частоты зависят от назначения и оборудования. Для точных значений требуется идентификация радиосистемы."}
   };
-  let previewHideTimer=null, previewHoldTimer=null;
   function ensureSatellitePreview(){
     if($("satelliteHoverPreview")) return;
     const css=document.createElement("style");
-    css.textContent="#satelliteHoverPreview{position:fixed;z-index:99999;width:min(440px,calc(100vw - 24px));max-height:72vh;overflow:auto;padding:13px;border:1px solid #52718c;border-radius:16px;background:rgba(12,22,36,.97);color:#edf6ff;box-shadow:0 18px 55px #0009;backdrop-filter:blur(18px);font:13px/1.45 -apple-system,BlinkMacSystemFont,sans-serif}#satelliteHoverPreview[hidden]{display:none}#satelliteHoverPreview img{display:block;width:100%;height:240px;object-fit:contain;object-position:center;background:rgba(255,255,255,.06);border-radius:12px;margin-bottom:12px}#satelliteHoverPreview h3{font-size:15px;margin:0 0 7px}#satelliteHoverPreview p{margin:6px 0}#satelliteHoverPreview b,#satelliteHoverPreview a{color:#8ed7ff}";
+    css.textContent="#satelliteHoverPreview{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(2,8,16,.78);backdrop-filter:blur(8px);color:#edf6ff;font:13px/1.5 -apple-system,BlinkMacSystemFont,sans-serif}#satelliteHoverPreview[hidden]{display:none}#satelliteHelpCard{position:relative;width:min(620px,100%);max-height:88vh;overflow:auto;padding:16px;border:1px solid #52718c;border-radius:16px;background:#0c1624;box-shadow:0 18px 55px #0009}#satelliteHelpCard img{display:block;width:100%;height:220px;object-fit:contain;object-position:center;background:rgba(255,255,255,.06);border-radius:12px;margin:10px 0 12px}#satelliteHelpCard h3{font-size:16px;margin:0 0 7px;padding-right:90px}#satelliteHelpCard p{margin:7px 0}#satelliteHelpCard b,#satelliteHelpCard a{color:#8ed7ff}#satelliteHelpClose{position:absolute;right:14px;top:12px;border:1px solid #52718c;border-radius:8px;background:#102b43;color:#eaf7ff;padding:7px 12px;cursor:pointer}";
     document.head.appendChild(css);
-    const box=document.createElement("aside");box.id="satelliteHoverPreview";box.hidden=true;box.setAttribute("role","tooltip");
-    box.addEventListener("pointerenter",()=>clearTimeout(previewHideTimer));
-    box.addEventListener("pointerleave",hideSatellitePreview);
+    const box=document.createElement("aside");box.id="satelliteHoverPreview";box.hidden=true;box.setAttribute("role","dialog");box.setAttribute("aria-modal","true");box.setAttribute("aria-label","Справка о спутнике");
+    box.addEventListener("click",event=>{if(event.target===box)hideSatellitePreview();});
     document.body.appendChild(box);
   }
-  function hideSatellitePreview(){clearTimeout(previewHideTimer);previewHideTimer=setTimeout(()=>{if($("satelliteHoverPreview"))$("satelliteHoverPreview").hidden=true;},200);}
-  function showSatellitePreview(item,x,y){
+  function hideSatellitePreview(){const box=$("satelliteHoverPreview");if(box)box.hidden=true;}
+  function showSatellitePreview(item){
     ensureSatellitePreview();
     const box=$("satelliteHoverPreview"),info=satelliteInfo[String(item.NORAD_CAT_ID)]||{},generic=categoryInfo[item._category]||categoryInfo.visual;
     const imageUrl=satelliteImageUrl(item.NORAD_CAT_ID);
     const img='<img src="'+esc(imageUrl)+'" alt="Изображение '+esc(item.OBJECT_NAME)+'" loading="lazy" onerror="'+esc(satelliteImageError(item.NORAD_CAT_ID))+'">';
-    box.innerHTML=img+'<h3>'+esc(info.title||item.OBJECT_NAME)+'</h3>'+
+    box.innerHTML='<section id="satelliteHelpCard"><button type="button" id="satelliteHelpClose">Закрыть ✕</button>'+img+'<h3>'+esc(info.title||item.OBJECT_NAME)+'</h3>'+
       '<p><b>История:</b> '+esc(info.history||generic.history)+'</p>'+
       '<p><b>Технически:</b> '+esc(info.tech||generic.tech)+'</p>'+
       '<p><b>Рабочие частоты:</b> '+esc(info.frequencies||generic.frequencies)+'</p>'+
       '<p style="font-size:11px;color:#9eb1c5">Фотографии сохраняются в библиотеке проекта на GitHub; если фото аппарата нет в открытых источниках, показывается условная иллюстрация.</p>'+
       (info.source?'<p><a href="'+esc(info.source)+'" target="_blank" rel="noopener">Источник характеристик ↗</a></p>':'')+
-      '<p style="font-size:11px;color:#9eb1c5">Справочная информация не гарантирует текущую работоспособность радиоканала. Частоты и статус проверяйте по ссылке на первичный источник перед использованием.</p>';
+      '<p style="font-size:11px;color:#9eb1c5">Справочная информация не гарантирует текущую работоспособность радиоканала. Частоты и статус проверяйте по ссылке на первичный источник перед использованием.</p></section>';
     box.hidden=false;
-    const w=Math.min(440,window.innerWidth-24),h=Math.min(box.offsetHeight,window.innerHeight-24);
-    box.style.left=Math.max(12,Math.min(x+16,window.innerWidth-w-12))+"px";
-    box.style.top=Math.max(12,Math.min(y+16,window.innerHeight-h-12))+"px";
+    $("satelliteHelpClose").addEventListener("click",hideSatellitePreview);
+    $("satelliteHelpClose").focus();
   }
-  function attachSatellitePreview(button,item){
-    button.addEventListener("pointerenter",e=>{if(e.pointerType!=="touch")showSatellitePreview(item,e.clientX,e.clientY);});
-    button.addEventListener("mouseenter",e=>showSatellitePreview(item,e.clientX,e.clientY));
-    button.addEventListener("pointerleave",hideSatellitePreview);
-    button.addEventListener("focus",()=>{const r=button.getBoundingClientRect();showSatellitePreview(item,r.right,r.top);});
-    button.addEventListener("blur",hideSatellitePreview);
-    button.addEventListener("touchstart",e=>{const t=e.touches[0];clearTimeout(previewHoldTimer);previewHoldTimer=setTimeout(()=>showSatellitePreview(item,t.clientX,t.clientY),450);},{passive:true});
-    button.addEventListener("touchend",()=>clearTimeout(previewHoldTimer),{passive:true});
-    button.addEventListener("touchmove",()=>clearTimeout(previewHoldTimer),{passive:true});
-  }
+  document.addEventListener("keydown",event=>{if(event.key==="Escape")hideSatellitePreview();});
   let catalogSortToken = 0;
   async function rankByVisibility(items) {
     const token = ++catalogSortToken;
@@ -302,7 +290,7 @@
       const tracking = trackingId === String(item.NORAD_CAT_ID);
       return '<div class="object-row" style="width:100%;text-align:left;color:inherit"><button type="button" data-live-id="' + esc(item.NORAD_CAT_ID) + '" style="flex:1;min-width:0;text-align:left;background:none;border:0;color:inherit;cursor:pointer;padding:0"><b>' +
         esc(item.OBJECT_NAME) + '</b><small>NORAD ' + esc(item.NORAD_CAT_ID) + ' · ' + esc(item._categoryLabel || item._category) +
-        ' · <span style="color:' + passColor + '">' + esc(passLabel) + '</span><br><span style="color:' + ageColor + '">' + esc(ageLabel) + '</span></small></button><button type="button" class="btn" data-live-track="' + esc(item.NORAD_CAT_ID) + '" style="padding:7px 10px;white-space:nowrap;font-size:12px" aria-pressed="' + tracking + '">' + (tracking ? '● Слежение' : 'Следить') + '</button><button type="button" class="btn" data-live-favorite="' + esc(item.NORAD_CAT_ID) + '" style="padding:7px 11px;font-size:18px" aria-label="Добавить в избранное">☆</button></div>';
+        ' · <span style="color:' + passColor + '">' + esc(passLabel) + '</span><br><span style="color:' + ageColor + '">' + esc(ageLabel) + '</span></small></button><button type="button" class="btn" data-live-help="' + esc(item.NORAD_CAT_ID) + '" style="padding:7px 10px;white-space:nowrap;font-size:12px">Справка</button><button type="button" class="btn" data-live-track="' + esc(item.NORAD_CAT_ID) + '" style="padding:7px 10px;white-space:nowrap;font-size:12px" aria-pressed="' + tracking + '">' + (tracking ? '● Слежение' : 'Следить') + '</button><button type="button" class="btn" data-live-favorite="' + esc(item.NORAD_CAT_ID) + '" style="padding:7px 11px;font-size:18px" aria-label="Добавить в избранное">☆</button></div>';
     };
     const groupSections = sources.map(source=>{
       const rows=ranked.filter(row=>row.item._category===source.group);
@@ -329,12 +317,16 @@
     list.querySelectorAll("[data-live-track]").forEach(button=>button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();toggleCatalogTracking(button.dataset.liveTrack);}));
     list.querySelectorAll("[data-live-id]").forEach(button => {
       const item=records.find(entry=>String(entry.NORAD_CAT_ID)===button.dataset.liveId);
-      if(item) attachSatellitePreview(button,item);
       button.addEventListener("click", () => {
         selected=item;
         showDetails().catch(error => { $("liveSatelliteDetails").textContent = error.message; });
       });
     });
+    list.querySelectorAll("[data-live-help]").forEach(button=>button.addEventListener("click",event=>{
+      event.preventDefault();event.stopPropagation();
+      const item=records.find(entry=>String(entry.NORAD_CAT_ID)===button.dataset.liveHelp);
+      if(item)showSatellitePreview(item);
+    }));
   }
   function toggleCatalogTracking(id) {
     id=String(id);

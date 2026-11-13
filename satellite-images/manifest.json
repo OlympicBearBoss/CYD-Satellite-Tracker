@@ -2399,9 +2399,20 @@
       "name": "NOAA 20"
     },
     "43016": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:14:22.946Z",
-      "name": "MAKERSAT 0"
+      "status": "available",
+      "path": "https://nnu.edu/wp-content/uploads/2023/10/249c11d89d55a8c_1-scaled.jpeg",
+      "source": "https://nnu.edu/wp-content/uploads/2023/10/249c11d89d55a8c_1-scaled.jpeg",
+      "provider": "Northwest Nazarene University",
+      "sourcePage": "https://nnu.edu/academics/undergraduate-studies/research-innovation/makersat-0/",
+      "articlePage": "https://nnu.edu/academics/undergraduate-studies/research-innovation/makersat-0/",
+      "title": "MakerSat-0 spacecraft at Northwest Nazarene University",
+      "description": "Фото для примера — фотография аппарата MakerSat-0 в лабораторной обстановке, опубликованная Northwest Nazarene University; это наземное фото, не снимок спутника на орбите.",
+      "credit": "Northwest Nazarene University; individual photographer not specified on page",
+      "license": "Условия повторного использования отдельно не указаны; требуется соблюдать права Northwest Nazarene University.",
+      "name": "MAKERSAT 0",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T18:00:00.000Z"
     },
     "43017": {
       "status": "available",

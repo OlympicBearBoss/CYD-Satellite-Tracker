@@ -118,7 +118,7 @@ function startDeviceLocation(){
  if(!navigator.geolocation){if(activeObserverSource!=="CYD"){status.textContent="GPS НЕДОСТУПЕН";note.textContent="Браузер не предоставляет Geolocation API. Откройте сайт в Safari или Chrome на устройстве с включённой геолокацией.";}return;}
  if(geoWatchId!==null){navigator.geolocation.clearWatch(geoWatchId);geoWatchId=null;}
   if(activeObserverSource!=="CYD"){status.innerHTML="<i></i>ЗАПРОС GPS";note.textContent="Ожидаю разрешение браузера и координаты устройства. На телефоне включите системную геолокацию и разрешите доступ этому сайту."; }
- note.textContent="Ожидаю разрешение браузера и координаты устройства. На телефоне включите системную геолокацию и разрешите доступ этому сайту.";
+  if(activeObserverSource!=="CYD")note.textContent="Ожидаю разрешение браузера и координаты устройства. На телефоне включите системную геолокацию и разрешите доступ этому сайту.";
  const onPosition=pos=>{
   const c=pos.coords,lat=c.latitude,lon=c.longitude;mobileObserverLocation={latitude:lat,longitude:lon,height:Number.isFinite(c.altitude)?c.altitude/1000:0,accuracy:c.accuracy,timestamp:pos.timestamp};if(activeObserverSource!=="CYD")selectObserverSource(null);
    if(activeObserverSource!=="CYD"){
@@ -128,7 +128,7 @@ function startDeviceLocation(){
  $("gpsAccuracy").textContent="±"+Math.round(c.accuracy)+" м";
  $("gpsTime").textContent=new Date(pos.timestamp).toLocaleTimeString("ru-RU");
  status.innerHTML="<i></i>GPS УСТРОЙСТВА";
- if(activeObserverSource!=="CYD")note.textContent="CYD без действительного FIX — используется геолокация планшета или телефона.";
+ note.textContent="CYD без действительного FIX — используется геолокация планшета или телефона.";
    }
  };
  const onError=err=>{

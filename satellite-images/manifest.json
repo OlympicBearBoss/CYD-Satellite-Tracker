@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T07:45:00.000Z",
+  "generatedAt": "2026-11-13T08:00:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -3054,9 +3054,19 @@
       "name": ""
     },
     "60133": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:55.291Z",
-      "name": "GOES-19"
+      "status": "available",
+      "path": "https://www.noaa.gov/media/image_download/85c2a492-fc0b-4988-91e9-700f3d7da4b4",
+      "source": "https://www.noaa.gov/media/image_download/85c2a492-fc0b-4988-91e9-700f3d7da4b4",
+      "provider": "NOAA",
+      "sourcePage": "https://www.noaa.gov/news-release/noaas-goes-19-satellite-now-operational-providing-critical-new-data-to-forecasters",
+      "articlePage": "https://www.noaa.gov/news-release/noaas-goes-19-satellite-now-operational-providing-critical-new-data-to-forecasters",
+      "title": "Artist rendering of NOAA's GOES-19 satellite in orbit",
+      "description": "Official NOAA artist rendering of the GOES-19 spacecraft; this is not a photograph.",
+      "credit": "NOAA",
+      "license": "NOAA public-sector image; verify individual asset terms before redistribution",
+      "name": "GOES-19",
+      "imageType": "render",
+      "checkedAt": "2026-11-13T08:00:00.000Z"
     },
     "60209": {
       "status": "available",
@@ -3615,5 +3625,5 @@
       "name": ""
     }
   },
-  "curatedExternalImages": 5
+  "curatedExternalImages": 6
 }

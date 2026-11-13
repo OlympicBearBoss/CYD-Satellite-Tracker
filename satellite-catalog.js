@@ -429,8 +429,7 @@
     if (radarUpdateBusy) return;
     const gps = window.cydObserverLocation;
     if (!gps || !Number.isFinite(gps.latitude) || !Number.isFinite(gps.longitude)) {
-      window.cydRadarPositions = {};
-      window.dispatchEvent(new Event("cyd-orbit-update"));
+      // Keep the last valid positions during a brief GPS gap.
       return;
     }
     if (!records.length) return;

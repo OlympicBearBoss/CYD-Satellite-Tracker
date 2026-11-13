@@ -52,7 +52,7 @@ function normalizeImageUrl(value) {
 
 function normalizedText(value) {
   return String(value || "").normalize("NFKD").toLowerCase()
-    .replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+    .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 function matchesSatellite(text, name, id) {
@@ -70,7 +70,7 @@ async function searchNasaImage(name, id) {
     const meta = (item.data || [])[0] || {};
     const text = [meta.title, meta.description, ...(meta.keywords || [])].join(" ");
     if (!matchesSatellite(text, name, id)) continue;
-    const imageLink = (item.links || []).find(link => link.render === "image" || /\\.(jpe?g|png|webp)(\\?|$)/i.test(link.href || ""));
+    const imageLink = (item.links || []).find(link => link.render === "image" || /\.(jpe?g|png|webp)(\?|$)/i.test(link.href || ""));
     if (!imageLink?.href) continue;
     const source = normalizeImageUrl(imageLink.href);
     if (!source) continue;
@@ -192,7 +192,7 @@ for (const group of GROUPS) {
     if (Array.isArray(feed)) {
       for (const item of feed) {
         const id = String(item.NORAD_CAT_ID || "");
-        if (/^\d{1,6}$/.test(id)) ids.add(id);
+        if (/^\d{1,6}$/.test(id)) { ids.add(id); objectNames.set(id, item.OBJECT_NAME || item.SATNAME || ""); }
       }
     }
     console.log(group + ": " + (Array.isArray(feed) ? feed.length : 0) + " objects");

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T14:00:00.000Z",
+  "generatedAt": "2026-11-13T15:00:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -1717,9 +1717,20 @@
       "name": "UNISAT-6"
     },
     "40020": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:14:03.169Z",
-      "name": "BRITE-CA 1"
+      "status": "available",
+      "path": "https://www.asc-csa.gc.ca/images/recherche/hi-res/076c3dc0-3162-4aea-ae20-90fe768ab80a.jpg",
+      "source": "https://www.asc-csa.gc.ca/images/recherche/hi-res/076c3dc0-3162-4aea-ae20-90fe768ab80a.jpg",
+      "provider": "Canadian Space Agency",
+      "sourcePage": "https://www.asc-csa.gc.ca/eng/satellites/brite/",
+      "articlePage": "https://www.asc-csa.gc.ca/eng/satellites/brite/",
+      "title": "BRITE nanosatellite prototype",
+      "description": "Фото для примера — фотография прототипа семейства BRITE в лаборатории; изображение не подтверждает индивидуальную конфигурацию BRITE-CA 1.",
+      "credit": "UTIAS / University of Toronto Institute for Aerospace Studies Space Flight Laboratory; image hosted by Canadian Space Agency",
+      "license": "Условия повторного использования уточняются; см. Canadian Space Agency",
+      "name": "BRITE-CA 1",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T15:00:00.000Z"
     },
     "40024": {
       "status": "available",
@@ -1833,9 +1844,20 @@
       "name": ""
     },
     "40119": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:14:03.821Z",
-      "name": "BRITE-PL 2"
+      "status": "available",
+      "path": "https://www.asc-csa.gc.ca/images/recherche/hi-res/076c3dc0-3162-4aea-ae20-90fe768ab80a.jpg",
+      "source": "https://www.asc-csa.gc.ca/images/recherche/hi-res/076c3dc0-3162-4aea-ae20-90fe768ab80a.jpg",
+      "provider": "Canadian Space Agency",
+      "sourcePage": "https://www.asc-csa.gc.ca/eng/satellites/brite/",
+      "articlePage": "https://www.asc-csa.gc.ca/eng/satellites/brite/",
+      "title": "BRITE nanosatellite prototype",
+      "description": "Фото для примера — фотография прототипа семейства BRITE; все шесть аппаратов построены по общей концепции, но это не индивидуальный снимок BRITE-PL 2 (Heweliusz).",
+      "credit": "UTIAS / University of Toronto Institute for Aerospace Studies Space Flight Laboratory; image hosted by Canadian Space Agency",
+      "license": "Условия повторного использования уточняются; см. Canadian Space Agency",
+      "name": "BRITE-PL 2",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T15:00:00.000Z"
     },
     "40128": {
       "status": "not-found",
@@ -1863,9 +1885,20 @@
       "name": ""
     },
     "40315": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:00:58.300Z",
-      "name": "COSMOS 2501"
+      "status": "available",
+      "path": "https://r2.keeptrack.space/mesh-media/glonass-poster.jpg",
+      "source": "https://r2.keeptrack.space/mesh-media/glonass-poster.jpg",
+      "provider": "KeepTrack",
+      "sourcePage": "https://keeptrack.space/satellite/40315",
+      "articlePage": "https://keeptrack.space/satellite/40315",
+      "title": "GLONASS-K satellite 3D model",
+      "description": "Фото для примера — 3D-модель навигационного аппарата GLONASS-K; модель показывает тип аппарата, а не конкретный серийный экземпляр NORAD 40315.",
+      "credit": "KeepTrack",
+      "license": "Условия повторного использования изображения и 3D-модели не указаны на странице; см. источник",
+      "name": "COSMOS 2501",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T15:00:00.000Z"
     },
     "40367": {
       "status": "not-found",
@@ -2746,9 +2779,20 @@
       "name": ""
     },
     "45727": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:14:23.905Z",
-      "name": "M2 PATHFINDER"
+      "status": "available",
+      "path": "https://www.nanosats.eu/img/meta/meta-raaf-m2-pathfinder.png",
+      "source": "https://www.nanosats.eu/img/meta/meta-raaf-m2-pathfinder.png",
+      "provider": "Nanosats Database",
+      "sourcePage": "https://www.nanosats.eu/sat/raaf-m2-pathfinder",
+      "articlePage": "https://www.nanosats.eu/sat/raaf-m2-pathfinder",
+      "title": "RAAF M2 Pathfinder mission illustration",
+      "description": "Фото для примера — иллюстрация миссии RAAF M2 с несколькими аппаратами; это не отдельная фотография конкретно M2 Pathfinder.",
+      "credit": "Erik Kulu / Nanosats Database",
+      "license": "© Erik Kulu; условия повторного использования не указаны, требуется разрешение правообладателя",
+      "name": "M2 PATHFINDER",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T15:00:00.000Z"
     },
     "45807": {
       "status": "not-found",

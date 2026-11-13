@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T09:20:00.000Z",
+  "generatedAt": "2026-11-13T10:05:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -658,9 +658,20 @@
       "name": ""
     },
     "27424": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:15:05.856Z",
-      "name": "AQUA"
+      "status": "available",
+      "path": "https://assets.science.nasa.gov/dynamicimage/assets/science/missions/aqua/Aqua_spacecraft.jpg?h=1024&w=1024",
+      "source": "https://assets.science.nasa.gov/dynamicimage/assets/science/missions/aqua/Aqua_spacecraft.jpg?h=1024&w=1024",
+      "provider": "NASA",
+      "sourcePage": "https://science.nasa.gov/mission/aqua/resources/",
+      "articlePage": "https://science.nasa.gov/mission/aqua/resources/",
+      "title": "Aqua spacecraft",
+      "description": "Фото для примера — официальное изображение аппарата Aqua; компьютерная визуализация, а не фотография на орбите.",
+      "credit": "NASA",
+      "license": "NASA media usage guidelines; credit required",
+      "name": "AQUA",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T10:05:00.000Z"
     },
     "27432": {
       "status": "not-found",
@@ -823,9 +834,20 @@
       "name": ""
     },
     "29479": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:13:56.361Z",
-      "name": "Hinode (SOLAR B)"
+      "status": "available",
+      "path": "https://svs.gsfc.nasa.gov/vis/a020000/a020100/a020156/solr000100002_print.jpg",
+      "source": "https://svs.gsfc.nasa.gov/vis/a020000/a020100/a020156/solr000100002_print.jpg",
+      "provider": "NASA Scientific Visualization Studio",
+      "sourcePage": "https://svs.gsfc.nasa.gov/20156/",
+      "articlePage": "https://svs.gsfc.nasa.gov/20156/",
+      "title": "Solar-B (Hinode) spacecraft visualization",
+      "description": "Фото для примера — концептуальная визуализация аппарата Solar-B/Hinode над Землёй.",
+      "credit": "NASA/Goddard Space Flight Center Conceptual Image Lab; Chris Meaney",
+      "license": "NASA SVS media usage and credit guidelines",
+      "name": "Hinode (SOLAR B)",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T10:05:00.000Z"
     },
     "29486": {
       "status": "not-found",
@@ -1040,9 +1062,20 @@
       "name": ""
     },
     "36508": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:13:57.955Z",
-      "name": "CryoSat-2"
+      "status": "available",
+      "path": "https://www.esa.int/var/esa/storage/images/esa_multimedia/images/2010/10/cryosat-2/9857932-3-eng-GB/CryoSat-2_pillars.jpg",
+      "source": "https://www.esa.int/var/esa/storage/images/esa_multimedia/images/2010/10/cryosat-2/9857932-3-eng-GB/CryoSat-2_pillars.jpg",
+      "provider": "ESA / AOES Medialab",
+      "sourcePage": "https://www.esa.int/ESA_Multimedia/Images/2010/10/CryoSat-2",
+      "articlePage": "https://www.esa.int/ESA_Multimedia/Images/2010/10/CryoSat-2",
+      "title": "CryoSat-2 over Earth",
+      "description": "Фото для примера — официальная компьютерная визуализация CryoSat-2 над Землёй.",
+      "credit": "ESA - AOES Medialab",
+      "license": "ESA Standard Licence; additional permission may be required",
+      "name": "CryoSat-2",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T10:05:00.000Z"
     },
     "36585": {
       "status": "not-found",
@@ -2149,9 +2182,20 @@
       "name": ""
     },
     "43226": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:42.952Z",
-      "name": "GOES-17"
+      "status": "available",
+      "path": "https://www.nesdis.noaa.gov/s3/2026-09/GOES-17-known-as-GOES-West-with-Earth-in-background.png",
+      "source": "https://www.nesdis.noaa.gov/s3/2026-09/GOES-17-known-as-GOES-West-with-Earth-in-background.png",
+      "provider": "NOAA NESDIS",
+      "sourcePage": "https://www.nesdis.noaa.gov/imagery/media-stills-animation/geostationary-satellites-media-gallery/goes-r-series-spacecraft-renderings",
+      "articlePage": "https://www.nesdis.noaa.gov/imagery/media-stills-animation/geostationary-satellites-media-gallery/goes-r-series-spacecraft-renderings",
+      "title": "GOES-17 known as GOES West with Earth in background",
+      "description": "Фото для примера — официальный рендер GOES-17. Изображение точно относится к этому спутнику, но является компьютерной визуализацией.",
+      "credit": "NOAA/NESDIS",
+      "license": "Public domain (NOAA album statement)",
+      "name": "GOES-17",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T10:05:00.000Z"
     },
     "43245": {
       "status": "not-found",

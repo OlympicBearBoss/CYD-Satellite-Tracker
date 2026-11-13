@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T11:30:00.000Z",
+  "generatedAt": "2026-11-13T12:00:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -819,9 +819,20 @@
       "name": ""
     },
     "28474": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:00:42.558Z",
-      "name": "NAVSTAR 56"
+      "status": "available",
+      "path": "https://upload.wikimedia.org/wikipedia/commons/5/5d/GPS-IIR.jpg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/5/5d/GPS-IIR.jpg",
+      "provider": "U.S. Government / Wikimedia Commons",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:GPS-IIR.jpg",
+      "articlePage": "https://commons.wikimedia.org/wiki/File:GPS-IIR.jpg",
+      "title": "GPS Block IIR satellite illustration",
+      "description": "Фото для примера — официальная иллюстрация спутника GPS Block IIR; соответствует поколению NAVSTAR 56, но не является снимком конкретного борта.",
+      "credit": "U.S. Government",
+      "license": "Public domain (U.S. Government work)",
+      "name": "NAVSTAR 56",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T12:00:00.000Z"
     },
     "28480": {
       "status": "not-found",
@@ -930,9 +941,20 @@
       "checkedAt": "2026-11-13T11:30:00.000Z"
     },
     "29601": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:00:43.740Z",
-      "name": "NAVSTAR 59"
+      "status": "available",
+      "path": "https://upload.wikimedia.org/wikipedia/commons/1/1b/GPS-IIRM.jpg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/1/1b/GPS-IIRM.jpg",
+      "provider": "U.S. Government / Wikimedia Commons",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:GPS-IIRM.jpg",
+      "articlePage": "https://commons.wikimedia.org/wiki/File:GPS-IIRM.jpg",
+      "title": "GPS Block IIR-M satellite illustration",
+      "description": "Фото для примера — официальная иллюстрация модернизированного GPS Block IIR-M; соответствует поколению NAVSTAR 59, но не является снимком конкретного борта.",
+      "credit": "U.S. Government",
+      "license": "Public domain (U.S. Government work)",
+      "name": "NAVSTAR 59",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T12:00:00.000Z"
     },
     "31114": {
       "status": "not-found",

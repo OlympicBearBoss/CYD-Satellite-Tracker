@@ -226,13 +226,7 @@
   async function rankByVisibility(items) {
     const token = ++catalogSortToken;
     const sat = await loadSatelliteLib();
-    const latInput = Number($("observerLat").value), lonInput = Number($("observerLon").value);
-    // Если координаты станции ещё не введены, используем координаты станции проекта.
-    const observer = {
-      latitude: Number.isFinite(latInput) && $("observerLat").value.trim() !== "" ? latInput : 56.8389,
-      longitude: Number.isFinite(lonInput) && $("observerLon").value.trim() !== "" ? lonInput : 60.6057,
-      altitude: Number($("observerAltitude").value || 0)
-    };
+    const observer = observerSettings();
     const threshold = 10, now = new Date(), horizonMs = 24 * 3600000, stepMs = 120000;
     const ranked = items.map(item => ({item, visible:false, nextPass:null, elevation:-90}));
     // Сначала определяем видимые спутники, затем ищем ближайшее пересечение порога 10°.
@@ -366,12 +360,9 @@
     $("calculateSelectedPosition").addEventListener("click", calculatePosition);
   }
   async function calculatePosition() {
-    const lat = Number($("observerLat").value), lon = Number($("observerLon").value);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-      $("selectedPositionResult").textContent = "Укажите корректные широту (−90…90°) и долготу (−180…180°).";
-      return;
-    }
     try {
+      const observerLocation = observerSettings();
+      const lat = observerLocation.latitude, lon = observerLocation.longitude;
       const sat = await loadSatelliteLib();
       const satrec = sat.json2satrec(selected);
       const now = new Date();
@@ -379,7 +370,7 @@
       if (!positionAndVelocity || !positionAndVelocity.position) throw new Error("Не удалось распространить орбиту для выбранного времени.");
       const gmst = sat.gstime(now);
       const positionEcf = sat.eciToEcf(positionAndVelocity.position, gmst);
-      const observer = { latitude: sat.degreesToRadians(lat), longitude: sat.degreesToRadians(lon), height: 0 };
+      const observer = { latitude: sat.degreesToRadians(lat), longitude: sat.degreesToRadians(lon), height: observerLocation.altitude / 1000 };
       const look = sat.ecfToLookAngles(observer, positionEcf);
       const az = (sat.radiansToDegrees(look.azimuth) + 360) % 360;
       const el = sat.radiansToDegrees(look.elevation);
@@ -404,13 +395,20 @@
     }
   }
   function observerSettings() {
-    const lat = Number($("observerLat").value), lon = Number($("observerLon").value);
-    const altitude = Number($("observerAltitude").value || 0);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180 ||
-        !Number.isFinite(altitude) || altitude < -500 || altitude > 9000) {
-      throw new Error("Введите корректные координаты станции и высоту от −500 до 9000 м.");
+    const gps = window.cydObserverLocation;
+    if (gps && Number.isFinite(gps.latitude) && Number.isFinite(gps.longitude) &&
+        gps.latitude >= -90 && gps.latitude <= 90 && gps.longitude >= -180 && gps.longitude <= 180) {
+      const altitude = Number.isFinite(gps.height) ? gps.height * 1000 : Number($("observerAltitude").value || 0);
+      return { latitude: gps.latitude, longitude: gps.longitude, altitude, source: "GPS устройства" };
     }
-    return { latitude: lat, longitude: lon, altitude };
+    const latText = $("observerLat").value.trim(), lonText = $("observerLon").value.trim();
+    const lat = Number(latText), lon = Number(lonText), altitude = Number($("observerAltitude").value || 0);
+    if (!latText || !lonText || !Number.isFinite(lat) || !Number.isFinite(lon) ||
+        lat < -90 || lat > 90 || lon < -180 || lon > 180 ||
+        !Number.isFinite(altitude) || altitude < -500 || altitude > 9000) {
+      throw new Error("Нет GPS-координат. Разрешите геолокацию в разделе «Радар» или введите координаты вручную.");
+    }
+    return { latitude: lat, longitude: lon, altitude, source: "ручной ввод" };
   }
   function getTopocentric(sat, satrec, observer, date) {
     const pv = sat.propagate(satrec, date);
@@ -426,6 +424,45 @@
       azimuth: (sat.radiansToDegrees(look.azimuth) + 360) % 360
     };
   }
+  let radarUpdateBusy = false;
+  async function updateRadarPositions() {
+    if (radarUpdateBusy) return;
+    const gps = window.cydObserverLocation;
+    if (!gps || !Number.isFinite(gps.latitude) || !Number.isFinite(gps.longitude)) {
+      window.cydRadarPositions = {};
+      window.dispatchEvent(new Event("cyd-orbit-update"));
+      return;
+    }
+    if (!records.length) return;
+    radarUpdateBusy = true;
+    try {
+      const sat = await loadSatelliteLib();
+      const targets = { "25544": "iss", "33591": "noaa", "43017": "ao91" };
+      const positions = {};
+      const now = new Date();
+      for (const item of records) {
+        const target = targets[String(item.NORAD_CAT_ID)];
+        if (!target) continue;
+        try {
+          const point = getTopocentric(sat, sat.json2satrec(item), {
+            latitude: gps.latitude, longitude: gps.longitude,
+            altitude: Number.isFinite(gps.height) ? gps.height * 1000 : 0
+          }, now);
+          if (point) positions[target] = { az: point.azimuth, el: point.elevation, updatedAt: now.toISOString() };
+        } catch (_) {}
+      }
+      window.cydRadarPositions = positions;
+      window.dispatchEvent(new Event("cyd-orbit-update"));
+    } catch (error) {
+      status("Ошибка расчёта радара: " + error.message);
+    } finally {
+      radarUpdateBusy = false;
+    }
+  }
+  window.addEventListener("cyd-observer-change", updateRadarPositions);
+  window.addEventListener("cyd-catalog-loaded", updateRadarPositions);
+  setInterval(updateRadarPositions, 5000);
+
   function interpolateCrossing(t1, e1, t2, e2, threshold) {
     if (e2 === e1) return new Date(t2);
     const fraction = Math.max(0, Math.min(1, (threshold - e1) / (e2 - e1)));

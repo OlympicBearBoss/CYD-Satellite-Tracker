@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T10:05:00.000Z",
+  "generatedAt": "2026-11-13T10:25:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -530,9 +530,20 @@
       "name": ""
     },
     "23802": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:13:52.699Z",
-      "name": "POLAR"
+      "status": "available",
+      "path": "https://svs.gsfc.nasa.gov/vis/a020000/a020100/a020164/Polar-spacecraft00002_print.jpg",
+      "source": "https://svs.gsfc.nasa.gov/vis/a020000/a020100/a020164/Polar-spacecraft00002_print.jpg",
+      "provider": "NASA Scientific Visualization Studio",
+      "sourcePage": "https://svs.gsfc.nasa.gov/20164/",
+      "articlePage": "https://svs.gsfc.nasa.gov/20164/",
+      "title": "POLAR spacecraft in orbit",
+      "description": "Фото для примера — концептуальная визуализация спутника POLAR на орбите.",
+      "credit": "NASA/Goddard Space Flight Center Conceptual Image Lab; Chris Meaney",
+      "license": "NASA SVS media usage and credit guidelines",
+      "name": "POLAR",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T10:25:00.000Z"
     },
     "24278": {
       "status": "error",
@@ -1178,9 +1189,20 @@
       "name": ""
     },
     "37849": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:34.773Z",
-      "name": "SUOMI NPP"
+      "status": "available",
+      "path": "https://www.nesdis.noaa.gov/s3/styles/webp/s3/2026-10/Suomi-NPP-over-Earth.jpg.webp?itok=bahTEhxg",
+      "source": "https://www.nesdis.noaa.gov/s3/styles/webp/s3/2026-10/Suomi-NPP-over-Earth.jpg.webp?itok=bahTEhxg",
+      "provider": "NOAA/NESDIS",
+      "sourcePage": "https://www.nesdis.noaa.gov/news/noaa-deorbit-the-suomi-npp-satellite-after-more-than-15-years-service",
+      "articlePage": "https://www.nesdis.noaa.gov/news/noaa-deorbit-the-suomi-npp-satellite-after-more-than-15-years-service",
+      "title": "Visualization of Suomi NPP in orbit",
+      "description": "Фото для примера — официальный рендер Suomi NPP над Землёй; не фотография в космосе.",
+      "credit": "NOAA",
+      "license": "NOAA media; verify asset-specific reuse terms",
+      "name": "SUOMI NPP",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T10:25:00.000Z"
     },
     "37867": {
       "status": "not-found",
@@ -1223,9 +1245,20 @@
       "name": "BEIDOU 13"
     },
     "38337": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:13:58.619Z",
-      "name": "GCOM W1"
+      "status": "available",
+      "path": "https://www.eorc.jaxa.jp/AMSR/satellite/image/amsr2-1e.jpg",
+      "source": "https://www.eorc.jaxa.jp/AMSR/satellite/image/amsr2-1e.jpg",
+      "provider": "JAXA Earth Observation Research Center",
+      "sourcePage": "https://www.eorc.jaxa.jp/AMSR/satellite/gcom-w_en.html",
+      "articlePage": "https://www.eorc.jaxa.jp/AMSR/satellite/gcom-w_en.html",
+      "title": "GCOM-W SHIZUKU with AMSR2",
+      "description": "Фото для примера — официальная иллюстрация GCOM-W SHIZUKU; на ней показан аппарат с инструментом AMSR2.",
+      "credit": "JAXA/EORC",
+      "license": "JAXA image usage policy; source attribution required",
+      "name": "GCOM W1",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T10:25:00.000Z"
     },
     "38341": {
       "status": "not-found",

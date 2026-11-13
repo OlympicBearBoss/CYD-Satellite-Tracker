@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T12:05:00.000Z",
+  "generatedAt": "2026-11-13T13:00:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -41,9 +41,20 @@
       "name": ""
     },
     "3669": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:14:34.734Z",
-      "name": "ISIS-1"
+      "status": "available",
+      "path": "https://www.csa-asc.gc.ca/images/satellites/isis-maquette.jpg",
+      "source": "https://www.csa-asc.gc.ca/images/satellites/isis-maquette.jpg",
+      "provider": "Canadian Space Agency",
+      "sourcePage": "https://www.csa-asc.gc.ca/eng/satellites/isis.asp",
+      "articlePage": "https://www.csa-asc.gc.ca/eng/satellites/isis.asp",
+      "title": "ISIS satellite scale model",
+      "description": "Фото для примера — модель спутника ISIS на странице Канадского космического агентства; это макет семейства ISIS, не фотография конкретного борта ISIS-1.",
+      "credit": "Government of Canada",
+      "license": "Условия повторного использования уточняются; см. страницу Canadian Space Agency",
+      "name": "ISIS-1",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T13:00:00.000Z"
     },
     "4327": {
       "status": "not-found",
@@ -759,19 +770,19 @@
     },
     "27858": {
       "status": "available",
-      "path": "https://www.asc-csa.gc.ca/images/recherche//hi-res/scisat110502_hr.jpg",
-      "source": "https://www.asc-csa.gc.ca/images/recherche//hi-res/scisat110502_hr.jpg",
+      "path": "https://www.asc-csa.gc.ca/images/recherche//hi-res/scisat02-5248_hr.jpg",
+      "source": "https://www.asc-csa.gc.ca/images/recherche//hi-res/scisat02-5248_hr.jpg",
       "provider": "Canadian Space Agency",
-      "sourcePage": "https://www.asc-csa.gc.ca/eng/multimedia/search/image/796",
-      "articlePage": "https://www.asc-csa.gc.ca/eng/multimedia/search/image/796",
+      "sourcePage": "https://www.asc-csa.gc.ca/eng/multimedia/search/image/799?type=1",
+      "articlePage": "https://www.asc-csa.gc.ca/eng/multimedia/search/image/799?type=1",
       "title": "SCISAT during spacecraft testing",
-      "description": "Фото для примера — реальная фотография SCISAT во время наземных испытаний в лаборатории CSA; авторство снимка указано как CRC.",
+      "description": "Фото для примера — реальная фотография SCISAT во время испытаний в лаборатории Canadian Space Agency; аппарат показан на земле.",
       "credit": "Communications Research Center Canada (CRC)",
       "license": "Условия использования CSA/CRC уточняются; см. страницу источника",
       "name": "SCISAT 1",
       "imageType": "photograph",
       "example": true,
-      "checkedAt": "2026-11-13T11:30:00.000Z"
+      "checkedAt": "2026-11-13T13:00:00.000Z"
     },
     "27939": {
       "status": "available",
@@ -962,9 +973,20 @@
       "name": ""
     },
     "31598": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:15:10.613Z",
-      "name": "SKYMED 1"
+      "status": "available",
+      "path": "https://russianspaceweb.com/images/spacecraft/military/cosmo_skymed/cosmo_skymed_1.jpg",
+      "source": "https://russianspaceweb.com/images/spacecraft/military/cosmo_skymed/cosmo_skymed_1.jpg",
+      "provider": "Arianespace / RussianSpaceWeb",
+      "sourcePage": "https://russianspaceweb.com/images/spacecraft/military/cosmo_skymed/",
+      "articlePage": "https://russianspaceweb.com/images/spacecraft/military/cosmo_skymed/",
+      "title": "COSMO-SkyMed spacecraft rendering",
+      "description": "Фото для примера — рендер спутника программы COSMO-SkyMed от Arianespace; общий образ семейства, конкретный аппарат первого поколения не различим.",
+      "credit": "Arianespace",
+      "license": "Условия использования уточняются; см. источник RussianSpaceWeb/Arianespace",
+      "name": "SKYMED 1",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T13:00:00.000Z"
     },
     "31792": {
       "status": "not-found",
@@ -1063,9 +1085,20 @@
       "name": ""
     },
     "35491": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:33.281Z",
-      "name": "GOES 14"
+      "status": "available",
+      "path": "https://svs.gsfc.nasa.gov/vis/a010000/a010400/a010413/GOES-NEW-print1-39_print.jpg",
+      "source": "https://svs.gsfc.nasa.gov/vis/a010000/a010400/a010413/GOES-NEW-print1-39_print.jpg",
+      "provider": "NASA / NOAA",
+      "sourcePage": "https://svs.gsfc.nasa.gov/10413/",
+      "articlePage": "https://svs.gsfc.nasa.gov/10413/",
+      "title": "GOES-O spacecraft rendering",
+      "description": "Фото для примера — визуализация спутника GOES-O; после выхода на орбиту он получил обозначение GOES-14. Это рендер, а не фотография аппарата.",
+      "credit": "NASA / Goddard Space Flight Center",
+      "license": "NASA media usage guidelines; credit required",
+      "name": "GOES 14",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T13:00:00.000Z"
     },
     "35752": {
       "status": "not-found",
@@ -1578,19 +1611,52 @@
       "name": "UWE-3"
     },
     "39451": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:14:02.189Z",
-      "name": "SWARM B"
+      "status": "available",
+      "path": "https://www.esa.int/var/esa/storage/images/esa_multimedia/images/2013/11/artist_s_view_of_swarm10/13381133-2-eng-GB/Artist_s_view_of_Swarm_pillars.jpg",
+      "source": "https://www.esa.int/var/esa/storage/images/esa_multimedia/images/2013/11/artist_s_view_of_swarm10/13381133-2-eng-GB/Artist_s_view_of_Swarm_pillars.jpg",
+      "provider": "European Space Agency",
+      "sourcePage": "https://www.esa.int/ESA_Multimedia/Images/2013/11/Artist_s_view_of_Swarm6",
+      "articlePage": "https://www.esa.int/ESA_Multimedia/Images/2013/11/Artist_s_view_of_Swarm6",
+      "title": "Swarm satellite constellation illustration",
+      "description": "Фото для примера — официальная иллюстрация миссии ESA Swarm с несколькими аппаратами; не индивидуальный снимок SWARM B.",
+      "credit": "ESA–P. Carril, 2013",
+      "license": "ESA Standard Licence; additional permission may be required",
+      "name": "SWARM B",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T13:00:00.000Z"
     },
     "39452": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:14:02.515Z",
-      "name": "SWARM A"
+      "status": "available",
+      "path": "https://www.esa.int/var/esa/storage/images/esa_multimedia/images/2013/11/artist_s_view_of_swarm10/13381133-2-eng-GB/Artist_s_view_of_Swarm_pillars.jpg",
+      "source": "https://www.esa.int/var/esa/storage/images/esa_multimedia/images/2013/11/artist_s_view_of_swarm10/13381133-2-eng-GB/Artist_s_view_of_Swarm_pillars.jpg",
+      "provider": "European Space Agency",
+      "sourcePage": "https://www.esa.int/ESA_Multimedia/Images/2013/11/Artist_s_view_of_Swarm6",
+      "articlePage": "https://www.esa.int/ESA_Multimedia/Images/2013/11/Artist_s_view_of_Swarm6",
+      "title": "Swarm satellite constellation illustration",
+      "description": "Фото для примера — официальная иллюстрация миссии ESA Swarm с несколькими аппаратами; не индивидуальный снимок SWARM A.",
+      "credit": "ESA–P. Carril, 2013",
+      "license": "ESA Standard Licence; additional permission may be required",
+      "name": "SWARM A",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T13:00:00.000Z"
     },
     "39453": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:14:02.847Z",
-      "name": "SWARM C"
+      "status": "available",
+      "path": "https://www.esa.int/var/esa/storage/images/esa_multimedia/images/2013/11/artist_s_view_of_swarm10/13381133-2-eng-GB/Artist_s_view_of_Swarm_pillars.jpg",
+      "source": "https://www.esa.int/var/esa/storage/images/esa_multimedia/images/2013/11/artist_s_view_of_swarm10/13381133-2-eng-GB/Artist_s_view_of_Swarm_pillars.jpg",
+      "provider": "European Space Agency",
+      "sourcePage": "https://www.esa.int/ESA_Multimedia/Images/2013/11/Artist_s_view_of_Swarm6",
+      "articlePage": "https://www.esa.int/ESA_Multimedia/Images/2013/11/Artist_s_view_of_Swarm6",
+      "title": "Swarm satellite constellation illustration",
+      "description": "Фото для примера — официальная иллюстрация миссии ESA Swarm с несколькими аппаратами; не индивидуальный снимок SWARM C.",
+      "credit": "ESA–P. Carril, 2013",
+      "license": "ESA Standard Licence; additional permission may be required",
+      "name": "SWARM C",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T13:00:00.000Z"
     },
     "39533": {
       "status": "not-found",
@@ -2184,9 +2250,20 @@
       "name": ""
     },
     "42758": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:14:06.355Z",
-      "name": "HXMT"
+      "status": "available",
+      "path": "https://upload.wikimedia.org/wikipedia/commons/2/2e/HXMT_rendering.jpg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/2/2e/HXMT_rendering.jpg",
+      "provider": "Institute of High Energy Physics, CAS",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:HXMT_rendering.jpg",
+      "articlePage": "https://commons.wikimedia.org/wiki/File:HXMT_rendering.jpg",
+      "title": "HXMT spacecraft rendering",
+      "description": "Фото для примера — компьютерная визуализация китайской рентгеновской обсерватории HXMT (慧眼), соответствующая миссии аппарата.",
+      "credit": "Institute of High Energy Physics, Chinese Academy of Sciences",
+      "license": "CC BY 4.0; attribution required",
+      "name": "HXMT",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T13:00:00.000Z"
     },
     "42831": {
       "status": "available",

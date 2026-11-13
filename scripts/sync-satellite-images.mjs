@@ -20,7 +20,8 @@ const ALLOWED_HOSTS = new Set([
   "db.satnogs.org",
   "db-satnogs.freetls.fastly.net",
   "images-assets.nasa.gov",
-  "upload.wikimedia.org"
+  "upload.wikimedia.org",
+  "www.amsat.org"
 ]);
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));

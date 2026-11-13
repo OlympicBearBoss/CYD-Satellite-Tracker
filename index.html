@@ -684,7 +684,7 @@ function resolveSatelliteImageNorad(norad,nameHint=""){
  const name=String(nameHint||(record&&record.OBJECT_NAME)||"").toUpperCase();
  // Zarya and Nauka are ISS modules; docked Progress vehicles share the station view.
  // Keep their individual NORAD/TLE identities for orbit calculations, but reuse the ISS photograph.
- return /(?:\bISS\b|\bМКС\b|ZARYA|ЗАРЯ|NAUKA|НАУКА|PROGRESS|ПРОГРЕСС)/i.test(name)?"25544":id;
+ return /(?:\bISS\b|МКС|ZARYA|ЗАРЯ|NAUKA|НАУКА|PROGRESS|ПРОГРЕСС)/i.test(name)?"25544":id;
 }
 async function fetchSatelliteImageBlob(norad,nameHint=""){
  const imageNorad=resolveSatelliteImageNorad(norad,nameHint);

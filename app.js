@@ -114,10 +114,10 @@ function startDeviceOrientation(){
 }
 function startDeviceLocation(){
  const status=$("gpsStatus"),note=$("deviceSensorNote");
- if(!window.isSecureContext){status.textContent="НУЖЕН HTTPS";note.textContent="Геолокация разрешена браузерами только в защищённом контексте. Откройте сайт по адресу https://cyd-satellite-tracker.pages.dev/.";return;}
- if(!navigator.geolocation){status.textContent="GPS НЕДОСТУПЕН";note.textContent="Браузер не предоставляет Geolocation API. Откройте сайт в Safari или Chrome на устройстве с включённой геолокацией.";return;}
+ if(!window.isSecureContext){if(activeObserverSource!=="CYD"){status.textContent="НУЖЕН HTTPS";note.textContent="Геолокация разрешена браузерами только в защищённом контексте. Откройте сайт по адресу https://cyd-satellite-tracker.pages.dev/.";}return;}
+ if(!navigator.geolocation){if(activeObserverSource!=="CYD"){status.textContent="GPS НЕДОСТУПЕН";note.textContent="Браузер не предоставляет Geolocation API. Откройте сайт в Safari или Chrome на устройстве с включённой геолокацией.";}return;}
  if(geoWatchId!==null){navigator.geolocation.clearWatch(geoWatchId);geoWatchId=null;}
- status.innerHTML="<i></i>ЗАПРОС GPS";
+  if(activeObserverSource!=="CYD"){status.innerHTML="<i></i>ЗАПРОС GPS";note.textContent="Ожидаю разрешение браузера и координаты устройства. На телефоне включите системную геолокацию и разрешите доступ этому сайту."; }
  note.textContent="Ожидаю разрешение браузера и координаты устройства. На телефоне включите системную геолокацию и разрешите доступ этому сайту.";
  const onPosition=pos=>{
   const c=pos.coords,lat=c.latitude,lon=c.longitude;mobileObserverLocation={latitude:lat,longitude:lon,height:Number.isFinite(c.altitude)?c.altitude/1000:0,accuracy:c.accuracy,timestamp:pos.timestamp};if(activeObserverSource!=="CYD")selectObserverSource(null);
@@ -127,7 +127,7 @@ function startDeviceLocation(){
  $("gpsAlt").textContent=Number.isFinite(c.altitude)?Math.round(c.altitude)+" м":"—";
  $("gpsAccuracy").textContent="±"+Math.round(c.accuracy)+" м";
  $("gpsTime").textContent=new Date(pos.timestamp).toLocaleTimeString("ru-RU");
- if(activeObserverSource!=="CYD")status.innerHTML="<i></i>GPS УСТРОЙСТВА";
+ status.innerHTML="<i></i>GPS УСТРОЙСТВА";
  if(activeObserverSource!=="CYD")note.textContent="CYD без действительного FIX — используется геолокация планшета или телефона.";
    }
  };
@@ -141,10 +141,10 @@ function startDeviceLocation(){
  };
  try{
   geoWatchId=navigator.geolocation.watchPosition(onPosition,onError,{enableHighAccuracy:true,maximumAge:0,timeout:30000});
- }catch(err){status.textContent="ОШИБКА GPS";note.textContent="Не удалось запустить геолокацию: "+err.message;}
+ }catch(err){if(activeObserverSource!=="CYD"){status.textContent="ОШИБКА GPS";note.textContent="Не удалось запустить геолокацию: "+err.message;}}
  if(navigator.permissions&&navigator.permissions.query){
   navigator.permissions.query({name:"geolocation"}).then(p=>{
-   if(p.state==="denied"){status.textContent="ДОСТУП ЗАПРЕЩЁН";note.textContent="Доступ к местоположению заблокирован в настройках браузера. Разрешите геолокацию для cyd-satellite-tracker.pages.dev и нажмите кнопку ещё раз.";}
+   if(p.state==="denied"&&activeObserverSource!=="CYD"){status.textContent="ДОСТУП ЗАПРЕЩЁН";note.textContent="Доступ к местоположению заблокирован в настройках браузера. Разрешите геолокацию для cyd-satellite-tracker.pages.dev и нажмите кнопку ещё раз.";}
   }).catch(()=>{});
  }
 }

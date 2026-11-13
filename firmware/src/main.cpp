@@ -194,7 +194,7 @@ static bool calibrationFromSystem = false;
 static uint16_t rawTouchX = 0, rawTouchY = 0;
 static bool rawTouchDetected = false;
 static bool symbolsPage = false;
-static bool russianLayout = true;
+static bool russianLayout = false;
 static bool shiftKey = false;
 static bool passwordVisible = false;
 static bool editingPassword = false;

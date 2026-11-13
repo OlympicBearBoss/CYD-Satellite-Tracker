@@ -488,14 +488,14 @@ body[data-theme="terminal"] .content:before{opacity:.28}
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
 <label class="field-label">Поиск спутника<input id="satSearch" class="select" type="search" placeholder="Название или NORAD ID"></label>
 <label class="field-label">Категория<select id="satCategory" class="select"><option value="all">Все категории</option><option value="stations">Орбитальные станции</option><option value="weather">Метеоспутники</option><option value="amateur">Любительские</option><option value="gnss">Навигационные (GNSS)</option><option value="science">Научные</option><option value="cubesat">CubeSat</option><option value="visual">Наблюдаемые</option></select></label>
-<label class="field-label">Широта наблюдателя<input id="observerLat" class="select" type="number" min="-90" max="90" step="0.0001" value="56.8389" placeholder="Например, 56.8389"></label>
-<label class="field-label">Долгота наблюдателя<input id="observerLon" class="select" type="number" min="-180" max="180" step="0.0001" value="60.6057" placeholder="Например, 60.6057"></label>
+<label class="field-label">Широта наблюдателя<input id="observerLat" class="select" type="number" min="-90" max="90" step="0.000001" value="" placeholder="Ожидание GPS"></label>
+<label class="field-label">Долгота наблюдателя<input id="observerLon" class="select" type="number" min="-180" max="180" step="0.000001" value="" placeholder="Ожидание GPS"></label>
 </div>
-<div class="note" style="margin:8px 0 12px">Демонстрационное местоположение: Екатеринбург · 56.8389° с. ш., 60.6057° в. д. До подключения GPS координаты можно изменить вручную.</div>
+<div class="note" style="margin:8px 0 12px">Координаты автоматически поступают от GPS устройства из раздела «Радар». Если GPS недоступен, можно ввести широту и долготу вручную; демонстрационное местоположение не подставляется.</div>
 <div class="panel" style="margin-bottom:12px;background:linear-gradient(120deg,#102b43,#0b1b2d)"><div class="panel-title" style="margin-bottom:9px"><div><span class="section-icon">★</span><h2>Избранные спутники · быстрый доступ</h2></div><span id="favoriteCount" class="subtle">0 ОБЪЕКТОВ</span></div><div id="favoriteSatellites" style="display:flex;gap:8px;flex-wrap:wrap"><span class="subtle">Нажмите ☆ у спутника, чтобы добавить его сюда</span></div></div>
 <div class="button-row"><button class="btn btn-primary" id="refreshOrbitData">Обновить данные</button><small id="orbitUpdatedAt" class="subtle">Данные ещё не загружены</small></div>
 <div id="liveSatelliteList" class="object-list" style="margin-top:12px"><div class="note">Загрузка каталога из открытого источника CelesTrak…</div></div>
-<div id="liveSatelliteDetails" class="note">Выберите спутник, чтобы увидеть расчётное положение. Для расчёта азимута и угла места укажите координаты станции.</div>
+<div id="liveSatelliteDetails" class="note">Выберите спутник, чтобы увидеть расчётное положение по текущему GPS устройства или координатам, введённым вручную.</div>
 <div class="panel" style="margin-top:14px">
 <div class="panel-title"><div><span class="section-icon">◷</span><h2>Прогноз видимых пролётов</h2></div><span class="type-tag">SGP4 · 24 ЧАСА</span></div>
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
@@ -503,7 +503,7 @@ body[data-theme="terminal"] .content:before{opacity:.28}
 <label class="field-label">Минимальный угол места<select id="passMinElevation" class="select"><option value="0">0° · горизонт</option><option value="5" selected>5°</option><option value="10">10°</option><option value="20">20°</option></select></label>
 <label class="field-label">Высота станции, м<input id="observerAltitude" class="select" type="number" min="-500" max="9000" step="1" value="0"></label>
 </div>
-<div class="button-row"><button class="btn btn-primary" id="predictPasses">Рассчитать следующие пролёты</button><small id="passPredictionStatus" class="subtle">Сначала выберите спутник и задайте координаты станции</small></div>
+<div class="button-row"><button class="btn btn-primary" id="predictPasses">Рассчитать следующие пролёты</button><small id="passPredictionStatus" class="subtle">Сначала выберите спутник и разрешите GPS либо введите координаты вручную</small></div>
 <div id="passResults" class="object-list" style="margin-top:12px"><div class="note">Здесь появятся время восхода, максимальный угол места, время кульминации и захода.</div></div>
 </div>
 <p class="note">Источник орбитальных элементов: CelesTrak (GP/TLE). Положение рассчитывается локально по времени UTC и координатам наблюдателя. Орбитальные элементы имеют ограниченный срок точности; проверяйте время эпохи. Расчёт не является телеметрией спутника.</p>

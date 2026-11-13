@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T08:00:00.000Z",
+  "generatedAt": "2026-11-13T08:15:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -2907,18 +2907,18 @@
     },
     "57800": {
       "status": "available",
-      "path": "https://s3-ap-northeast-1.amazonaws.com/jaxa-jda/http_root/common/P100014664/ffcfd03daa3e1ee46ac2faf50ff0666a.jpg",
-      "source": "https://s3-ap-northeast-1.amazonaws.com/jaxa-jda/http_root/common/P100014664/ffcfd03daa3e1ee46ac2faf50ff0666a.jpg",
-      "provider": "JAXA Digital Archives",
-      "sourcePage": "https://jda.jaxa.jp/result.php?id=a2928f40dee48454cfd7630c21cc57c5+&lang=e",
-      "articlePage": "https://jda.jaxa.jp/result.php?id=a2928f40dee48454cfd7630c21cc57c5+&lang=e",
-      "title": "SLIM flight model, Tanegashima Space Center",
-      "description": "Photograph of the SLIM flight model in the Spacecraft and Fairing Assembly Building, June 2023.",
-      "credit": "JAXA",
-      "license": "JAXA Digital Archives: permitted for media, educational and commercial use; follow JAXA material-use conditions",
-      "name": "SLiM",
+      "path": "https://svs.gsfc.nasa.gov/vis/a010000/a014300/a014389/xrism_in_bay_may_2022.png",
+      "source": "https://svs.gsfc.nasa.gov/vis/a010000/a014300/a014389/xrism_in_bay_may_2022.png",
+      "provider": "NASA Scientific Visualization Studio",
+      "sourcePage": "https://svs.gsfc.nasa.gov/14389/",
+      "articlePage": "https://svs.gsfc.nasa.gov/14389/",
+      "title": "XRISM spacecraft at Tsukuba Space Center",
+      "description": "Photograph of the XRISM spacecraft as it appeared in May 2022 at Tsukuba Space Center, Japan. This corrects the prior incorrect association with SLIM.",
+      "credit": "JAXA/NEC; NASA's Goddard Space Flight Center page",
+      "license": "NASA media usage guidelines; individual image credit JAXA/NEC",
+      "name": "XRISM",
       "imageType": "photograph",
-      "checkedAt": "2026-11-13T07:45:00.000Z"
+      "checkedAt": "2026-11-13T08:15:00.000Z"
     },
     "58645": {
       "status": "not-found",

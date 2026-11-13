@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T08:15:00.000Z",
+  "generatedAt": "2026-11-13T08:30:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -3039,9 +3039,19 @@
       "name": "WSF-M"
     },
     "59588": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:15:17.223Z",
-      "name": "ACS3"
+      "status": "available",
+      "path": "https://www.nasa.gov/wp-content/uploads/2024/04/2-tumblr-77cdfb02090a03f5a16ca78157b2f97b-b94df5a7-540.webp?w=540",
+      "source": "https://www.nasa.gov/wp-content/uploads/2024/04/2-tumblr-77cdfb02090a03f5a16ca78157b2f97b-b94df5a7-540.webp?w=540",
+      "provider": "NASA",
+      "sourcePage": "https://www.nasa.gov/mission/acs3/",
+      "articlePage": "https://www.nasa.gov/mission/acs3/",
+      "title": "ACS3 solar sail system illustration",
+      "description": "NASA illustration of the deployed ACS3 solar sail system above Earth; representative mission rendering, not a photograph of the spacecraft bus.",
+      "credit": "NASA/Ben Schweighart",
+      "license": "NASA media usage guidelines; credit required",
+      "name": "ACS3",
+      "imageType": "render",
+      "checkedAt": "2026-11-13T08:30:00.000Z"
     },
     "59598": {
       "status": "not-found",

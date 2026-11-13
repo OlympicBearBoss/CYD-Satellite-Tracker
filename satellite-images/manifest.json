@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T13:00:00.000Z",
+  "generatedAt": "2026-11-13T14:00:00.000Z",
   "catalogObjectsSeen": 614,
   "lastRun": {
     "checked": 319,
@@ -2656,9 +2656,20 @@
       "name": ""
     },
     "44387": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:44.714Z",
-      "name": "METEOR M-2-2"
+      "status": "available",
+      "path": "https://www.russianspaceweb.com/images/spacecraft/application/remote_sensing/meteor_m/meteor_m2_2/sb_deployment_2.jpg",
+      "source": "https://www.russianspaceweb.com/images/spacecraft/application/remote_sensing/meteor_m/meteor_m2_2/sb_deployment_2.jpg",
+      "provider": "Roskosmos / RussianSpaceWeb",
+      "sourcePage": "https://www.russianspaceweb.com/meteor-m2-2.html",
+      "articlePage": "https://www.russianspaceweb.com/meteor-m2-2.html",
+      "title": "Meteor-M2-2 during solar panel deployment tests",
+      "description": "Фото для примера — реальный снимок Meteor-M2-2 во время наземных испытаний и проверки раскрытия солнечных батарей в Восточном.",
+      "credit": "Роскосмос",
+      "license": "Авторские права/условия повторного использования уточняются; см. источник RussianSpaceWeb",
+      "name": "METEOR M-2-2",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T14:00:00.000Z"
     },
     "44506": {
       "status": "not-found",
@@ -2755,9 +2766,20 @@
       "name": ""
     },
     "46265": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T08:15:15.328Z",
-      "name": "SAOCOM 1-B"
+      "status": "available",
+      "path": "https://upload.wikimedia.org/wikipedia/commons/5/58/SAOCOM_3D.png",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/5/58/SAOCOM_3D.png",
+      "provider": "CONAE / Wikimedia Commons",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:SAOCOM_3D.png",
+      "articlePage": "https://commons.wikimedia.org/wiki/File:SAOCOM_3D.png",
+      "title": "SAOCOM satellite 3D rendering",
+      "description": "Фото для примера — 3D-визуализация семейства SAOCOM от CONAE; модель показывает общий облик серии, а не гарантированно конкретный аппарат 1B.",
+      "credit": "CONAE",
+      "license": "CC BY 4.0; attribution required",
+      "name": "SAOCOM 1-B",
+      "imageType": "render",
+      "example": true,
+      "checkedAt": "2026-11-13T14:00:00.000Z"
     },
     "46495": {
       "status": "available",
@@ -2815,9 +2837,20 @@
       "name": ""
     },
     "47719": {
-      "status": "not-found",
-      "checkedAt": "2026-11-12T07:59:45.004Z",
-      "name": "Arktika-M1"
+      "status": "available",
+      "path": "https://www.russianspaceweb.com/images/spacecraft/application/remote_sensing/arktika/arktika_m1/packing_4327884373_2.jpg",
+      "source": "https://www.russianspaceweb.com/images/spacecraft/application/remote_sensing/arktika/arktika_m1/packing_4327884373_2.jpg",
+      "provider": "Roskosmos / RussianSpaceWeb",
+      "sourcePage": "https://www.russianspaceweb.com/arktika_m1.html",
+      "articlePage": "https://www.russianspaceweb.com/arktika_m1.html",
+      "title": "Arktika-M1 during pre-launch preparation",
+      "description": "Фото для примера — реальная фотография спутника «Арктика-М1» во время подготовки к отправке с НПО имени Лавочкина; не снимок на орбите.",
+      "credit": "Роскосмос",
+      "license": "Авторские права/условия повторного использования уточняются; см. источник",
+      "name": "Arktika-M1",
+      "imageType": "photograph",
+      "example": true,
+      "checkedAt": "2026-11-13T14:00:00.000Z"
     },
     "48274": {
       "status": "available",

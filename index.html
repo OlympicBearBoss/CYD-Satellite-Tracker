@@ -678,14 +678,23 @@ async function connectCydDevice(){
  await refreshCydDeviceLink();
  if(cydLiveConnected)startCydDevicePolling();
 }
-async function fetchSatelliteImageBlob(norad){
- const apiUrl="/api/satellite-image?norad="+encodeURIComponent(norad)+"&download=1";
+function resolveSatelliteImageNorad(norad,nameHint=""){
+ const id=String(norad||"");
+ const record=(window.cydSatelliteCatalogRecords||[]).find(item=>String(item&&item.NORAD_CAT_ID)===id);
+ const name=String(nameHint||(record&&record.OBJECT_NAME)||"").toUpperCase();
+ // Zarya and Nauka are ISS modules; docked Progress vehicles share the station view.
+ // Keep their individual NORAD/TLE identities for orbit calculations, but reuse the ISS photograph.
+ return /(?:\bISS\b|\bМКС\b|ZARYA|ЗАРЯ|NAUKA|НАУКА|PROGRESS|ПРОГРЕСС)/i.test(name)?"25544":id;
+}
+async function fetchSatelliteImageBlob(norad,nameHint=""){
+ const imageNorad=resolveSatelliteImageNorad(norad,nameHint);
+ const apiUrl="/api/satellite-image?norad="+encodeURIComponent(imageNorad)+"&download=1";
  let imageUrl=apiUrl;
  try{
   const manifestResponse=await fetch("/satellite-images/manifest.json",{cache:"no-store"});
   if(manifestResponse.ok){
    const manifest=await manifestResponse.json();
-   const entry=manifest.images&&manifest.images[String(norad)];
+   const entry=manifest.images&&manifest.images[imageNorad];
    if(entry&&entry.status==="available"&&typeof entry.path==="string")imageUrl=entry.path;
   }
  }catch(_){}
@@ -704,15 +713,18 @@ async function applyRepositorySatelliteImages(){
   if(!response.ok)return;
   const manifest=await response.json();
   document.querySelectorAll("[data-satellite-norad]").forEach(img=>{
-   const entry=manifest.images&&manifest.images[img.dataset.satelliteNorad];
+   const card=img.closest(".satellite-card");
+   const title=card&&card.querySelector("h2");
+   const imageNorad=resolveSatelliteImageNorad(img.dataset.satelliteNorad,(img.alt||"")+" "+(title?title.textContent:""));
+   const entry=manifest.images&&manifest.images[imageNorad];
    if(entry&&entry.status==="available"&&typeof entry.path==="string")img.src=entry.path;
   });
  }catch(_){}
 }
 applyRepositorySatelliteImages();
-async function sendSelectedSatelliteImageToCyd(norad){
+async function sendSelectedSatelliteImageToCyd(norad,nameHint=""){
  try{
-  const bitmap=await createImageBitmap(await fetchSatelliteImageBlob(norad));
+  const bitmap=await createImageBitmap(await fetchSatelliteImageBlob(norad,nameHint));
   const canvas=document.createElement("canvas");canvas.width=320;canvas.height=160;
   const ctx=canvas.getContext("2d");
   const scale=Math.max(320/bitmap.width,160/bitmap.height);
@@ -755,7 +767,7 @@ async function sendSelectedSatelliteToCyd(record){
   const result=await response.json();
   if(!response.ok||!result.ok)throw new Error(result.message||result.error||("HTTP "+response.status));
   setCydDeviceStatus("CYD принял цель: "+String(record.OBJECT_NAME||"спутник")+" · NORAD "+norad+" · готовлю фото отдельно",true);
-  sendSelectedSatelliteImageToCyd(norad);
+  sendSelectedSatelliteImageToCyd(norad,String(record.OBJECT_NAME||""));
  }catch(error){
   setCydDeviceStatus("Не удалось передать цель на CYD: "+error.message+". Проверьте разрешение браузера на локальную сеть.");
  }

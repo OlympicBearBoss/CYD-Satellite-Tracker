@@ -227,6 +227,7 @@ static double issAzimuthDeg=0,issElevationDeg=0,issRangeKm=0;
 static time_t nextPassEventEpoch=0;
 static double nextRiseAzimuthDeg=0;
 static bool passPredictionValid=false,nextRiseAzimuthValid=false,satelliteCurrentlyVisible=false;
+static constexpr double PASS_VISIBILITY_ELEVATION_DEG=10.0; // Match the website catalog's visible-now threshold.
 static uint32_t lastPassPredictionMs=0;
 static uint32_t selectedNoradId=25544;
 static String selectedSatelliteName="ISS (ZARYA)";
@@ -1029,8 +1030,13 @@ static void updatePassCountdown() {
   char line[32];
   const time_t now=time(nullptr);
   if(!passPredictionValid || nextPassEventEpoch<=now) {
-    snprintf(line,sizeof(line),"WAITING FOR ORBIT PASS");
-    setUiTextColor(TFT_YELLOW,0x0010);
+    if(satelliteCurrentlyVisible) {
+      snprintf(line,sizeof(line),"SATELLITE VISIBLE NOW");
+      setUiTextColor(TFT_GREEN,0x0010);
+    } else {
+      snprintf(line,sizeof(line),"WAITING FOR ORBIT PASS");
+      setUiTextColor(TFT_YELLOW,0x0010);
+    }
   } else {
     const uint32_t remaining=(uint32_t)(nextPassEventEpoch-now);
     snprintf(line,sizeof(line),"%s %02lu:%02lu:%02lu",
@@ -1509,7 +1515,7 @@ static void updatePassPrediction(time_t now) {
   if(!issTleValid || now<1700000000) return;
   if(lastPassPredictionMs && millis()-lastPassPredictionMs<300000UL) return;
   lastPassPredictionMs=millis();
-  const bool currentVisible=issElevationDeg>=0.0;
+  const bool currentVisible=issElevationDeg>=PASS_VISIBILITY_ELEVATION_DEG;
   satelliteCurrentlyVisible=currentVisible;
   passPredictionValid=false;
   nextRiseAzimuthValid=false;
@@ -1519,13 +1525,13 @@ static void updatePassPrediction(time_t now) {
   for(uint16_t step=1;step<=720;step++) {
     const time_t sampleEpoch=now+(time_t)step*120;
     issSgp4.findsat((unsigned long)sampleEpoch);
-    const bool visible=issSgp4.satEl>=0.0;
+    const bool visible=issSgp4.satEl>=PASS_VISIBILITY_ELEVATION_DEG;
     if(visible!=previousVisible) {
       time_t low=previousEpoch,high=sampleEpoch;
       for(uint8_t refine=0;refine<4;refine++) {
         const time_t mid=low+(high-low)/2;
         issSgp4.findsat((unsigned long)mid);
-        const bool midVisible=issSgp4.satEl>=0.0;
+        const bool midVisible=issSgp4.satEl>=PASS_VISIBILITY_ELEVATION_DEG;
         if(midVisible==previousVisible) low=mid; else high=mid;
       }
       issSgp4.findsat((unsigned long)high);
@@ -1550,7 +1556,7 @@ static void updatePassPrediction(time_t now) {
     issAzimuthDeg=issSgp4.satAz;
     issElevationDeg=issSgp4.satEl;
     issRangeKm=issSgp4.satDist;
-    satelliteCurrentlyVisible=issElevationDeg>=0.0;
+    satelliteCurrentlyVisible=issElevationDeg>=PASS_VISIBILITY_ELEVATION_DEG;
   }
 }
 static void updateSelectedOrbit() {
@@ -1589,7 +1595,7 @@ static void updateSelectedOrbit() {
     issAzimuthDeg=issSgp4.satAz;
     issElevationDeg=issSgp4.satEl;
     issRangeKm=issSgp4.satDist;
-    if((issElevationDeg>=0.0)!=satelliteCurrentlyVisible) lastPassPredictionMs=0;
+    if((issElevationDeg>=PASS_VISIBILITY_ELEVATION_DEG)!=satelliteCurrentlyVisible) lastPassPredictionMs=0;
     issPositionValid=true;
     updatePassPrediction(now);
     // Feed the live SGP4 solution into the same target values rendered by

@@ -20,8 +20,7 @@ const ALLOWED_HOSTS = new Set([
   "db.satnogs.org",
   "db-satnogs.freetls.fastly.net",
   "images-assets.nasa.gov",
-  "upload.wikimedia.org",
-  "www.amsat.org"
+  "upload.wikimedia.org"
 ]);
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -48,6 +47,89 @@ function normalizeImageUrl(value) {
   } catch {
     return "";
   }
+}
+
+
+function normalizedText(value) {
+  return String(value || "").normalize("NFKD").toLowerCase()
+    .replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function matchesSatellite(text, name, id) {
+  const haystack = " " + normalizedText(text) + " ";
+  const needle = normalizedText(name);
+  if (needle.length >= 4 && haystack.includes(" " + needle + " ")) return true;
+  return String(id).length >= 4 && haystack.includes(" " + String(id) + " ");
+}
+
+async function searchNasaImage(name, id) {
+  if (!name || normalizedText(name).length < 4) return null;
+  const url = "https://images-api.nasa.gov/search?q=" + encodeURIComponent(name) + "&media_type=image&page_size=30";
+  const result = await json(url);
+  for (const item of result?.collection?.items || []) {
+    const meta = (item.data || [])[0] || {};
+    const text = [meta.title, meta.description, ...(meta.keywords || [])].join(" ");
+    if (!matchesSatellite(text, name, id)) continue;
+    const imageLink = (item.links || []).find(link => link.render === "image" || /\\.(jpe?g|png|webp)(\\?|$)/i.test(link.href || ""));
+    if (!imageLink?.href) continue;
+    const source = normalizeImageUrl(imageLink.href);
+    if (!source) continue;
+    return {
+      url: source,
+      provider: "NASA Image and Video Library",
+      sourcePage: "https://images.nasa.gov/details/" + encodeURIComponent(meta.nasa_id || ""),
+      title: meta.title || "",
+      description: String(meta.description || "").slice(0, 700),
+      credit: meta.center || meta.photographer || "NASA",
+      license: "NASA media usage guidelines; retain source credit"
+    };
+  }
+  return null;
+}
+
+async function searchCommonsImage(name, id) {
+  if (!name || normalizedText(name).length < 4) return null;
+  const params = new URLSearchParams({
+    action: "query", generator: "search", gsrsearch: name + " satellite",
+    gsrnamespace: "6", gsrlimit: "30", prop: "imageinfo",
+    iiprop: "url|extmetadata", iiurlwidth: "1200", format: "json"
+  });
+  const result = await json("https://commons.wikimedia.org/w/api.php?" + params.toString());
+  const pages = Object.values(result?.query?.pages || {});
+  for (const page of pages) {
+    const info = (page.imageinfo || [])[0];
+    if (!info) continue;
+    const ext = info.extmetadata || {};
+    const description = ext.ImageDescription?.value || "";
+    if (!matchesSatellite([page.title, description].join(" "), name, id)) continue;
+    const license = ext.LicenseShortName?.value || "";
+    if (!/^(CC0|Public domain|PD|CC BY(?:-SA)?)/i.test(license)) continue;
+    const imageUrl = info.thumburl || info.url;
+    const source = normalizeImageUrl(imageUrl);
+    if (!source) continue;
+    return {
+      url: source,
+      provider: "Wikimedia Commons",
+      sourcePage: info.descriptionurl || ("https://commons.wikimedia.org/wiki/" + encodeURIComponent(page.title.replace(/ /g, "_"))),
+      title: page.title || "",
+      description: String(description).replace(/<[^>]*>/g, "").slice(0, 700),
+      credit: ext.Artist?.value || ext.Credit?.value || "",
+      license
+    };
+  }
+  return null;
+}
+
+async function findExternalImage(name, id) {
+  for (const finder of [searchNasaImage, searchCommonsImage]) {
+    try {
+      const result = await finder(name, id);
+      if (result) return result;
+    } catch (error) {
+      console.warn("External image search failed for " + id + " (" + finder.name + "): " + error.message);
+    }
+  }
+  return null;
 }
 
 function imageValue(record) {
@@ -103,6 +185,7 @@ try {
 } catch {}
 
 const ids = new Set();
+const objectNames = new Map();
 for (const group of GROUPS) {
   try {
     const feed = await json("https://celestrak.org/NORAD/elements/gp.php?GROUP=" + encodeURIComponent(group) + "&FORMAT=JSON");
@@ -123,7 +206,6 @@ if (!ids.size) throw new Error("No catalog records were retrieved; refusing to w
 const due = [...ids].filter(id => {
   const entry = manifest.images[id];
   if (entry?.path && entry.checkedAt && Date.now() - Date.parse(entry.checkedAt) < 180 * 86400000) return false;
-  if (entry?.status === "not-found" && entry.checkedAt && Date.now() - Date.parse(entry.checkedAt) < MISS_TTL) return false;
   return true;
 }).slice(0, MAX_CHECKS);
 
@@ -133,9 +215,24 @@ for (const id of due) {
   try {
     const payload = await json("https://db.satnogs.org/api/satellites/?format=json&norad_cat_id=" + encodeURIComponent(id));
     const record = Array.isArray(payload) ? payload[0] : (payload.results || [])[0];
-    const source = normalizeImageUrl(imageValue(record));
+    const name = record?.name || record?.satellite_name || objectNames.get(id) || manifest.images[id]?.name || "";
+    let source = normalizeImageUrl(imageValue(record));
+    let provenance = source ? {
+      provider: "SatNOGS DB",
+      sourcePage: "https://db.satnogs.org/satellite/" + encodeURIComponent(id) + "/",
+      title: name,
+      credit: "SatNOGS DB",
+      license: "See source record for image rights"
+    } : null;
     if (!source) {
-      manifest.images[id] = { status: "not-found", checkedAt: now(), name: record?.name || record?.satellite_name || "" };
+      const external = await findExternalImage(name, id);
+      if (external) {
+        source = external.url;
+        provenance = external;
+      }
+    }
+    if (!source) {
+      manifest.images[id] = { status: "not-found", checkedAt: now(), name };
       missing++;
     } else {
       const photo = await fetchPhoto(source);
@@ -145,10 +242,16 @@ for (const id of due) {
         status: "available",
         path: "/satellite-images/" + filename,
         source,
+        sourcePage: provenance.sourcePage,
+        provider: provenance.provider,
+        title: provenance.title || name,
+        description: provenance.description || "",
+        credit: provenance.credit || "",
+        license: provenance.license || "",
         contentType: photo.type,
         bytes: photo.bytes.length,
         checkedAt: now(),
-        name: record?.name || record?.satellite_name || ""
+        name
       };
       downloaded++;
     }

@@ -185,7 +185,7 @@ export default function App() {
     <Radar key="radar" lang={lang}/>,
     <Antenna key="antenna" lang={lang}/>,
     <Settings key="settings" lang={lang} setLang={setLang} user={user} email={email} setEmail={setEmail} password={password} setPassword={setPassword} name={name} setName={setName} busy={busy} error={authError} onLogin={()=>authenticate("login")} onRegister={()=>authenticate("register")} onLogout={logout}/>
-  ][tab],[tab,lang,selected]);
+  ][tab],[tab,lang,selected,user,email,password,name,busy,authError]);
   return <SafeAreaView style={s.safe}>
     <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
     <View style={{flex:1}}>{screen}</View>

@@ -13,7 +13,7 @@ export async function onRequestPost({request,env}) {
       env.DB.prepare("INSERT INTO identities(id,user_id,provider,provider_subject,password_hash,password_salt,created_at) VALUES(?,?,?,?,?,?,?)").bind(randomId(),userId,"password",email,hash,salt,now),
       env.DB.prepare("INSERT INTO sessions(id_hash,user_id,expires_at,created_at,last_seen_at,user_agent) VALUES(?,?,?,?,?,?)").bind(await digest(token),userId,expires,now,now,(request.headers.get("User-Agent")||"").slice(0,300))
     ]);
-    return json({user:{id:userId,email,display_name:name,email_verified:false}},201,{"Set-Cookie":sessionCookie(token)});
+    return json(body?.client==="mobile"?{user:{id:userId,email,display_name:name,email_verified:false},session_token:token}:{user:{id:userId,email,display_name:name,email_verified:false}},201,{"Set-Cookie":sessionCookie(token)});
   } catch(error) {
     const message=String(error?.message||error||"Unknown registration error");
     console.error("[auth/register] D1 registration failed", {name:String(error?.name||"Error"), message});

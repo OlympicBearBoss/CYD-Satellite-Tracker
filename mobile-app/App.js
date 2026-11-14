@@ -1,8 +1,12 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   SafeAreaView, View, Text, ScrollView, Pressable, StyleSheet,
-  StatusBar, useWindowDimensions
+  StatusBar, useWindowDimensions, TextInput, ActivityIndicator
 } from "react-native";
+import * as SecureStore from "expo-secure-store";
+
+const API = "https://cyd-satellite-tracker.pages.dev";
+const TOKEN_KEY = "cyd_mobile_session";
 
 const C = {
   bg: "#07111F", panel: "#101F31", panel2: "#14283D",
@@ -128,16 +132,33 @@ function Antenna({ lang }) {
     <Text style={s.muted}>{ru?"Это только макет. Команды двигателям не отправляются. Реальное управление включим после проверки прошивки и концевиков.":"Preview only. No motor commands are sent. Real control will be enabled after firmware and limit-switch safety checks."}</Text>
   </ScrollView>;
 }
-function Settings({ lang, setLang }) {
+function Settings({ lang, setLang, user, email, setEmail, password, setPassword, name, setName, busy, error, onLogin, onRegister, onLogout }) {
   const ru=lang==="ru";
-  return <ScrollView contentContainerStyle={s.content}>
+  return <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
     <Header title={ru?"Настройки":"Settings"} subtitle={ru?"ПРИЛОЖЕНИЕ И УСТРОЙСТВО":"APP & DEVICE"} lang={lang} onLang={()=>setLang(ru?"en":"ru")}/>
     <Card><Text style={s.cardTitle}>{ru?"Язык интерфейса":"Interface language"}</Text><View style={s.row}>
       <Pressable onPress={()=>setLang("ru")} style={[s.choice,lang==="ru"&&s.choiceActive]}><Text style={s.choiceText}>Русский</Text></Pressable>
       <Pressable onPress={()=>setLang("en")} style={[s.choice,lang==="en"&&s.choiceActive]}><Text style={s.choiceText}>English</Text></Pressable>
     </View></Card>
-    <Card><Text style={s.cardTitle}>{ru?"Аккаунт":"Account"}</Text><Text style={s.muted}>{ru?"Подключение к CYD Satellite Tracker Cloud будет добавлено следующим этапом.":"Cloud account connection will be added in the next stage."}</Text></Card>
-    <Card><Text style={s.cardTitle}>CYD Satellite Tracker</Text><Text style={s.muted}>React Native • Expo • 0.1 prototype</Text></Card>
+    <Card>
+      <View style={s.rowBetween}><Text style={s.cardTitle}>{ru?"Аккаунт CYD":"CYD account"}</Text><Text style={[s.tag,{color:user?C.green:C.orange}]}>{user?(ru?"ВХОД ВЫПОЛНЕН":"SIGNED IN"):(ru?"НЕ ВОШЛИ":"SIGNED OUT")}</Text></View>
+      {user ? <>
+        <Text style={s.cardTitle}>{user.display_name||user.email}</Text>
+        <Text style={s.muted}>{user.email}</Text>
+        <Pressable disabled={busy} onPress={onLogout} style={s.primaryButton}>{busy?<ActivityIndicator color={C.bg}/>:<Text style={s.primaryText}>{ru?"Выйти из аккаунта":"Sign out"}</Text>}</Pressable>
+      </> : <>
+        <Text style={s.muted}>{ru?"Войдите в существующий аккаунт или создайте новый. Пароль должен содержать не менее 12 символов.":"Sign in or create an account. Password must be at least 12 characters."}</Text>
+        <TextInput value={name} onChangeText={setName} placeholder={ru?"Имя (для регистрации)":"Name (for sign up)"} placeholderTextColor={C.muted} style={s.field} autoCapitalize="words"/>
+        <TextInput value={email} onChangeText={setEmail} placeholder="Email" placeholderTextColor={C.muted} style={s.field} keyboardType="email-address" autoCapitalize="none" autoCorrect={false}/>
+        <TextInput value={password} onChangeText={setPassword} placeholder={ru?"Пароль":"Password"} placeholderTextColor={C.muted} style={s.field} secureTextEntry autoCapitalize="none"/>
+        {error?<Text style={{color:"#FF8D8D",fontSize:12}}>{error}</Text>:null}
+        <View style={s.row}>
+          <Pressable disabled={busy} onPress={onLogin} style={[s.primaryButton,{flex:1}]}>{busy?<ActivityIndicator color={C.bg}/>:<Text style={s.primaryText}>{ru?"Войти":"Sign in"}</Text>}</Pressable>
+          <Pressable disabled={busy} onPress={onRegister} style={[s.choice,{flex:1,borderColor:C.cyan}]}><Text style={s.choiceText}>{ru?"Регистрация":"Sign up"}</Text></Pressable>
+        </View>
+      </>}
+    </Card>
+    <Card><Text style={s.cardTitle}>CYD Satellite Tracker</Text><Text style={s.muted}>React Native • Expo • Cloud API</Text></Card>
   </ScrollView>;
 }
 
@@ -145,14 +166,25 @@ export default function App() {
   const [tab,setTab]=useState(0);
   const [lang,setLang]=useState("ru");
   const [selected,setSelected]=useState("ISS (ZARYA)");
+  const [user,setUser]=useState(null);
+  const [token,setToken]=useState(null);
+  const [email,setEmail]=useState("");
+  const [password,setPassword]=useState("");
+  const [name,setName]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [authError,setAuthError]=useState("");
   const {width}=useWindowDimensions();
+
+  useEffect(()=>{(async()=>{try{const saved=await SecureStore.getItemAsync(TOKEN_KEY);if(!saved)return;const response=await fetch(API+"/api/auth/me",{headers:{Authorization:"Bearer "+saved}});if(response.ok){const data=await response.json();setToken(saved);setUser(data.user);}else{await SecureStore.deleteItemAsync(TOKEN_KEY);}}catch(e){setAuthError("Не удалось проверить сессию. Проверьте интернет.");}})();},[]);
+  const authenticate=async(mode)=>{setBusy(true);setAuthError("");try{const response=await fetch(API+(mode==="register"?"/api/auth/register":"/api/auth/login"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password,name,client:"mobile"})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Ошибка авторизации");if(!data.session_token)throw new Error("Сервер не вернул мобильный токен");await SecureStore.setItemAsync(TOKEN_KEY,data.session_token);setToken(data.session_token);setUser(data.user);setPassword("");}catch(e){setAuthError(e.message||"Не удалось подключиться к серверу");}finally{setBusy(false);}};
+  const logout=async()=>{setBusy(true);try{if(token)await fetch(API+"/api/auth/logout",{method:"POST",headers:{Authorization:"Bearer "+token}});await SecureStore.deleteItemAsync(TOKEN_KEY);setToken(null);setUser(null);}catch(e){setAuthError("Не удалось завершить сессию");}finally{setBusy(false);}};
   const compact=width<390;
   const screen=useMemo(()=>[
     <Overview key="home" lang={lang} onSelect={()=>setLang(lang==="ru"?"en":"ru")}/>,
     <Satellites key="sat" lang={lang} selected={selected} setSelected={setSelected}/>,
     <Radar key="radar" lang={lang}/>,
     <Antenna key="antenna" lang={lang}/>,
-    <Settings key="settings" lang={lang} setLang={setLang}/>
+    <Settings key="settings" lang={lang} setLang={setLang} user={user} email={email} setEmail={setEmail} password={password} setPassword={setPassword} name={name} setName={setName} busy={busy} error={authError} onLogin={()=>authenticate("login")} onRegister={()=>authenticate("register")} onLogout={logout}/>
   ][tab],[tab,lang,selected]);
   return <SafeAreaView style={s.safe}>
     <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
@@ -204,6 +236,9 @@ const s=StyleSheet.create({
  choice:{flex:1,padding:12,borderRadius:12,backgroundColor:C.panel2,alignItems:"center",borderWidth:1,borderColor:C.line},
  choiceActive:{borderColor:C.cyan,backgroundColor:"#12384A"},
  choiceText:{color:C.text,fontWeight:"700"},
+ field:{backgroundColor:C.panel2,borderWidth:1,borderColor:C.line,borderRadius:12,paddingHorizontal:13,paddingVertical:12,color:C.text,fontSize:14},
+ primaryButton:{backgroundColor:C.cyan,borderRadius:12,padding:13,alignItems:"center",justifyContent:"center",minHeight:44},
+ primaryText:{color:C.bg,fontWeight:"900",fontSize:13},
  tabbar:{flexDirection:"row",paddingHorizontal:8,paddingTop:9,paddingBottom:5,borderTopWidth:1,borderTopColor:C.line,backgroundColor:"#091625"},
  tab:{flex:1,alignItems:"center",justifyContent:"center",gap:4,minWidth:0},
  tabIcon:{fontSize:19,color:C.muted,height:23},

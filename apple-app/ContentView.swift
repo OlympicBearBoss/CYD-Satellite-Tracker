@@ -128,22 +128,47 @@ struct ContentView: View {
 
     private var radar: some View {
         NavigationStack {
-            VStack(spacing: 18) {
-                pageTitle(isEnglish ? "Radar & compass" : "Радар и компас", subtitle: isEnglish ? "OBSERVER VIEW" : "ВИД НАБЛЮДАТЕЛЯ")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                ZStack {
-                    Circle().fill(Color(red: 0.02, green: 0.12, blue: 0.19))
-                    ForEach(1..<5) { i in Circle().stroke(.cyan.opacity(0.25), lineWidth: 1).padding(CGFloat(i) * 27) }
-                    Path { p in p.move(to: CGPoint(x: 0, y: 150)); p.addLine(to: CGPoint(x: 300, y: 150)); p.move(to: CGPoint(x: 150, y: 0)); p.addLine(to: CGPoint(x: 150, y: 300)) }.stroke(.cyan.opacity(0.25), lineWidth: 1)
-                    VStack { Text("N").foregroundStyle(.white); Spacer(); Text("S").foregroundStyle(.white) }
-                    HStack { Text("W").foregroundStyle(.white); Spacer(); Text("E").foregroundStyle(.white) }
-                    Circle().fill(.cyan).frame(width: 8, height: 8).shadow(color: .cyan, radius: 8).offset(x: 45, y: -60)
-                    Image(systemName: "location.north.fill").font(.system(size: 24)).foregroundStyle(.cyan).offset(y: -2)
+            ScrollView {
+                VStack(spacing: 18) {
+                    pageTitle(isEnglish ? "Radar & compass" : "Радар и компас", subtitle: isEnglish ? "OBSERVER VIEW" : "ВИД НАБЛЮДАТЕЛЯ")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    GeometryReader { geometry in
+                        let side = min(geometry.size.width, 340)
+                        ZStack {
+                            Circle().fill(Color(red: 0.02, green: 0.12, blue: 0.19))
+                            ForEach(1..<5) { i in
+                                Circle().stroke(.cyan.opacity(0.25), lineWidth: 1)
+                                    .padding(side * CGFloat(i) / 10)
+                            }
+                            Path { p in
+                                p.move(to: CGPoint(x: side / 2, y: 0))
+                                p.addLine(to: CGPoint(x: side / 2, y: side))
+                                p.move(to: CGPoint(x: 0, y: side / 2))
+                                p.addLine(to: CGPoint(x: side, y: side / 2))
+                            }.stroke(.cyan.opacity(0.25), lineWidth: 1)
+                            VStack { Text("N").foregroundStyle(.white); Spacer(); Text("S").foregroundStyle(.white) }
+                            HStack { Text("W").foregroundStyle(.white); Spacer(); Text("E").foregroundStyle(.white) }
+                            Circle().fill(.cyan).frame(width: 8, height: 8)
+                                .shadow(color: .cyan, radius: 8)
+                                .offset(x: side * 0.15, y: -side * 0.20)
+                            Image(systemName: "location.north.fill")
+                                .font(.system(size: 24)).foregroundStyle(.cyan)
+                        }
+                        .frame(width: side, height: side)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(.cyan.opacity(0.55), lineWidth: 1))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .aspectRatio(1, contentMode: .fit)
+                    Text(isEnglish ? "Waiting for device compass and GPS" : "Ожидание компаса и GPS устройства")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Text(isEnglish ? "Demo display — live heading and satellite positions are not connected yet." : "Демонстрационный экран — компас и реальные положения спутников пока не подключены.")
+                        .font(.caption2).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                 }
-                .frame(width: 300, height: 300).clipShape(Circle()).overlay(Circle().stroke(.cyan.opacity(0.55), lineWidth: 1))
-                Text(isEnglish ? "Waiting for device compass and GPS" : "Ожидание компаса и GPS устройства").font(.caption).foregroundStyle(.secondary)
-                Spacer()
-            }.padding(18).toolbar(.hidden, for: .navigationBar)
+                .padding(18)
+            }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
@@ -193,7 +218,7 @@ struct ContentView: View {
                 }
                 Section(isEnglish ? "About" : "О приложении") {
                     HStack { Text("CYD Satellite Tracker"); Spacer(); Text("0.1 • DEMO").foregroundStyle(.secondary) }
-                    Text(isEnglish ? "Personal iPad edition" : "Персональная версия для iPad")
+                    Text(isEnglish ? "Personal iPhone edition" : "Персональная версия для iPhone")
                 }
             }
             .scrollContentBackground(.hidden)

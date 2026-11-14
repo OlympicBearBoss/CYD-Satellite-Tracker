@@ -1,6 +1,6 @@
-# CYD Satellite Tracker — iPad app
+# CYD Satellite Tracker — iPhone app
 
-Персональная версия приложения для iPad на SwiftUI. Интерфейс проекта рассчитан на запуск и дальнейшую доработку непосредственно на iPad через Apple Swift Playgrounds.
+Персональная версия приложения для iPhone на SwiftUI. Проект разрабатывается непосредственно на iPad через Apple Swift Playgrounds; интерфейс адаптируется под компактный экран iPhone.
 
 ## Текущий статус
 
@@ -17,9 +17,9 @@
 
 Пока не реализованы: реальная загрузка TLE/SGP4, GPS/компас, авторизация через Cloudflare, синхронизация устройств, команды ротатору и push-уведомления. Ползунки не управляют моторами.
 
-## Запуск на iPad через Swift Playgrounds
+## Разработка на iPad через Swift Playgrounds
 
-1. Установите Swift Playgrounds из App Store на iPad.
+1. Откройте Swift Playgrounds на iPad.
 2. Откройте приложение и создайте новый проект типа App.
 3. В созданном проекте откройте ContentView.swift.
 4. Замените его содержимое кодом из apple-app/ContentView.swift этого репозитория.

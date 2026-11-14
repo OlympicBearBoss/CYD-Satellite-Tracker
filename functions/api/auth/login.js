@@ -9,6 +9,6 @@ export async function onRequestPost({request,env}) {
  const actual=await passwordHash(password,row.password_salt);if(actual!==row.password_hash)return json({error:"Неверный email или пароль"},401);
  const now=Math.floor(Date.now()/1000),token=randomId()+randomId();
  await env.DB.prepare("INSERT INTO sessions(id_hash,user_id,expires_at,created_at,last_seen_at,user_agent) VALUES(?,?,?,?,?,?)").bind(await digest(token),row.id,now+2592000,now,now,(request.headers.get("User-Agent")||"").slice(0,300)).run();
- delete row.password_hash;delete row.password_salt;return json({user:row},200,{"Set-Cookie":sessionCookie(token)});
+ delete row.password_hash;delete row.password_salt;const mobile=body?.client==="mobile";return json(mobile?{user:row,session_token:token}:{user:row},200,{"Set-Cookie":sessionCookie(token)});
 }
 export function onRequest({request}){return json({error:"Method not allowed"},405,{Allow:"POST"});}

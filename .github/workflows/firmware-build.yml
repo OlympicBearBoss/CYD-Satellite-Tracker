@@ -55,7 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           FW_VERSION="v2026.11.16.93"
-          BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
+          BUILD_DIR=".pio/build/cyd_esp32_2432s028"
           mkdir -p release
 
           cp "$BUILD_DIR/bootloader.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-bootloader.bin
@@ -63,7 +63,7 @@ jobs:
           cp "$BUILD_DIR/firmware.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-application.bin
           cp "$BUILD_DIR/firmware.elf" release/CYD-Satellite-Tracker-${FW_VERSION}.elf
 
-          MOTOR_BUILD_DIR="firmware/.pio/build/cyd_motor_test"
+          MOTOR_BUILD_DIR=".pio/build/cyd_motor_test"
           cp "$MOTOR_BUILD_DIR/firmware.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-motor-test-application.bin
           cp "$MOTOR_BUILD_DIR/firmware.elf" release/CYD-Satellite-Tracker-${FW_VERSION}-motor-test.elf
 

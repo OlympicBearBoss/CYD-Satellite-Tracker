@@ -47,20 +47,22 @@ jobs:
       - name: Build CYD firmware
         working-directory: firmware
         run: |
+          set -euo pipefail
+          mkdir -p ../build-staging/main ../build-staging/motor-test
           pio run -e cyd_esp32_2432s028
+          cp .pio/build/cyd_esp32_2432s028/{bootloader.bin,partitions.bin,firmware.bin,firmware.elf} ../build-staging/main/
           pio run -e cyd_motor_test
+          cp .pio/build/cyd_motor_test/{bootloader.bin,partitions.bin,firmware.bin,firmware.elf} ../build-staging/motor-test/
 
       - name: Collect firmware and create full-flash image
         shell: bash
         run: |
           set -euo pipefail
           FW_VERSION="v2026.11.16.93"
-          # Resolve PlatformIO output paths from the actual workspace. The PIO
-          # project directory can differ from the shell working directory.
-          find "$GITHUB_WORKSPACE" -type f -path '*/.pio/build/cyd_esp32_2432s028/bootloader.bin' -print
-          find "$GITHUB_WORKSPACE" -type f -path '*/.pio/build/cyd_motor_test/bootloader.bin' -print
-          BUILD_DIR="$(dirname "$(find "$GITHUB_WORKSPACE" -type f -path '*/.pio/build/cyd_esp32_2432s028/bootloader.bin' -print -quit)")"
-          MOTOR_BUILD_DIR="$(dirname "$(find "$GITHUB_WORKSPACE" -type f -path '*/.pio/build/cyd_motor_test/bootloader.bin' -print -quit)")"
+          # Build outputs are copied to staging immediately after each build,
+          # so a subsequent PlatformIO environment cannot overwrite them.
+          BUILD_DIR="build-staging/main"
+          MOTOR_BUILD_DIR="build-staging/motor-test"
           if [[ "$BUILD_DIR" == "." || ! -f "$BUILD_DIR/firmware.bin" ]]; then
             echo "::error::Main firmware build output not found"
             find "$GITHUB_WORKSPACE" -maxdepth 7 -type f -name bootloader.bin -print || true

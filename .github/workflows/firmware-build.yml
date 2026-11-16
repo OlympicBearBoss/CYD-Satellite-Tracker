@@ -55,7 +55,24 @@ jobs:
         run: |
           set -euo pipefail
           FW_VERSION="v2026.11.16.93"
-          BUILD_DIR=".pio/build/cyd_esp32_2432s028"
+          # Resolve PlatformIO output paths from the actual workspace. The PIO
+          # project directory can differ from the shell working directory.
+          find "$GITHUB_WORKSPACE" -type f -path '*/.pio/build/cyd_esp32_2432s028/bootloader.bin' -print
+          find "$GITHUB_WORKSPACE" -type f -path '*/.pio/build/cyd_motor_test/bootloader.bin' -print
+          BUILD_DIR="$(dirname "$(find "$GITHUB_WORKSPACE" -type f -path '*/.pio/build/cyd_esp32_2432s028/bootloader.bin' -print -quit)")"
+          MOTOR_BUILD_DIR="$(dirname "$(find "$GITHUB_WORKSPACE" -type f -path '*/.pio/build/cyd_motor_test/bootloader.bin' -print -quit)")"
+          if [[ "$BUILD_DIR" == "." || ! -f "$BUILD_DIR/firmware.bin" ]]; then
+            echo "::error::Main firmware build output not found"
+            find "$GITHUB_WORKSPACE" -maxdepth 7 -type f -name bootloader.bin -print || true
+            exit 1
+          fi
+          if [[ "$MOTOR_BUILD_DIR" == "." || ! -f "$MOTOR_BUILD_DIR/firmware.bin" ]]; then
+            echo "::error::Motor-test build output not found"
+            find "$GITHUB_WORKSPACE" -maxdepth 7 -type f -name bootloader.bin -print || true
+            exit 1
+          fi
+          echo "Main build directory: $BUILD_DIR"
+          echo "Motor test build directory: $MOTOR_BUILD_DIR"
           mkdir -p release
 
           cp "$BUILD_DIR/bootloader.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-bootloader.bin
@@ -63,7 +80,6 @@ jobs:
           cp "$BUILD_DIR/firmware.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-application.bin
           cp "$BUILD_DIR/firmware.elf" release/CYD-Satellite-Tracker-${FW_VERSION}.elf
 
-          MOTOR_BUILD_DIR=".pio/build/cyd_motor_test"
           cp "$MOTOR_BUILD_DIR/firmware.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-motor-test-application.bin
           cp "$MOTOR_BUILD_DIR/firmware.elf" release/CYD-Satellite-Tracker-${FW_VERSION}-motor-test.elf
 

@@ -1,0 +1,40 @@
+name: Build CYD motor test firmware
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware/motor-test-bin/**"
+      - ".github/workflows/build-motor-test.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install ESP32 Arduino core
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@2.0.17
+
+      - name: Compile CYD motor test
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32:FlashSize=4M,FlashMode=dio,FlashFreq=40 \
+            --output-dir build \
+            firmware/motor-test-bin/CYD_Motor_Test
+
+      - name: Publish firmware binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: CYD-Motor-Test-BIN
+          path: |
+            build/*.bin
+          if-no-files-found: error
+          retention-days: 30

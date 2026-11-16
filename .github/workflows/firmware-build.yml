@@ -1,4 +1,4 @@
-name: CYD firmware build # V92 NEO-6M UART on GPIO26
+name: CYD firmware build # V93 safe motor pulse test
 
 on:
   pull_request:
@@ -46,13 +46,15 @@ jobs:
 
       - name: Build CYD firmware
         working-directory: firmware
-        run: pio run -e cyd_esp32_2432s028
+        run: |
+          pio run -e cyd_esp32_2432s028
+          pio run -e cyd_motor_test
 
       - name: Collect firmware and create full-flash image
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.13.92"
+          FW_VERSION="v2026.11.16.93"
           BUILD_DIR="firmware/.pio/build/cyd_esp32_2432s028"
           mkdir -p release
 
@@ -60,6 +62,10 @@ jobs:
           cp "$BUILD_DIR/partitions.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-partitions.bin
           cp "$BUILD_DIR/firmware.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-application.bin
           cp "$BUILD_DIR/firmware.elf" release/CYD-Satellite-Tracker-${FW_VERSION}.elf
+
+          MOTOR_BUILD_DIR="firmware/.pio/build/cyd_motor_test"
+          cp "$MOTOR_BUILD_DIR/firmware.bin" release/CYD-Satellite-Tracker-${FW_VERSION}-motor-test-application.bin
+          cp "$MOTOR_BUILD_DIR/firmware.elf" release/CYD-Satellite-Tracker-${FW_VERSION}-motor-test.elf
 
           BOOT_APP0="$(find "$HOME/.platformio/packages" -type f -name boot_app0.bin -print -quit)"
           if [[ -z "$BOOT_APP0" || ! -f "$BOOT_APP0" ]]; then
@@ -108,12 +114,28 @@ jobs:
           Erasing flash deletes existing settings/data.
           EOF
 
+          python "$ESPTOOL_SCRIPT" --chip esp32 merge_bin \
+            --flash_mode dio --flash_freq 40m --flash_size 4MB \
+            --output release/CYD-Satellite-Tracker-${FW_VERSION}-motor-test-full-flash.bin \
+            0x1000 "$MOTOR_BUILD_DIR/bootloader.bin" \
+            0x8000 "$MOTOR_BUILD_DIR/partitions.bin" \
+            0xE000 "$BOOT_APP0" \
+            0x10000 "$MOTOR_BUILD_DIR/firmware.bin"
+
+          cat > release/MOTOR-TEST-INSTRUCTIONS-${FW_VERSION}.txt <<EOF
+          CYD motor pulse test image
+          Flash the motor-test-full-flash image at 0x0000. Serial 115200 baud.
+          Commands: AZ+, AZ-, EL+, EL-. Each sends 8 pulses at 250 steps/s.
+          No automatic movement; EN is not controlled by firmware. Verify driver current,
+          coil pairs, supply and common ground before enabling drivers.
+          EOF
+
           sha256sum release/* > release/SHA256SUMS-${FW_VERSION}.txt
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CYD-Satellite-Tracker-firmware-v2026.11.13.92
+          name: CYD-Satellite-Tracker-firmware-v2026.11.16.93
           path: release/
           if-no-files-found: error
           retention-days: 30

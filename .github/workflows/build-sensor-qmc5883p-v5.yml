@@ -21,7 +21,8 @@ jobs:
       - name: Install sensor libraries
         run: |
           arduino-cli lib update-index
-          arduino-cli lib install "Adafruit QMC5883P"
+          mkdir -p "$HOME/Arduino/libraries"
+          git clone --depth 1 https://github.com/adafruit/Adafruit_QMC5883P.git "$HOME/Arduino/libraries/Adafruit_QMC5883P"
           arduino-cli lib install "Adafruit BusIO"
       - name: Compile QMC5883P test v5
         run: |

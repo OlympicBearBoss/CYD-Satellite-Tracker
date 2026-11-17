@@ -15,7 +15,7 @@ Status: integration specification, based on the currently verified hardware test
 Confirmed I²C devices:
 | Device | Address | Evidence / current status |
 |---|---:|---|
-| HMC5883L magnetometer | 0x1E | Firmware now checks ID registers 0x48/0x34/0x33 and polls XYZ data; physical test pending |
+| QMC5883P magnetometer | 0x2C | Firmware now checks ID registers 0x48/0x34/0x33 and polls XYZ data; physical test pending |
 | ADXL345 accelerometer | 0x53 | DEVID 0xE5 read successfully during the QMC test; continuous acceleration sampling is not yet validated |
 | AS5600 azimuth angle sensor (planned) | 0x36 | Wiring plan only; not yet installed or validated |
 | PCF8574 limit-input expander (planned) | usually 0x20 | Wiring plan only; scan and pin state validation required |
@@ -29,8 +29,8 @@ Create one sensor service as the sole owner of I²C initialization and sensor po
 Startup order:
 1. Start serial diagnostics and initialise the I²C bus on GPIO27/GPIO22 at 100 kHz.
 2. Scan the bus and record which expected addresses respond.
-3. Identify HMC5883L at 0x1E by checking ID registers 0x0A–0x0C for 0x48, 0x34, 0x33.
-4. Configure HMC5883L: CRA 0x00=0x70 (8-sample average, 15 Hz), CRB 0x01=0x20 (±1.3 Ga), MODE 0x02=0x00 (continuous). Read XYZ from 0x03–0x08 as signed big-endian values in X/Z/Y register order.
+3. Identify QMC5883P at 0x2C by checking ID registers 0x0A–0x0C for 0x48, 0x34, 0x33.
+4. Configure QMC5883P: CRA 0x00=0x70 (8-sample average, 15 Hz), CRB 0x01=0x20 (±1.3 Ga), MODE 0x02=0x00 (continuous). Read XYZ from 0x03–0x08 as signed big-endian values in X/Z/Y register order.
 5. Identify ADXL345 at 0x53; DEVID register 0x00 must equal 0xE5. Configure BW_RATE 0x2C=0x0A, DATA_FORMAT 0x31=0x08 (full-resolution ±2 g), POWER_CTL 0x2D=0x08 (measurement). Read XYZ from 0x32–0x37 as signed little-endian values.
 6. Probe optional AS5600 shaft encoders and limit devices only when installed and verified.
 7. Start GPS UART2 receive on GPIO34 (9600 baud, RX only), then the UI/network services.
@@ -51,7 +51,7 @@ Every sensor value must carry validity/status information. Never display a stale
 
 ## 4. Processing rules
 
-- HMC5883L raw XYZ values are diagnostic until hard-/soft-iron calibration in the final mechanical installation. Firmware reports a preliminary tilt-compensated magnetic heading but marks it uncalibrated.
+- QMC5883P raw XYZ values feed a preliminary tilt-compensated magnetic heading; hard-/soft-iron calibration is still required before treating it as a true azimuth. Firmware reports a preliminary tilt-compensated magnetic heading but marks it uncalibrated.
 - ADXL345 derives roll/pitch from gravity with a low-pass filter. Tilt is valid only while acceleration magnitude remains near 1 g; strong motion/vibration invalidates tilt.
 - Default mounting assumes +X forward, +Y right, +Z upward for both boards. Verify orientation physically; adjust axis signs if the modules are mounted differently.
 - Convert magnetic heading to true-north azimuth only after applying local magnetic declination. Firmware currently reports magnetic heading, not true heading.
@@ -86,8 +86,8 @@ The controller must remain safe even if the mobile app, website or Wi-Fi connect
 |---|---|
 | Confirmed motor GPIO mapping: 4, 16, 17, 26 | Confirmed by user and motor test firmware |
 | GPS NEO-6M TX -> UART2 RX GPIO34 | Confirmed pin assignment; live GPS fix still to be checked |
-| HMC5883L ID check and register configuration | Implemented in firmware; physical test pending |
-| HMC5883L continuous XYZ sampling | Implemented in firmware; physical test pending |
+| QMC5883P Adafruit library at 0x2C and tested startup register sequence | Restored; verify live telemetry on the assembled tracker |
+| QMC5883P XYZ sampling through Adafruit_QMC5883P | Implemented; verify live telemetry after V96 flash |
 | ADXL345 identity at 0x53 / DEVID 0xE5 | Verified |
 | ADXL345 continuous XYZ sampling and tilt calculation | Implemented in firmware; physical test pending |
 | AS5600 angle feedback | Planned; not installed/verified |
@@ -98,7 +98,7 @@ The controller must remain safe even if the mobile app, website or Wi-Fi connect
 ## 8. Next implementation sequence
 
 1. Add a sensor service and typed telemetry snapshot without changing motor states.
-2. Validate HMC5883L identity, continuous XYZ sampling and axis orientation on the assembled board.
+2. Confirm QMC5883P live XYZ values and axis orientation on the assembled board.
 3. Validate ADXL345 gravity vector and pitch sign in level and tilted positions.
 4. Calibrate HMC hard-/soft-iron offsets and apply local magnetic declination before treating heading as true azimuth.
 5. Validate combined heading/tilt telemetry on the final antenna mount.
@@ -107,7 +107,7 @@ The controller must remain safe even if the mobile app, website or Wi-Fi connect
 
 ## 9. Dual AS5600 axis feedback
 
-- AZ AS5600: I2C0 / Wire, SDA GPIO27, SCL GPIO22, address 0x36. It shares the bus with HMC5883L (0x1E) and ADXL345 (0x53); addresses do not conflict.
+- AZ AS5600: I2C0 / Wire, SDA GPIO27, SCL GPIO22, address 0x36. It shares the bus with QMC5883P (0x2C) and ADXL345 (0x53); addresses do not conflict.
 - EL AS5600: I2C1 / ElevationWire, SDA GPIO18, SCL GPIO19, address 0x36. GPIO18/19 are the CYD SD-slot SPI pins; SD-card use is disabled/reserved in this pin profile.
 - Both sensors are polled every 100 ms. Firmware reads STATUS (0x0B), RAW ANGLE high (0x0C) and low (0x0D); the 12-bit value is converted to sensor degrees. STATUS.MD (bit 5) indicates that a magnet is detected. Bus response, register read, magnet detection and zero calibration are reported separately.
 - /api/v1/status exposes axis_sensors.azimuth and axis_sensors.elevation, including bus, presence, read status, magnet detection, raw angle, calibrated angle (only after zeroing), calibration state and sample age.

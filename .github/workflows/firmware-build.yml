@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -30,6 +30,22 @@ jobs:
 
       - name: Install PlatformIO
         run: pip install --upgrade platformio pillow
+
+      - name: Resolve firmware version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/firmware-* ]]; then
+            FW_VERSION="${GITHUB_REF_NAME#firmware-}"
+          else
+            FW_VERSION="$(tr -d '\r\n' < firmware/VERSION)"
+          fi
+          if [[ ! "$FW_VERSION" =~ ^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[0-9]+$ ]]; then
+            echo "::error::Invalid firmware version: $FW_VERSION"
+            exit 1
+          fi
+          echo "FW_VERSION=$FW_VERSION" >> "$GITHUB_ENV"
+          echo "Building firmware version $FW_VERSION"
 
       - name: Verify TLS configuration
         working-directory: firmware
@@ -58,7 +74,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.17.96"
           # Build outputs are copied to staging immediately after each build,
           # so a subsequent PlatformIO environment cannot overwrite them.
           BUILD_DIR="build-staging/main"
@@ -148,14 +163,38 @@ jobs:
           coil pairs, supply and common ground before enabling drivers.
           EOF
 
+          NOTES_FILE="docs/releases/${FW_VERSION}.md"
+          if [[ ! -f "$NOTES_FILE" ]]; then
+            echo "::error::Missing release notes: $NOTES_FILE"
+            exit 1
+          fi
+          cp "$NOTES_FILE" "release/CHANGELOG-${FW_VERSION}.md"
+          {
+            echo "Firmware version: $FW_VERSION"
+            echo "Source commit: $GITHUB_SHA"
+            echo "Git ref: $GITHUB_REF"
+            echo "Build date UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "release/BUILD-INFO-${FW_VERSION}.txt"
+
           sha256sum release/* > release/SHA256SUMS-${FW_VERSION}.txt
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CYD-Satellite-Tracker-firmware-v2026.11.17.96
+          name: CYD-Satellite-Tracker-firmware-${{ env.FW_VERSION }}
           path: release/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
+
+      - name: Publish permanent GitHub Release
+        if: startsWith(github.ref, 'refs/tags/firmware-')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: CYD Satellite Tracker ${{ env.FW_VERSION }}
+          body_path: docs/releases/${{ env.FW_VERSION }}.md
+          files: release/*
+          fail_on_unmatched_files: true
 
 # CI retrigger after correcting esptool 4.9 merge_bin option names.

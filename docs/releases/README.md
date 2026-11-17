@@ -18,7 +18,8 @@
 |---|---|---|---|
 | V96 | 2026-11-17 | [f504bd6](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/f504bd6c7358b35ab4a97a7624188aab8e2240b8) | Сборка CI прошла; аппаратная проверка не подтверждена; не считать стабильным релизом |
 | V97 | 2026-11-17 | [2d3fbe8](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/2d3fbe8bf9b6e9828779c9f5a90da918b7a7bf8b) | Прошивка загружена пользователем на CYD; функциональная проверка ожидается |
-| V98 | 2026-11-17 | [1551221](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/15512218793bec8d6888b29959fd392802a46026) | Сборка CI прошла; аппаратная проверка датчиков, компаса и клавиатуры ожидается |
+| V98 | 2026-11-17 | [1551221](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/15512218793bec8d6888b29959fd392802a46026) | Исторический кандидат; содержал ошибочную поддержку AS5600, исправляется в V99 |
+| V99 | 2026-11-17 | [pending](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/tree/fix/firmware-v99-remove-as5600) | Удалена поддержка несуществующих AS5600; CI и аппаратная проверка ожидаются |
 
 ## Важные исторические точки интерфейса
 

@@ -1,22 +1,22 @@
 #pragma once
 #include <Arduino.h>
 
-// CYD ESP32-2432S028 provisional pin map.
-// Confirm exact board revision/module and continuity before connecting hardware.
+// CYD ESP32-2432S028 pin map confirmed for the current hardware profile.
 namespace Pins {
 constexpr int TFT_BACKLIGHT = 21;
 constexpr int I2C_SDA = 27;
 constexpr int I2C_SCL = 22;
 
+// HR4988 step/direction signals.
 constexpr int AZ_STEP = 4;
-constexpr int AZ_DIR  = 18;
-constexpr int EL_STEP = 19;
-constexpr int EL_DIR  = 23;
+constexpr int AZ_DIR  = 16;
+constexpr int EL_STEP = 17;
+constexpr int EL_DIR  = 26;
 
-// NEO-6M TX -> ESP32 RX on GPIO26. GPIO26 is unused by this firmware profile.
-// Do NOT connect NEO-6M RX to GPIO4: GPIO4 is AZ_STEP and must remain dedicated
-// to the azimuth stepper driver. GPS configuration is not needed for NMEA receive.
-constexpr int GPS_RX = 26;
+// NEO-6M TX -> ESP32 UART2 RX on GPIO34.
+// GPIO34 is input-only on ESP32 and is used only as GPS UART RX.
+// GPS module RX is not connected / not used by this firmware.
+constexpr int GPS_RX = 34;
 constexpr int GPS_TX_UNUSED = -1;
 
 constexpr int EL_AS5600_ANALOG = 35;

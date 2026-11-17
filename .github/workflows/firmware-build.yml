@@ -1,4 +1,4 @@
-name: CYD firmware build # V95 HMC5883L + ADXL345
+name: CYD firmware build # V96 QMC5883P + ADXL345
 
 on:
   pull_request:
@@ -58,7 +58,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FW_VERSION="v2026.11.17.95"
+          FW_VERSION="v2026.11.17.96"
           # Build outputs are copied to staging immediately after each build,
           # so a subsequent PlatformIO environment cannot overwrite them.
           BUILD_DIR="build-staging/main"
@@ -153,7 +153,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CYD-Satellite-Tracker-firmware-v2026.11.17.95
+          name: CYD-Satellite-Tracker-firmware-v2026.11.17.96
           path: release/
           if-no-files-found: error
           retention-days: 30

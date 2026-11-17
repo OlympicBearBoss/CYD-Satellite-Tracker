@@ -21,6 +21,7 @@
 #include "splash_jpg.h"
 #include "ui_assets.h"
 #include "BoardConfig.h"
+#include "AxisEncoders.h"
 #include "WifiConfig.h"
 
 // Trust anchors for CelesTrak HTTPS: USERTrust RSA Certification Authority
@@ -169,6 +170,19 @@ static bool qmcDataReady=false, qmcOverflow=false;
 static int16_t qmcRawX=0, qmcRawY=0, qmcRawZ=0;
 static uint32_t qmcLastSampleAt=0, qmcLastGoodAt=0;
 static constexpr uint32_t QMC_SAMPLE_INTERVAL_MS=250;
+static float azimuthZeroRawDeg=0.0f, elevationZeroRawDeg=0.0f;
+static bool azimuthZeroValid=false, elevationZeroValid=false;
+static float normalize360(float value){while(value<0.0f)value+=360.0f;while(value>=360.0f)value-=360.0f;return value;}
+static float normalizeSigned180(float value){while(value>180.0f)value-=360.0f;while(value<-180.0f)value+=360.0f;return value;}
+static float azimuthMeasuredDeg(){return normalize360(azimuthEncoder.sensor_angle_deg-azimuthZeroRawDeg);}
+static float elevationMeasuredDeg(){return normalizeSigned180(elevationEncoder.sensor_angle_deg-elevationZeroRawDeg);}
+static void loadAxisCalibration(){
+  azimuthZeroValid=prefs.getBool("az0valid",false);
+  elevationZeroValid=prefs.getBool("el0valid",false);
+  azimuthZeroRawDeg=prefs.getFloat("az0raw",0.0f);
+  elevationZeroRawDeg=prefs.getFloat("el0raw",0.0f);
+  Serial.printf("[AS5600] calibration AZ=%u EL=%u\\n",azimuthZeroValid?1:0,elevationZeroValid?1:0);
+}
 
 static constexpr uint8_t DISPLAY_ROTATION = 1;
 static constexpr uint32_t SPLASH_MS = 6000;
@@ -854,9 +868,12 @@ static void updateTargetTelemetry() {
     // Live azimuth: update the numeric heading and rotate the compass needle
     // without repainting the compass rose, labels, panels, or whole screen.
     tft.fillRect(15,93,132,16,0x0822);
-    snprintf(line,sizeof(line),"AZ %.1f%c",targetAzimuthDeg,(char)247);
+    if(azimuthEncoderValid()) {
+      if(azimuthZeroValid) snprintf(line,sizeof(line),"AZ ENC %.1f%c",azimuthMeasuredDeg(),(char)247);
+      else snprintf(line,sizeof(line),"AZ RAW %.1f%c",azimuthEncoder.sensor_angle_deg,(char)247);
+    } else snprintf(line,sizeof(line),"AZ ENC --");
     tft.setTextDatum(TL_DATUM);
-    tft.setTextColor(TFT_CYAN,0x0822);
+    tft.setTextColor(azimuthEncoderValid()?TFT_CYAN:TFT_ORANGE,0x0822);
     tft.drawString(line,17,95,2);
     const int cx=81, cy=150;
     tft.fillCircle(cx,cy,22,0x0822);
@@ -869,9 +886,12 @@ static void updateTargetTelemetry() {
     tft.setTextColor(TFT_YELLOW,0x4000);
     tft.drawString(line,160,190,1);
     tft.fillRect(184,139,106,25,0x0822);
-    snprintf(line,sizeof(line),"%.1f%c",targetElevationDeg,(char)247);
+    if(elevationEncoderValid()) {
+      if(elevationZeroValid) snprintf(line,sizeof(line),"%.1f%c",elevationMeasuredDeg(),(char)247);
+      else snprintf(line,sizeof(line),"%.1f%c",elevationEncoder.sensor_angle_deg,(char)247);
+    } else snprintf(line,sizeof(line),"--");
     tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_WHITE,0x0822);
+    tft.setTextColor(elevationEncoderValid()?TFT_WHITE:TFT_ORANGE,0x0822);
     tft.drawString(line,237,151,4);
   }
 }
@@ -1416,11 +1436,13 @@ static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V91";
+  doc["firmware"]="V92";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
-  hardware["angle_sensor_connected"]=false;
+  hardware["angle_sensor_connected"]=azimuthEncoder.present || elevationEncoder.present;
+  hardware["azimuth_sensor_connected"]=azimuthEncoder.present;
+  hardware["elevation_sensor_connected"]=elevationEncoder.present;
   hardware["compass_connected"]=qmcPresent;
   hardware["motor_drivers_connected"]=false;
   hardware["limit_switches_connected"]=false;
@@ -1433,6 +1455,23 @@ static void sendLocalStatus() {
   mag["heading_valid"]=false;
   if(qmcReadOk){mag["raw_x"]=qmcRawX;mag["raw_y"]=qmcRawY;mag["raw_z"]=qmcRawZ;}
   mag["sample_age_ms"]=qmcLastGoodAt?millis()-qmcLastGoodAt:0;
+  JsonObject axes=doc["axis_sensors"].to<JsonObject>();
+  JsonObject az=axes["azimuth"].to<JsonObject>();
+  az["type"]="AS5600"; az["bus"]="I2C0";
+  az["present"]=azimuthEncoder.present; az["read_ok"]=azimuthEncoder.read_ok;
+  az["magnet_detected"]=azimuthEncoder.magnet_detected;
+  az["angle_valid"]=azimuthEncoderValid(); az["calibrated"]=azimuthZeroValid;
+  if(azimuthEncoder.read_ok){az["raw_angle_deg"]=azimuthEncoder.sensor_angle_deg;if(azimuthZeroValid)az["angle_deg"]=azimuthMeasuredDeg();}
+  az["zero_raw_deg"]=azimuthZeroRawDeg;
+  az["sample_age_ms"]=azimuthEncoder.last_good_at?millis()-azimuthEncoder.last_good_at:0;
+  JsonObject el=axes["elevation"].to<JsonObject>();
+  el["type"]="AS5600"; el["bus"]="I2C1";
+  el["present"]=elevationEncoder.present; el["read_ok"]=elevationEncoder.read_ok;
+  el["magnet_detected"]=elevationEncoder.magnet_detected;
+  el["angle_valid"]=elevationEncoderValid(); el["calibrated"]=elevationZeroValid;
+  if(elevationEncoder.read_ok){el["raw_angle_deg"]=elevationEncoder.sensor_angle_deg;if(elevationZeroValid)el["angle_deg"]=elevationMeasuredDeg();}
+  el["zero_raw_deg"]=elevationZeroRawDeg;
+  el["sample_age_ms"]=elevationEncoder.last_good_at?millis()-elevationEncoder.last_good_at:0;
   doc["connection"]="local-wifi";
   doc["discovery"]="mdns";
   doc["ip"]=WiFi.localIP().toString();
@@ -1504,20 +1543,20 @@ button{font:inherit;cursor:pointer}.layout{min-height:100vh}.sidebar{position:fi
  <div class="actions"><button class="btn" id="sendTargetBtn" onclick="sendTarget()">ОТПРАВИТЬ ЦЕЛЬ</button><button class="btn" id="trackingBtn" onclick="toggleTracking()">СЛЕЖЕНИЕ: ВЫКЛ</button><button class="btn stop" onclick="requestStop()">STOP</button></div>
  <div class="statusline"><span>Принятая цель</span><b id="targetState">Азимут 0° · место 0°</b></div><div class="statusline"><span>Режим слежения</span><b id="trackingState">Выключен</b></div><p class="hint" id="commandMessage">Команды принимаются по локальному Wi‑Fi. Сейчас прошивка только сохраняет целевые углы и флаг слежения — физическое движение двигателей не запускается.</p>
  </article></section>
-<section class="view" id="system"><div class="heading"><div><div class="eyebrow">DEVICE HEALTH / ESP32</div><h1>Система</h1><p>Диагностика платы, GPS и сетевого соединения</p></div></div><div class="grid system-grid"><article class="panel"><div class="panel-head"><h2>Контроллер</h2><span class="micro">ESP32</span></div><div class="statusline"><span>Устройство</span><b>CYD Satellite Tracker</b></div><div class="statusline"><span>Версия ПО</span><b id="sysFirmware">—</b></div><div class="statusline"><span>IP</span><b id="sysIp">—</b></div><div class="statusline"><span>Wi‑Fi RSSI</span><b id="sysRssi">—</b></div></article><article class="panel"><div class="panel-head"><h2>GPS / GNSS</h2><span class="micro">NEO-6M</span></div><div class="statusline"><span>Фиксация</span><b id="sysGps">—</b></div><div class="statusline"><span>Спутники</span><b id="sysSats">—</b></div><div class="statusline"><span>Широта</span><b id="sysLat">—</b></div><div class="statusline"><span>Долгота</span><b id="sysLon">—</b></div></article><article class="panel"><div class="panel-head"><h2>Безопасность управления</h2><span class="micro">ТЕКУЩИЕ ОГРАНИЧЕНИЯ</span></div><div class="badge warn">ДВИЖЕНИЕ ЗАБЛОКИРОВАНО</div><p class="hint">Команды поворота антенны ещё не реализованы. Драйверы и двигатели нельзя включать до проверки концевых выключателей, аппаратного STOP и механических ограничителей.</p><div class="actions"><button class="btn stop" onclick="requestStop()">ТЕСТОВЫЙ ЗАПРОС STOP</button></div><p class="hint">Эта кнопка отправляет диагностический запрос. Она не является аварийной остановкой и не отключает питание двигателей.</p></article><article class="panel"><div class="panel-head"><h2>Локальная связь</h2><span class="micro">LOCAL LINK</span></div><div class="statusline"><span>Привязка</span><b id="sysCloud">—</b></div><p class="hint">Прошивка не обращается к облачным серверам. Телеметрия и команды передаются напрямую между браузером и CYD по локальному Wi‑Fi.</p></article></div></section>
+<section class="view" id="system"><div class="heading"><div><div class="eyebrow">DEVICE HEALTH / ESP32</div><h1>Система</h1><p>Диагностика платы, GPS и сетевого соединения</p></div></div><div class="grid system-grid"><article class="panel"><div class="panel-head"><h2>Контроллер</h2><span class="micro">ESP32</span></div><div class="statusline"><span>Устройство</span><b>CYD Satellite Tracker</b></div><div class="statusline"><span>Версия ПО</span><b id="sysFirmware">—</b></div><div class="statusline"><span>IP</span><b id="sysIp">—</b></div><div class="statusline"><span>Wi‑Fi RSSI</span><b id="sysRssi">—</b></div></article><article class="panel"><div class="panel-head"><h2>GPS / GNSS</h2><span class="micro">NEO-6M</span></div><div class="statusline"><span>Фиксация</span><b id="sysGps">—</b></div><div class="statusline"><span>Спутники</span><b id="sysSats">—</b></div><div class="statusline"><span>Широта</span><b id="sysLat">—</b></div><div class="statusline"><span>Долгота</span><b id="sysLon">—</b></div></article><article class="panel"><div class="panel-head"><h2>Датчики осей</h2><span class="micro">2 × AS5600</span></div><div class="statusline"><span>Азимут · I²C0</span><b id="sysAzEncoder">—</b></div><div class="statusline"><span>Угол места · I²C1</span><b id="sysElEncoder">—</b></div><div class="actions"><button class="btn" onclick="calibrateAxis('azimuth')">НУЛЬ AZ · СЕВЕР</button><button class="btn" onclick="calibrateAxis('elevation')">НУЛЬ EL · ГОРИЗОНТ</button></div><p class="hint">Перед установкой нуля AZ направьте антенну на истинный север. Для EL выставьте ось горизонтально. Калибровка сохраняется в памяти CYD.</p></article><article class="panel"><div class="panel-head"><h2>Безопасность управления</h2><span class="micro">ТЕКУЩИЕ ОГРАНИЧЕНИЯ</span></div><div class="badge warn">ДВИЖЕНИЕ ЗАБЛОКИРОВАНО</div><p class="hint">Команды поворота антенны ещё не реализованы. Драйверы и двигатели нельзя включать до проверки концевых выключателей, аппаратного STOP и механических ограничителей.</p><div class="actions"><button class="btn stop" onclick="requestStop()">ТЕСТОВЫЙ ЗАПРОС STOP</button></div><p class="hint">Эта кнопка отправляет диагностический запрос. Она не является аварийной остановкой и не отключает питание двигателей.</p></article><article class="panel"><div class="panel-head"><h2>Локальная связь</h2><span class="micro">LOCAL LINK</span></div><div class="statusline"><span>Привязка</span><b id="sysCloud">—</b></div><p class="hint">Прошивка не обращается к облачным серверам. Телеметрия и команды передаются напрямую между браузером и CYD по локальному Wi‑Fi.</p></article></div></section>
 <section class="view" id="connection"><div class="heading"><div><div class="eyebrow">NETWORK / LOCAL ACCESS</div><h1>Подключение</h1><p>Адреса для браузера и мобильного приложения в этой Wi‑Fi сети</p></div></div><article class="panel"><div class="panel-head"><h2>Доступ к контроллеру</h2><span class="badge"><i class="dot"></i> API ДОСТУПЕН</span></div><p class="micro">ЛОКАЛЬНЫЙ HTTP АДРЕС</p><p class="device-address" id="fullAddress">http://192.168.0.48/</p><div class="actions"><button class="btn" onclick="copyAddress()">КОПИРОВАТЬ АДРЕС</button><button class="btn" onclick="window.location.href='/api/v1/status'">ОТКРЫТЬ JSON API</button></div><div class="statusline"><span>mDNS адрес</span><b>http://cyd-tracker.local/</b></div><div class="statusline"><span>Статус API</span><b id="connApi">Работает</b></div><div class="statusline"><span>Обновление данных</span><b>Каждую секунду</b></div><p class="hint">Телефон, планшет или компьютер должны быть подключены к той же Wi‑Fi сети, что и CYD. Для локального управления используйте этот адрес, а не HTTPS-сайт Cloudflare: браузер ограничивает обращения с HTTPS-страницы к локальному HTTP-устройству.</p></article></section>
 </main><nav class="mobile-nav"><button class="active" data-view="overview"><span>⌂</span>Обзор</button><button data-view="system"><span>◈</span>Система</button><button data-view="connection"><span>⌁</span>Сеть</button></nav></div></div>
 <script>
 let lastStatus=null;let targetInputsDirty=false;let targetSendBusy=false;const $=id=>document.getElementById(id);function showView(name){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===name));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));$('crumbName').textContent=({overview:'ОБЗОР СТАНЦИИ',system:'СИСТЕМА',connection:'ПОДКЛЮЧЕНИЕ'})[name]||'ОБЗОР';window.scrollTo({top:0,behavior:'smooth'});}document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));function openSystem(){showView('system')}
 function set(id,value){const e=$(id);if(e)e.textContent=value}function fmt(v,n=6){return typeof v==='number'?v.toFixed(n):'—'}
-async function refreshStatus(){try{const response=await fetch('/api/v1/status',{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);const d=await response.json();lastStatus=d;set('topState','ПОДКЛЮЧЕНО');set('apiState','ОТВЕЧАЕТ · HTTP 200');set('connApi','Работает · HTTP 200');set('firmware',d.firmware||'—');set('sysFirmware',d.firmware||'—');set('ip',d.ip||'—');set('sysIp',d.ip||'—');set('sideIp',d.ip||'—');set('hostname',d.hostname||'—');set('connectionType',d.connection||'local-wifi');set('fullAddress','http://'+(d.ip||location.hostname)+'/');set('rssi',(d.wifi_rssi??'—')+' dBm');set('sysRssi',(d.wifi_rssi??'—')+' dBm');const pct=Math.max(0,Math.min(100,((Number(d.wifi_rssi)+100)/60)*100));$('rssiBar').style.width=pct+'%';set('rssiLabel',d.wifi_rssi>-60?'Отличный сигнал':d.wifi_rssi>-75?'Хороший сигнал':'Слабый сигнал');const gps=!!d.gps_valid;set('gps',gps?'FIX':'ПОИСК');set('gpsLabel',gps?'Координаты получены':'Ожидание фиксации');set('sysGps',gps?'Есть фиксация':'Нет фиксации');set('sats',d.gps_satellites??'—');set('sysSats',d.gps_satellites??'—');set('lat',gps?fmt(d.latitude):'Нет фиксации');set('lon',gps?fmt(d.longitude):'Нет фиксации');set('sysLat',gps?fmt(d.latitude):'—');set('sysLon',gps?fmt(d.longitude):'—');set('alt',d.altitude_m!=null?d.altitude_m.toFixed(1)+' м':'—');set('gpsHint',gps?'GPS-координаты получены от модуля.':'GPS-модуль пока не выдал действительные координаты. Проверьте антенну GPS и подключение NEO-6M.');set('cloud','LOCAL');set('cloudLabel','Работа только в локальной сети');set('sysCloud','Облако отключено');updateControlState(d);$('connectionBadge').classList.toggle('warn',false);$('topState').previousElementSibling.style.background='var(--green)';}catch(e){set('topState','НЕТ СВЯЗИ');set('apiState','ОШИБКА СОЕДИНЕНИЯ');set('connApi','Нет ответа');$('topState').previousElementSibling.style.background='var(--red)';}}
+async function refreshStatus(){try{const response=await fetch('/api/v1/status',{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);const d=await response.json();lastStatus=d;set('topState','ПОДКЛЮЧЕНО');set('apiState','ОТВЕЧАЕТ · HTTP 200');set('connApi','Работает · HTTP 200');set('firmware',d.firmware||'—');set('sysFirmware',d.firmware||'—');set('ip',d.ip||'—');set('sysIp',d.ip||'—');set('sideIp',d.ip||'—');set('hostname',d.hostname||'—');set('connectionType',d.connection||'local-wifi');set('fullAddress','http://'+(d.ip||location.hostname)+'/');set('rssi',(d.wifi_rssi??'—')+' dBm');set('sysRssi',(d.wifi_rssi??'—')+' dBm');const pct=Math.max(0,Math.min(100,((Number(d.wifi_rssi)+100)/60)*100));$('rssiBar').style.width=pct+'%';set('rssiLabel',d.wifi_rssi>-60?'Отличный сигнал':d.wifi_rssi>-75?'Хороший сигнал':'Слабый сигнал');const gps=!!d.gps_valid;set('gps',gps?'FIX':'ПОИСК');set('gpsLabel',gps?'Координаты получены':'Ожидание фиксации');set('sysGps',gps?'Есть фиксация':'Нет фиксации');set('sats',d.gps_satellites??'—');set('sysSats',d.gps_satellites??'—');set('lat',gps?fmt(d.latitude):'Нет фиксации');set('lon',gps?fmt(d.longitude):'Нет фиксации');set('sysLat',gps?fmt(d.latitude):'—');set('sysLon',gps?fmt(d.longitude):'—');const axes=d.axis_sensors||{},az=axes.azimuth||{},el=axes.elevation||{};set('sysAzEncoder',az.angle_valid?(az.calibrated?Number(az.angle_deg).toFixed(1)+'°':'RAW '+Number(az.raw_angle_deg).toFixed(1)+'° · НЕ КАЛИБР.'):(az.present?'НЕТ МАГНИТА/ДАННЫХ':'НЕ НАЙДЕН'));set('sysElEncoder',el.angle_valid?(el.calibrated?Number(el.angle_deg).toFixed(1)+'°':'RAW '+Number(el.raw_angle_deg).toFixed(1)+'° · НЕ КАЛИБР.'):(el.present?'НЕТ МАГНИТА/ДАННЫХ':'НЕ НАЙДЕН'));set('alt',d.altitude_m!=null?d.altitude_m.toFixed(1)+' м':'—');set('gpsHint',gps?'GPS-координаты получены от модуля.':'GPS-модуль пока не выдал действительные координаты. Проверьте антенну GPS и подключение NEO-6M.');set('cloud','LOCAL');set('cloudLabel','Работа только в локальной сети');set('sysCloud','Облако отключено');updateControlState(d);$('connectionBadge').classList.toggle('warn',false);$('topState').previousElementSibling.style.background='var(--green)';}catch(e){set('topState','НЕТ СВЯЗИ');set('apiState','ОШИБКА СОЕДИНЕНИЯ');set('connApi','Нет ответа');$('topState').previousElementSibling.style.background='var(--red)';}}
 function updateControlState(d){const c=d.control||{};const az=Number(c.target_azimuth_deg??0),el=Number(c.target_elevation_deg??0);if(!targetInputsDirty){$('azInput').value=az.toFixed(1);$('elInput').value=el.toFixed(1);}set('targetState','Азимут '+az.toFixed(1)+'° · место '+el.toFixed(1)+'°');const on=c.tracking_requested===true;set('trackingState',on?'Запрошено':'Выключено');set('trackingBtn',on?'СЛЕЖЕНИЕ: ВКЛ':'СЛЕЖЕНИЕ: ВЫКЛ');}
 function copyAddress(){const a='http://'+(lastStatus?.ip||location.hostname)+'/';if(navigator.clipboard?.writeText)navigator.clipboard.writeText(a).then(()=>alert('Адрес скопирован: '+a)).catch(()=>prompt('Скопируйте адрес',a));else prompt('Скопируйте адрес',a)}
 async function sendCommand(payload){try{const r=await fetch('/api/v1/command',{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify(payload)});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.message||d.error||('HTTP '+r.status));set('commandMessage',d.message||'Команда принята');return d;}catch(e){set('commandMessage','Ошибка команды: '+e.message);throw e;}}
 $('azInput').addEventListener('input',()=>{targetInputsDirty=true;});
 $('elInput').addEventListener('input',()=>{targetInputsDirty=true;});
 async function sendTarget(){if(targetSendBusy)return;const azText=$('azInput').value.trim(),elText=$('elInput').value.trim();if(azText===''||elText===''){set('commandMessage','Введите оба значения: азимут и угол места.');return;}const az=Number(azText),el=Number(elText);if(!Number.isFinite(az)||!Number.isFinite(el)||az<0||az>=360||el<0||el>90){set('commandMessage','Проверьте углы: азимут 0–менее 360°, угол места 0–90°.');return;}const btn=$('sendTargetBtn');targetSendBusy=true;btn.disabled=true;btn.textContent='ОТПРАВКА…';set('commandMessage','Передаю азимут и угол места одним запросом…');try{const d=await sendCommand({command:'set_target',azimuth_deg:az,elevation_deg:el});targetInputsDirty=false;set('commandMessage',d.message||'Оба угла приняты контроллером.');await refreshStatus();}catch(e){}finally{targetSendBusy=false;btn.disabled=false;btn.textContent='ОТПРАВИТЬ ЦЕЛЬ';}}
- async function toggleTracking(){const enabled=!(lastStatus?.control?.tracking_requested===true);try{await sendCommand({command:'tracking',enabled});}catch(e){}}
+ async function calibrateAxis(axis){const label=axis==='azimuth'?'AZ · истинный север':'EL · горизонт';if(!confirm('Сохранить текущее положение как ноль '+label+'? Убедитесь, что ось физически выставлена правильно.'))return;try{const d=await sendCommand({command:'calibrate_zero',axis});set('commandMessage',d.message||'Ноль сохранён');await refreshStatus();}catch(e){}}async function toggleTracking(){const enabled=!(lastStatus?.control?.tracking_requested===true);try{await sendCommand({command:'tracking',enabled});}catch(e){}}
  async function requestStop(){if(!confirm('Отправить STOP? Это программная команда, не аппаратная аварийная остановка.'))return;try{await sendCommand({command:'stop'});}catch(e){}}
 refreshStatus();setInterval(refreshStatus,1000);
 </script></body></html>)HTML";
@@ -1585,6 +1624,31 @@ refreshStatus();setInterval(refreshStatus,1000);
       }
       targetAzimuthDeg=az; targetElevationDeg=el;
       message="Целевые углы сохранены. Моторы пока не задействованы.";
+    } else if(command=="calibrate_zero") {
+      const String axis=req["axis"]| "";
+      if(axis=="azimuth") {
+        if(!azimuthEncoderValid()) {
+          out["ok"]=false;out["error"]="azimuth_sensor_unavailable";
+          out["message"]="AS5600 азимута не готов: проверьте питание, I2C0 и магнит.";
+          String body;serializeJson(out,body);localServer.send(409,"application/json",body);return;
+        }
+        azimuthZeroRawDeg=azimuthEncoder.sensor_angle_deg;azimuthZeroValid=true;
+        prefs.putFloat("az0raw",azimuthZeroRawDeg);prefs.putBool("az0valid",true);
+        message="Ноль азимута сохранён. Текущее положение принято за 0° (истинный север).";
+      } else if(axis=="elevation") {
+        if(!elevationEncoderValid()) {
+          out["ok"]=false;out["error"]="elevation_sensor_unavailable";
+          out["message"]="AS5600 угла места не готов: проверьте питание, I2C1 и магнит.";
+          String body;serializeJson(out,body);localServer.send(409,"application/json",body);return;
+        }
+        elevationZeroRawDeg=elevationEncoder.sensor_angle_deg;elevationZeroValid=true;
+        prefs.putFloat("el0raw",elevationZeroRawDeg);prefs.putBool("el0valid",true);
+        message="Ноль угла места сохранён. Текущее положение принято за 0° (горизонт).";
+      } else {
+        out["ok"]=false;out["error"]="invalid_axis";
+        out["message"]="axis должен быть azimuth или elevation.";
+        String body;serializeJson(out,body);localServer.send(400,"application/json",body);return;
+      }
     } else if(command=="follow_satellite") {
       const uint32_t norad=req["norad_id"]|0U;
       if(norad<1 || norad>999999) {
@@ -1616,7 +1680,7 @@ refreshStatus();setInterval(refreshStatus,1000);
       message=trackingRequested ? "Запрос слежения принят; движение моторов заблокировано." : "Слежение выключено.";
     } else {
       out["ok"]=false; out["error"]="unsupported_command";
-      out["message"]="Допустимые команды: stop, set_target, follow_satellite, tracking.";
+      out["message"]="Допустимые команды: stop, set_target, follow_satellite, tracking, calibrate_zero.";
       String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
     }
     ++localCommandSequence;
@@ -1709,7 +1773,9 @@ void setup() {
   tft.fillScreen(TFT_BLACK);
   Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1);
   initQmc5883p();
+  beginAxisEncoders();
   prefs.begin("cyd-tracker",false);
+  loadAxisCalibration();
   char hardwareIdBuffer[20];
   snprintf(hardwareIdBuffer,sizeof(hardwareIdBuffer),"CYD-%012llX",(unsigned long long)ESP.getEfuseMac());
   deviceHardwareId=hardwareIdBuffer;
@@ -1732,6 +1798,7 @@ void loop() {
   while(Serial2.available()) {
     if(gps.encode(Serial2.read()) && gps.location.isValid()) gpsSeen=true;
   }
+  serviceAxisEncoders();
   const uint32_t now=millis();
   if(!displayDiagnosticActive && screen==Screen::Splash && now-screenStartedAt>=SPLASH_MS) {
     if(touchCalibrated) { screen=Screen::Init; showInitialization(); screenStartedAt=now; }

@@ -19,7 +19,13 @@ constexpr int EL_DIR  = 26;
 constexpr int GPS_RX = 34;
 constexpr int GPS_TX_UNUSED = -1;
 
-constexpr int EL_AS5600_ANALOG = 35;
+// AZ AS5600 shares I2C0 with QMC5883P/ADXL345 (different I2C address).
+// EL AS5600 uses I2C1. GPIO18/19 are the unused CYD SD-slot SPI pins;
+// SD-card use is disabled while this sensor bus is assigned.
+constexpr int AZ_AS5600_SDA = I2C_SDA;
+constexpr int AZ_AS5600_SCL = I2C_SCL;
+constexpr int EL_AS5600_SDA = 18;
+constexpr int EL_AS5600_SCL = 19;
 }
 
 namespace Devices {

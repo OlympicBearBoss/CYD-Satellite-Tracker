@@ -7,6 +7,8 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <TinyGPSPlus.h>
+#include <Wire.h>
+#include <Adafruit_QMC5883P.h>
 #include <ctype.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
@@ -159,6 +161,14 @@ TFT_eSPI tft;
 SPIClass touchSPI(VSPI);
 TinyGPSPlus gps;
 Preferences prefs;
+
+// QMC5883P telemetry: raw readings only until calibration on the final rotator.
+static Adafruit_QMC5883P qmc5883p;
+static bool qmcPresent=false, qmcReady=false, qmcReadOk=false;
+static bool qmcDataReady=false, qmcOverflow=false;
+static int16_t qmcRawX=0, qmcRawY=0, qmcRawZ=0;
+static uint32_t qmcLastSampleAt=0, qmcLastGoodAt=0;
+static constexpr uint32_t QMC_SAMPLE_INTERVAL_MS=250;
 
 static constexpr uint8_t DISPLAY_ROTATION = 1;
 static constexpr uint32_t SPLASH_MS = 6000;
@@ -854,7 +864,7 @@ static void updateTargetTelemetry() {
 
     // Keep the motor-lock warning visible alongside the latest target values.
     tft.fillRect(10,186,300,9,0x4000);
-    snprintf(line,sizeof(line),"LOCKED  AZ %.1f%c  EL %.1f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
+    snprintf(line,sizeof(line),"DRIVE LOCKED  /  MAG %s",qmcPresent?(qmcReadOk?"READY · UNCAL":"NO DATA"):"NOT FOUND");
     tft.setTextDatum(MC_DATUM);
     tft.setTextColor(TFT_YELLOW,0x4000);
     tft.drawString(line,160,190,1);
@@ -923,7 +933,7 @@ static void showAntennaScreen() {
   // Instrument console with a compass rose and elevation arc.
   tft.fillRoundRect(8,88,147,109,9,0x0822);tft.drawRoundRect(8,88,147,109,9,0x2A69);
   tft.fillRoundRect(163,88,149,109,9,0x0822);tft.drawRoundRect(163,88,149,109,9,0x2A69);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,0x0822);tft.drawString("AZIMUTH",17,95,1);
+  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,0x0822);tft.drawString("TARGET AZIMUTH",17,95,1);
   const int cx=81,cy=150,rr=38;
   tft.drawCircle(cx,cy,rr,0x07FF);tft.drawCircle(cx,cy,rr-3,0x2A69);
   for(int a=0;a<360;a+=5) {
@@ -950,7 +960,7 @@ static void showAntennaScreen() {
   tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,0x0822);
   tft.drawString("--.-°",237,151,4);
   tft.fillRoundRect(8,184,304,13,5,0x4000);tft.drawRoundRect(8,184,304,13,5,TFT_ORANGE);
-  tft.setTextColor(TFT_YELLOW,0x4000);tft.drawString("DRIVE LOCKED  /  TARGET PENDING",160,190,1);
+  tft.setTextColor(TFT_YELLOW,0x4000);tft.drawString("DRIVE LOCKED  /  MAG UNCALIBRATED",160,190,1);
   drawNavigation(2);
   updateTargetTelemetry();
 }
@@ -1411,9 +1421,9 @@ static void sendLocalStatus() {
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
   hardware["angle_sensor_connected"]=false;
-  hardware["compass_connected"]=false;
+  hardware["compass_connected"]=qmcPresent;
   hardware["motor_drivers_connected"]=false;
-  hardware["limit_switches_connected"]=false;
+  hardware["limit_switches_connected"]=false;\n  JsonObject mag=doc["magnetometer"].to<JsonObject>();\n  mag["present"]=qmcPresent;\n  mag["ready"]=qmcDataReady;\n  mag["overflow"]=qmcOverflow;\n  mag["read_ok"]=qmcReadOk;\n  mag["calibrated"]=false;\n  mag["heading_valid"]=false;\n  if(qmcReadOk){mag["raw_x"]=qmcRawX;mag["raw_y"]=qmcRawY;mag["raw_z"]=qmcRawZ;}\n  mag["sample_age_ms"]=qmcLastGoodAt?millis()-qmcLastGoodAt:0;
   doc["connection"]="local-wifi";
   doc["discovery"]="mdns";
   doc["ip"]=WiFi.localIP().toString();
@@ -1624,6 +1634,58 @@ static void serviceLocalApi() {
   if(localApiStarted) localServer.handleClient();
 }
 
+static bool writeQmcRegister(uint8_t reg,uint8_t value) {
+  Wire.beginTransmission(0x2C);
+  Wire.write(reg);
+  Wire.write(value);
+  return Wire.endTransmission()==0;
+}
+
+static void initQmc5883p() {
+  Wire.begin(Pins::I2C_SDA,Pins::I2C_SCL);
+  Wire.setClock(100000);
+  Serial.println("[SENSOR] I2C started SDA=27 SCL=22 100kHz");
+  // Preserve the exact register order confirmed by the hardware test.
+  const bool r1=writeQmcRegister(0x0B,0x01);
+  delay(10);
+  const bool r2=writeQmcRegister(0x0A,0x01);
+  delay(10);
+  const bool r3=writeQmcRegister(0x09,0x1D);
+  delay(20);
+  Serial.printf("[QMC5883P] startup writes 0B=%s 0A=%s 09=%s\\n",
+    r1?"ACK":"FAIL",r2?"ACK":"FAIL",r3?"ACK":"FAIL");
+  if(!(r1&&r2&&r3)) {
+    Serial.println("[QMC5883P] initialization blocked: register write failed");
+    return;
+  }
+  qmcPresent=true;
+  qmcReady=qmc5883p.begin(0x2C,&Wire);
+  Serial.printf("[QMC5883P] begin=%s\\n",qmcReady?"OK":"FAIL");
+  if(!qmcReady) qmcPresent=false;
+}
+
+static void serviceQmc5883p() {
+  if(!qmcReady) return;
+  const uint32_t now=millis();
+  if(now-qmcLastSampleAt<QMC_SAMPLE_INTERVAL_MS) return;
+  qmcLastSampleAt=now;
+  qmcDataReady=qmc5883p.isDataReady();
+  qmcOverflow=qmc5883p.isOverflow();
+  int16_t x=0,y=0,z=0;
+  qmcReadOk=qmc5883p.getRawMagnetic(&x,&y,&z);
+  if(qmcReadOk) {
+    qmcRawX=x;qmcRawY=y;qmcRawZ=z;
+    qmcLastGoodAt=now;
+  }
+  static uint32_t lastLog=0;
+  if(now-lastLog>=5000) {
+    lastLog=now;
+    Serial.printf("[QMC5883P] present=%u ready=%u overflow=%u read=%u raw=%d,%d,%d\\n",
+      qmcPresent?1:0,qmcDataReady?1:0,qmcOverflow?1:0,qmcReadOk?1:0,
+      qmcRawX,qmcRawY,qmcRawZ);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   delay(150);
@@ -1636,7 +1698,7 @@ void setup() {
   touchSPI.begin(TOUCH_CLK_PIN,TOUCH_MISO_PIN,TOUCH_MOSI_PIN,TOUCH_CS);
   tft.setRotation(DISPLAY_ROTATION);
   tft.fillScreen(TFT_BLACK);
-  Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1);
+  Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1);\n  initQmc5883p();
   prefs.begin("cyd-tracker",false);
   char hardwareIdBuffer[20];
   snprintf(hardwareIdBuffer,sizeof(hardwareIdBuffer),"CYD-%012llX",(unsigned long long)ESP.getEfuseMac());

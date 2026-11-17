@@ -1,0 +1,58 @@
+name: Build CYD QMC5883P continuous test v6
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware/sensor-qmc5883p-v6/**"
+      - ".github/workflows/build-sensor-qmc5883p-v6.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install ESP32 Arduino core
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@2.0.17
+      - name: Install sensor libraries
+        run: |
+          arduino-cli lib update-index
+          mkdir -p "$HOME/Arduino/libraries"
+          git clone --depth 1 https://github.com/adafruit/Adafruit_QMC5883P.git "$HOME/Arduino/libraries/Adafruit_QMC5883P"
+          arduino-cli lib install "Adafruit BusIO"
+      - name: Compile QMC5883P continuous test v6
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32:FlashSize=4M,FlashMode=dio,FlashFreq=40 \
+            --output-dir build \
+            firmware/sensor-qmc5883p-v6/CYD_QMC5883P_Test_V6
+      - name: Create complete image for flashing at 0x0
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORE="$HOME/.arduino15/packages/esp32/hardware/esp32/2.0.17"
+          TOOLS="$HOME/.arduino15/packages/esp32/tools"
+          APP="$(find build -maxdepth 1 -type f -name '*.ino.bin' -print -quit)"
+          BOOTLOADER="$(find build -type f -name '*bootloader*.bin' -print -quit)"
+          PARTITIONS="$(find build -type f -name '*partitions*.bin' -print -quit)"
+          BOOT_APP0="$(find "$CORE" -type f -name 'boot_app0.bin' -print -quit)"
+          ESPTOOL="$(find "$TOOLS" -type f -name 'esptool.py' -print -quit)"
+          test -n "$APP" && test -n "$BOOTLOADER" && test -n "$PARTITIONS" && test -n "$BOOT_APP0" && test -n "$ESPTOOL"
+          cp "$APP" build/CYD-QMC5883P-V6-APP-0x10000.bin
+          python3 "$ESPTOOL" --chip esp32 merge_bin \
+            --flash_mode dio --flash_freq 40m --flash_size 4MB \
+            -o build/CYD-QMC5883P-V6-MERGED-0x000000.bin \
+            0x1000 "$BOOTLOADER" 0x8000 "$PARTITIONS" 0xe000 "$BOOT_APP0" 0x10000 "$APP"
+      - name: Publish binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: CYD-QMC5883P-V6
+          path: |
+            build/CYD-QMC5883P-V6-MERGED-0x000000.bin
+            build/CYD-QMC5883P-V6-APP-0x10000.bin
+          if-no-files-found: error
+          retention-days: 30

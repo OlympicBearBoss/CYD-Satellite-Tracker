@@ -26,10 +26,36 @@ jobs:
             --fqbn esp32:esp32:esp32:FlashSize=4M,FlashMode=dio,FlashFreq=40 \
             --output-dir build \
             firmware/sensor-i2c-scan/CYD_Sensor_I2C_Scan
-      - name: Publish firmware binary
+      - name: Create complete image for flashing at 0x0
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORE="$HOME/.arduino15/packages/esp32/hardware/esp32/2.0.17"
+          TOOLS="$HOME/.arduino15/packages/esp32/tools"
+          APP="$(find build -maxdepth 1 -type f -name '*.ino.bin' -print -quit)"
+          BOOTLOADER="$(find build -type f -name '*bootloader*.bin' -print -quit)"
+          PARTITIONS="$(find build -type f -name '*partitions*.bin' -print -quit)"
+          BOOT_APP0="$(find "$CORE" -type f -name 'boot_app0.bin' -print -quit)"
+          ESPTOOL="$(find "$TOOLS" -type f -name 'esptool.py' -print -quit)"
+          test -n "$APP"
+          test -n "$BOOTLOADER"
+          test -n "$PARTITIONS"
+          test -n "$BOOT_APP0"
+          test -n "$ESPTOOL"
+          cp "$APP" build/CYD-Sensor-I2C-Scanner-APP-0x10000.bin
+          python3 "$ESPTOOL" --chip esp32 merge_bin \
+            --flash_mode dio --flash_freq 40m --flash_size 4MB \
+            -o build/CYD-Sensor-I2C-Scanner-MERGED-0x000000.bin \
+            0x1000 "$BOOTLOADER" \
+            0x8000 "$PARTITIONS" \
+            0xe000 "$BOOT_APP0" \
+            0x10000 "$APP"
+      - name: Publish firmware binaries
         uses: actions/upload-artifact@v4
         with:
           name: CYD-Sensor-I2C-Scanner
-          path: build/*.bin
+          path: |
+            build/CYD-Sensor-I2C-Scanner-MERGED-0x000000.bin
+            build/CYD-Sensor-I2C-Scanner-APP-0x10000.bin
           if-no-files-found: error
           retention-days: 30

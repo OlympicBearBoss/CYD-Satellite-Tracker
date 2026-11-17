@@ -8,7 +8,7 @@
 #include <Preferences.h>
 #include <TinyGPSPlus.h>
 #include <Wire.h>
-#include <Adafruit_QMC5883P.h>
+#include "SensorSuite.h"
 #include <ctype.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
@@ -163,13 +163,7 @@ SPIClass touchSPI(VSPI);
 TinyGPSPlus gps;
 Preferences prefs;
 
-// QMC5883P telemetry: raw readings only until calibration on the final rotator.
-static Adafruit_QMC5883P qmc5883p;
-static bool qmcPresent=false, qmcReady=false, qmcReadOk=false;
-static bool qmcDataReady=false, qmcOverflow=false;
-static int16_t qmcRawX=0, qmcRawY=0, qmcRawZ=0;
-static uint32_t qmcLastSampleAt=0, qmcLastGoodAt=0;
-static constexpr uint32_t QMC_SAMPLE_INTERVAL_MS=250;
+// HMC5883L magnetometer and ADXL345 accelerometer are managed by SensorSuite.h.
 static float azimuthZeroRawDeg=0.0f, elevationZeroRawDeg=0.0f;
 static bool azimuthZeroValid=false, elevationZeroValid=false;
 static float normalize360(float value){while(value<0.0f)value+=360.0f;while(value>=360.0f)value-=360.0f;return value;}
@@ -181,7 +175,7 @@ static void loadAxisCalibration(){
   elevationZeroValid=prefs.getBool("el0valid",false);
   azimuthZeroRawDeg=prefs.getFloat("az0raw",0.0f);
   elevationZeroRawDeg=prefs.getFloat("el0raw",0.0f);
-  Serial.printf("[AS5600] calibration AZ=%u EL=%u\\n",azimuthZeroValid?1:0,elevationZeroValid?1:0);
+  Serial.printf("[AXIS] zero calibration AZ=%u EL=%u\\n",azimuthZeroValid?1:0,elevationZeroValid?1:0);
 }
 
 static constexpr uint8_t DISPLAY_ROTATION = 1;
@@ -868,12 +862,10 @@ static void updateTargetTelemetry() {
     // Live azimuth: update the numeric heading and rotate the compass needle
     // without repainting the compass rose, labels, panels, or whole screen.
     tft.fillRect(15,93,132,16,0x0822);
-    if(azimuthEncoderValid()) {
-      if(azimuthZeroValid) snprintf(line,sizeof(line),"AZ ENC %.1f%c",azimuthMeasuredDeg(),(char)247);
-      else snprintf(line,sizeof(line),"AZ RAW %.1f%c",azimuthEncoder.sensor_angle_deg,(char)247);
-    } else snprintf(line,sizeof(line),"AZ ENC --");
+    if(sensorSuite.heading_valid) snprintf(line,sizeof(line),"AZ MAG %.1f%c",sensorSuite.magnetic_heading_deg,(char)247);
+    else snprintf(line,sizeof(line),"AZ MAG --");
     tft.setTextDatum(TL_DATUM);
-    tft.setTextColor(azimuthEncoderValid()?TFT_CYAN:TFT_ORANGE,0x0822);
+    tft.setTextColor(sensorSuite.heading_valid?TFT_CYAN:TFT_ORANGE,0x0822);
     tft.drawString(line,17,95,2);
     const int cx=81, cy=150;
     tft.fillCircle(cx,cy,22,0x0822);
@@ -881,17 +873,15 @@ static void updateTargetTelemetry() {
 
     // Keep the motor-lock warning visible alongside the latest target values.
     tft.fillRect(10,186,300,9,0x4000);
-    snprintf(line,sizeof(line),"DRIVE LOCKED  /  MAG %s",qmcPresent?(qmcReadOk?"READY · UNCAL":"NO DATA"):"NOT FOUND");
+    snprintf(line,sizeof(line),"DRIVE LOCKED  /  HMC %s",sensorSuite.hmc_present?(sensorSuite.hmc_read_ok?"READY · UNCAL":"NO DATA"):"NOT FOUND");
     tft.setTextDatum(MC_DATUM);
     tft.setTextColor(TFT_YELLOW,0x4000);
     tft.drawString(line,160,190,1);
     tft.fillRect(184,139,106,25,0x0822);
-    if(elevationEncoderValid()) {
-      if(elevationZeroValid) snprintf(line,sizeof(line),"%.1f%c",elevationMeasuredDeg(),(char)247);
-      else snprintf(line,sizeof(line),"%.1f%c",elevationEncoder.sensor_angle_deg,(char)247);
-    } else snprintf(line,sizeof(line),"--");
+    if(sensorSuite.tilt_valid) snprintf(line,sizeof(line),"%.1f%c",sensorSuite.pitch_deg,(char)247);
+    else snprintf(line,sizeof(line),"--");
     tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(elevationEncoderValid()?TFT_WHITE:TFT_ORANGE,0x0822);
+    tft.setTextColor(sensorSuite.tilt_valid?TFT_WHITE:TFT_ORANGE,0x0822);
     tft.drawString(line,237,151,4);
   }
 }
@@ -1436,25 +1426,38 @@ static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V94";
+  doc["firmware"]="V95";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
-  hardware["angle_sensor_connected"]=azimuthEncoder.present || elevationEncoder.present;
-  hardware["azimuth_sensor_connected"]=azimuthEncoder.present;
-  hardware["elevation_sensor_connected"]=elevationEncoder.present;
-  hardware["compass_connected"]=qmcPresent;
+  hardware["angle_sensor_connected"]=false;
+  hardware["azimuth_sensor_connected"]=false;
+  hardware["elevation_sensor_connected"]=false;
+  hardware["compass_connected"]=sensorSuite.hmc_present;
+  hardware["accelerometer_connected"]=sensorSuite.accel_present;
   hardware["motor_drivers_connected"]=false;
   hardware["limit_switches_connected"]=false;
   JsonObject mag=doc["magnetometer"].to<JsonObject>();
-  mag["present"]=qmcPresent;
-  mag["ready"]=qmcDataReady;
-  mag["overflow"]=qmcOverflow;
-  mag["read_ok"]=qmcReadOk;
-  mag["calibrated"]=false;
-  mag["heading_valid"]=false;
-  if(qmcReadOk){mag["raw_x"]=qmcRawX;mag["raw_y"]=qmcRawY;mag["raw_z"]=qmcRawZ;}
-  mag["sample_age_ms"]=qmcLastGoodAt?millis()-qmcLastGoodAt:0;
+  mag["type"]="HMC5883L"; mag["address"]="0x1E";
+  mag["present"]=sensorSuite.hmc_present; mag["ready"]=sensorSuite.hmc_data_ready;
+  mag["locked"]=sensorSuite.hmc_locked; mag["read_ok"]=sensorSuite.hmc_read_ok;
+  mag["calibrated"]=false; mag["heading_valid"]=sensorSuite.heading_valid;
+  if(sensorSuite.hmc_read_ok) {
+    mag["raw_x"]=sensorSuite.mag_x; mag["raw_y"]=sensorSuite.mag_y; mag["raw_z"]=sensorSuite.mag_z;
+    mag["field_magnitude_raw"]=sensorSuite.field_magnitude;
+  }
+  if(sensorSuite.heading_valid) mag["magnetic_heading_deg"]=sensorSuite.magnetic_heading_deg;
+  mag["sample_age_ms"]=sensorSuite.mag_last_good_ms?millis()-sensorSuite.mag_last_good_ms:0;
+  JsonObject accel=doc["accelerometer"].to<JsonObject>();
+  accel["type"]="ADXL345"; accel["address"]="0x53";
+  accel["present"]=sensorSuite.accel_present; accel["read_ok"]=sensorSuite.accel_read_ok;
+  accel["tilt_valid"]=sensorSuite.tilt_valid;
+  if(sensorSuite.accel_read_ok) {
+    accel["raw_x"]=sensorSuite.accel_raw_x; accel["raw_y"]=sensorSuite.accel_raw_y; accel["raw_z"]=sensorSuite.accel_raw_z;
+    accel["x_g"]=sensorSuite.accel_x_g; accel["y_g"]=sensorSuite.accel_y_g; accel["z_g"]=sensorSuite.accel_z_g;
+  }
+  if(sensorSuite.tilt_valid) { accel["roll_deg"]=sensorSuite.roll_deg; accel["pitch_deg"]=sensorSuite.pitch_deg; }
+  accel["sample_age_ms"]=sensorSuite.accel_last_good_ms?millis()-sensorSuite.accel_last_good_ms:0;
   JsonObject axes=doc["axis_sensors"].to<JsonObject>();
   JsonObject az=axes["azimuth"].to<JsonObject>();
   az["type"]="AS5600"; az["bus"]="I2C0";
@@ -1707,58 +1710,6 @@ static void serviceLocalApi() {
   if(localApiStarted) localServer.handleClient();
 }
 
-static bool writeQmcRegister(uint8_t reg,uint8_t value) {
-  Wire.beginTransmission(0x2C);
-  Wire.write(reg);
-  Wire.write(value);
-  return Wire.endTransmission()==0;
-}
-
-static void initQmc5883p() {
-  Wire.begin(Pins::I2C_SDA,Pins::I2C_SCL);
-  Wire.setClock(100000);
-  Serial.println("[SENSOR] I2C started SDA=27 SCL=22 100kHz");
-  // Preserve the exact register order confirmed by the hardware test.
-  const bool r1=writeQmcRegister(0x0B,0x01);
-  delay(10);
-  const bool r2=writeQmcRegister(0x0A,0x01);
-  delay(10);
-  const bool r3=writeQmcRegister(0x09,0x1D);
-  delay(20);
-  Serial.printf("[QMC5883P] startup writes 0B=%s 0A=%s 09=%s\n",
-    r1?"ACK":"FAIL",r2?"ACK":"FAIL",r3?"ACK":"FAIL");
-  if(!(r1&&r2&&r3)) {
-    Serial.println("[QMC5883P] initialization blocked: register write failed");
-    return;
-  }
-  qmcPresent=true;
-  qmcReady=qmc5883p.begin(0x2C,&Wire);
-  Serial.printf("[QMC5883P] begin=%s\n",qmcReady?"OK":"FAIL");
-  if(!qmcReady) qmcPresent=false;
-}
-
-static void serviceQmc5883p() {
-  if(!qmcReady) return;
-  const uint32_t now=millis();
-  if(now-qmcLastSampleAt<QMC_SAMPLE_INTERVAL_MS) return;
-  qmcLastSampleAt=now;
-  qmcDataReady=qmc5883p.isDataReady();
-  qmcOverflow=qmc5883p.isOverflow();
-  int16_t x=0,y=0,z=0;
-  qmcReadOk=qmc5883p.getRawMagnetic(&x,&y,&z);
-  if(qmcReadOk) {
-    qmcRawX=x;qmcRawY=y;qmcRawZ=z;
-    qmcLastGoodAt=now;
-  }
-  static uint32_t lastLog=0;
-  if(now-lastLog>=5000) {
-    lastLog=now;
-    Serial.printf("[QMC5883P] present=%u ready=%u overflow=%u read=%u raw=%d,%d,%d\n",
-      qmcPresent?1:0,qmcDataReady?1:0,qmcOverflow?1:0,qmcReadOk?1:0,
-      qmcRawX,qmcRawY,qmcRawZ);
-  }
-}
-
 void setup() {
   Serial.begin(115200);
   delay(150);
@@ -1772,7 +1723,7 @@ void setup() {
   tft.setRotation(DISPLAY_ROTATION);
   tft.fillScreen(TFT_BLACK);
   Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1);
-  initQmc5883p();
+  beginSensorSuite();
   beginAxisEncoders();
   prefs.begin("cyd-tracker",false);
   loadAxisCalibration();
@@ -1799,6 +1750,7 @@ void loop() {
     if(gps.encode(Serial2.read()) && gps.location.isValid()) gpsSeen=true;
   }
   serviceAxisEncoders();
+  serviceSensorSuite();
   const uint32_t now=millis();
   if(!displayDiagnosticActive && screen==Screen::Splash && now-screenStartedAt>=SPLASH_MS) {
     if(touchCalibrated) { screen=Screen::Init; showInitialization(); screenStartedAt=now; }

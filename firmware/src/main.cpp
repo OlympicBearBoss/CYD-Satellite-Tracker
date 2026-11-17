@@ -163,7 +163,7 @@ SPIClass touchSPI(VSPI);
 TinyGPSPlus gps;
 Preferences prefs;
 
-// HMC5883L magnetometer and ADXL345 accelerometer are managed by SensorSuite.h.
+// QMC5883P magnetometer (Adafruit_QMC5883P) and ADXL345 are managed by SensorSuite.h.
 static float azimuthZeroRawDeg=0.0f, elevationZeroRawDeg=0.0f;
 static bool azimuthZeroValid=false, elevationZeroValid=false;
 static float normalize360(float value){while(value<0.0f)value+=360.0f;while(value>=360.0f)value-=360.0f;return value;}
@@ -873,7 +873,7 @@ static void updateTargetTelemetry() {
 
     // Keep the motor-lock warning visible alongside the latest target values.
     tft.fillRect(10,186,300,9,0x4000);
-    snprintf(line,sizeof(line),"DRIVE LOCKED  /  HMC %s",sensorSuite.hmc_present?(sensorSuite.hmc_read_ok?"READY · UNCAL":"NO DATA"):"NOT FOUND");
+    snprintf(line,sizeof(line),"DRIVE LOCKED  /  QMC %s",sensorSuite.mag_present?(sensorSuite.mag_read_ok?"READY · UNCAL":"NO DATA"):"NOT FOUND");
     tft.setTextDatum(MC_DATUM);
     tft.setTextColor(TFT_YELLOW,0x4000);
     tft.drawString(line,160,190,1);
@@ -1426,7 +1426,7 @@ static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V95";
+  doc["firmware"]="V96";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
@@ -1438,9 +1438,9 @@ static void sendLocalStatus() {
   hardware["motor_drivers_connected"]=false;
   hardware["limit_switches_connected"]=false;
   JsonObject mag=doc["magnetometer"].to<JsonObject>();
-  mag["type"]="HMC5883L"; mag["address"]="0x1E";
-  mag["present"]=sensorSuite.hmc_present; mag["ready"]=sensorSuite.hmc_data_ready;
-  mag["locked"]=sensorSuite.hmc_locked; mag["read_ok"]=sensorSuite.hmc_read_ok;
+  mag["type"]="QMC5883P"; mag["address"]="0x2C";
+  mag["present"]=sensorSuite.hmc_present; mag["ready"]=sensorSuite.mag_data_ready;
+  mag["locked"]=sensorSuite.mag_overflow; mag["read_ok"]=sensorSuite.hmc_read_ok;
   mag["calibrated"]=false; mag["heading_valid"]=sensorSuite.heading_valid;
   if(sensorSuite.hmc_read_ok) {
     mag["raw_x"]=sensorSuite.mag_x; mag["raw_y"]=sensorSuite.mag_y; mag["raw_z"]=sensorSuite.mag_z;

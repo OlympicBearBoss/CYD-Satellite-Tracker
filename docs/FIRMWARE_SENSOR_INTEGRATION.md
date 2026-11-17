@@ -2,9 +2,12 @@
 
 Status: integration specification, based on the currently verified hardware tests. This document does not claim that every sensor is already integrated into the production UI.
 
-## 1. Confirmed controller and bus
+## 1. Confirmed controller and pin map
 
 - Controller: ESP32-2432S028 / CYD 2.8, ESP32-D0WD-V3.
+- Motor signals: AZ STEP GPIO4, AZ DIR GPIO16, EL STEP GPIO17, EL DIR GPIO26.
+- GPS NEO-6M: module TX -> ESP32 UART2 RX GPIO34; GPS module RX is unused.
+- GPIO34 is input-only on ESP32. Use it only as UART RX, never as a motor/control output.
 - I²C: SDA GPIO27, SCL GPIO22, 100 kHz.
 - Logic voltage: 3.3 V; share ground. Never apply 5 V to I²C signal pins.
 - Do not start motors during sensor bring-up or calibration.
@@ -33,7 +36,7 @@ Startup order:
 4. Start the Adafruit_QMC5883P driver at address 0x2C and verify chip ID 0x80.
 5. Identify ADXL345 at 0x53; expected DEVID register 0x00 = 0xE5. Its full measurement configuration is a separate implementation/test step.
 6. Probe future angle/limit devices only when installed and verified.
-7. Start GPS UART receive and then the UI/network services.
+7. Start GPS UART2 receive on GPIO34 (9600 baud, RX only), then the UI/network services.
 8. Keep all motor STEP outputs inactive and driver ENABLE locked. Sensor failure must never enable motion.
 
 The QMC5883P register sequence above is fixed. Do not replace its driver with QMC5883L or HMC5883L code.
@@ -84,13 +87,14 @@ The controller must remain safe even if the mobile app, website or Wi-Fi connect
 
 | Item | Status |
 |---|---|
+| Confirmed motor GPIO mapping: 4, 16, 17, 26 | Confirmed by user and motor test firmware |
+| GPS NEO-6M TX -> UART2 RX GPIO34 | Confirmed pin assignment; live GPS fix still to be checked |
 | QMC5883P detected at 0x2C | Verified |
 | QMC startup register writes in required order | Verified |
 | QMC continuous reads, ready=1, overflow=0 | Verified in V6 |
 | QMC response to approximate hand rotation | Verified; not a precision angle test |
 | ADXL345 identity at 0x53 / DEVID 0xE5 | Verified |
 | ADXL345 continuous acceleration and tilt | Not yet tested |
-| GPS NMEA receive in main firmware | Code path exists; live fix must be checked on hardware |
 | AS5600 angle feedback | Planned; not installed/verified |
 | PCF8574 limit inputs | Planned; not installed/verified |
 | HR4988 motor control | Locked; carrier and safety wiring must be verified first |

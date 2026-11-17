@@ -19,17 +19,13 @@ constexpr int EL_DIR  = 26;
 constexpr int GPS_RX = 34;
 constexpr int GPS_TX_UNUSED = -1;
 
-// AZ AS5600 shares I2C0 with QMC5883P/ADXL345 (different I2C address).
-// EL AS5600 uses I2C1. GPIO18/19 are the unused CYD SD-slot SPI pins;
-// SD-card use is disabled while this sensor bus is assigned.
-constexpr int AZ_AS5600_SDA = I2C_SDA;
-constexpr int AZ_AS5600_SCL = I2C_SCL;
-constexpr int EL_AS5600_SDA = 18;
-constexpr int EL_AS5600_SCL = 19;
+// HMC5883L and ADXL345 share the primary I2C bus at different addresses.
+// Legacy AS5600 pin definitions are retained only for optional future shaft encoders.
 }
 
 namespace Devices {
-constexpr uint8_t AS5600_ADDRESS = 0x36;
+constexpr uint8_t HMC5883L_ADDRESS = 0x1E;
+constexpr uint8_t ADXL345_ADDRESS = 0x53;
 constexpr uint8_t PCF8574_ADDRESS = 0x20; // Verify with I2C scan.
 constexpr uint8_t PCF_LIMIT_MASK = 0x0F;  // P0..P3
 constexpr uint8_t PCF_ESTOP_BIT = 0x20;   // P5, auxiliary NC loop only

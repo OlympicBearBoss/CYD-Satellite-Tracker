@@ -1,0 +1,35 @@
+name: Build CYD sensor I2C scanner
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware/sensor-i2c-scan/**"
+      - ".github/workflows/build-sensor-scan.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+      - name: Install ESP32 Arduino core
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@2.0.17
+      - name: Compile sensor scanner
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32:FlashSize=4M,FlashMode=dio,FlashFreq=40 \
+            --output-dir build \
+            firmware/sensor-i2c-scan/CYD_Sensor_I2C_Scan
+      - name: Publish firmware binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: CYD-Sensor-I2C-Scanner
+          path: build/*.bin
+          if-no-files-found: error
+          retention-days: 30

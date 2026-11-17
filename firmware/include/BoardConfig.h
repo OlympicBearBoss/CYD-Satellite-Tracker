@@ -18,8 +18,9 @@ constexpr int EL_DIR  = 26;
 // GPS module RX is not connected / not used by this firmware.
 constexpr int GPS_RX = 34;
 constexpr int GPS_TX_UNUSED = -1;
+}
 
-// QMC5883P compass and ADXL345 tilt sensor share I2C0.
+namespace Devices {
 constexpr uint8_t QMC5883P_ADDRESS = 0x2C;
 constexpr uint8_t ADXL345_ADDRESS = 0x53;
 constexpr uint8_t PCF8574_ADDRESS = 0x20; // Verify with I2C scan.

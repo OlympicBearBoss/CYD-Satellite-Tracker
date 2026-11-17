@@ -108,3 +108,13 @@ The controller must remain safe even if the mobile app, website or Wi-Fi connect
 4. Connect sensor validity/staleness to the System and Antenna screens and status API.
 5. Only after the rotator is assembled, calibrate the magnetic sensor and validate installed angle feedback.
 6. Implement motor control as a separate safety-gated subsystem.
+
+
+## 9. Dual AS5600 axis feedback
+
+- AZ AS5600: I2C0 / Wire, SDA GPIO27, SCL GPIO22, address 0x36. It shares the bus with QMC5883P (0x2C) and ADXL345 (0x53); addresses do not conflict.
+- EL AS5600: I2C1 / ElevationWire, SDA GPIO18, SCL GPIO19, address 0x36. GPIO18/19 are the CYD SD-slot SPI pins; SD-card use is disabled/reserved in this pin profile.
+- Both sensors are polled every 100 ms. Firmware reads STATUS (0x0B), RAW ANGLE high (0x0C) and low (0x0D); the 12-bit value is converted to sensor degrees. STATUS.MD (bit 5) indicates that a magnet is detected. Bus response, register read, magnet detection and zero calibration are reported separately.
+- /api/v1/status exposes axis_sensors.azimuth and axis_sensors.elevation, including bus, presence, read status, magnet detection, raw angle, calibrated angle (only after zeroing), calibration state and sample age.
+- Local API command: {"command":"calibrate_zero","axis":"azimuth"} when the antenna is physically aimed at true north; {"command":"calibrate_zero","axis":"elevation"} when the elevation axis is physically level (0°). Offsets are stored in ESP32 NVS.
+- Before zero calibration, readings are raw encoder shaft angles and must not be treated as true compass azimuth/elevation. The sensors have not yet been physically installed or hardware-tested; motor movement remains locked.

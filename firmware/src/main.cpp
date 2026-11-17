@@ -1433,16 +1433,16 @@ static void sendLocalStatus() {
   hardware["angle_sensor_connected"]=azimuthEncoder.present || elevationEncoder.present;
   hardware["azimuth_sensor_connected"]=azimuthEncoder.present;
   hardware["elevation_sensor_connected"]=elevationEncoder.present;
-  hardware["compass_connected"]=sensorSuite.hmc_present;
+  hardware["compass_connected"]=sensorSuite.mag_present;
   hardware["accelerometer_connected"]=sensorSuite.accel_present;
   hardware["motor_drivers_connected"]=false;
   hardware["limit_switches_connected"]=false;
   JsonObject mag=doc["magnetometer"].to<JsonObject>();
   mag["type"]="QMC5883P"; mag["address"]="0x2C";
-  mag["present"]=sensorSuite.hmc_present; mag["ready"]=sensorSuite.mag_data_ready;
-  mag["locked"]=sensorSuite.mag_overflow; mag["read_ok"]=sensorSuite.hmc_read_ok;
+  mag["present"]=sensorSuite.mag_present; mag["ready"]=sensorSuite.mag_data_ready;
+  mag["overflow"]=sensorSuite.mag_overflow; mag["read_ok"]=sensorSuite.mag_read_ok;
   mag["calibrated"]=false; mag["heading_valid"]=sensorSuite.heading_valid;
-  if(sensorSuite.hmc_read_ok) {
+  if(sensorSuite.mag_read_ok) {
     mag["raw_x"]=sensorSuite.mag_x; mag["raw_y"]=sensorSuite.mag_y; mag["raw_z"]=sensorSuite.mag_z;
     mag["field_magnitude_raw"]=sensorSuite.field_magnitude;
   }

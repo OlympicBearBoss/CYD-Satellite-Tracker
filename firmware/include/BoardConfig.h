@@ -19,11 +19,18 @@ constexpr int EL_DIR  = 26;
 constexpr int GPS_RX = 34;
 constexpr int GPS_TX_UNUSED = -1;
 
+// Legacy optional dual-AS5600 shaft encoder wiring.
+constexpr int AZ_AS5600_SDA = I2C_SDA;
+constexpr int AZ_AS5600_SCL = I2C_SCL;
+constexpr int EL_AS5600_SDA = 18;
+constexpr int EL_AS5600_SCL = 19;
+
 // HMC5883L and ADXL345 share the primary I2C bus at different addresses.
 // Legacy AS5600 pin definitions are retained only for optional future shaft encoders.
 }
 
 namespace Devices {
+constexpr uint8_t AS5600_ADDRESS = 0x36;
 constexpr uint8_t HMC5883L_ADDRESS = 0x1E;
 constexpr uint8_t ADXL345_ADDRESS = 0x53;
 constexpr uint8_t PCF8574_ADDRESS = 0x20; // Verify with I2C scan.

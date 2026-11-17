@@ -5,7 +5,7 @@
 
 // Two AS5600 encoders share no I2C bus with each other:
 // AZ is on I2C0 (Wire), EL is on I2C1 (ElevationWire).
-// AZ may coexist with QMC5883P/ADXL345 because their I2C addresses differ.
+// AZ may coexist with HMC5883L/ADXL345 because their I2C addresses differ.
 static TwoWire ElevationWire(1);
 
 struct AxisEncoderState {

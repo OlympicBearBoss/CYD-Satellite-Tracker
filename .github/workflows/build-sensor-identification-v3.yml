@@ -1,0 +1,52 @@
+name: Build CYD I2C identification probe v3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware/sensor-i2c-identification-v3/**"
+      - ".github/workflows/build-sensor-identification-v3.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install ESP32 Arduino core
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@2.0.17
+      - name: Compile identification probe v3
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32:FlashSize=4M,FlashMode=dio,FlashFreq=40 \
+            --output-dir build \
+            firmware/sensor-i2c-identification-v3/CYD_I2C_Identification_V3
+      - name: Create complete image for flashing at 0x0
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORE="$HOME/.arduino15/packages/esp32/hardware/esp32/2.0.17"
+          TOOLS="$HOME/.arduino15/packages/esp32/tools"
+          APP="$(find build -maxdepth 1 -type f -name '*.ino.bin' -print -quit)"
+          BOOTLOADER="$(find build -type f -name '*bootloader*.bin' -print -quit)"
+          PARTITIONS="$(find build -type f -name '*partitions*.bin' -print -quit)"
+          BOOT_APP0="$(find "$CORE" -type f -name 'boot_app0.bin' -print -quit)"
+          ESPTOOL="$(find "$TOOLS" -type f -name 'esptool.py' -print -quit)"
+          test -n "$APP" && test -n "$BOOTLOADER" && test -n "$PARTITIONS" && test -n "$BOOT_APP0" && test -n "$ESPTOOL"
+          cp "$APP" build/CYD-I2C-Identification-V3-APP-0x10000.bin
+          python3 "$ESPTOOL" --chip esp32 merge_bin \
+            --flash_mode dio --flash_freq 40m --flash_size 4MB \
+            -o build/CYD-I2C-Identification-V3-MERGED-0x000000.bin \
+            0x1000 "$BOOTLOADER" 0x8000 "$PARTITIONS" 0xe000 "$BOOT_APP0" 0x10000 "$APP"
+      - name: Publish binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: CYD-I2C-Identification-V3
+          path: |
+            build/CYD-I2C-Identification-V3-MERGED-0x000000.bin
+            build/CYD-I2C-Identification-V3-APP-0x10000.bin
+          if-no-files-found: error
+          retention-days: 30

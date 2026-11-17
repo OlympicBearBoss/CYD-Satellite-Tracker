@@ -1707,7 +1707,8 @@ void setup() {
   touchSPI.begin(TOUCH_CLK_PIN,TOUCH_MISO_PIN,TOUCH_MOSI_PIN,TOUCH_CS);
   tft.setRotation(DISPLAY_ROTATION);
   tft.fillScreen(TFT_BLACK);
-  Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1);\n  initQmc5883p();
+  Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1);
+  initQmc5883p();
   prefs.begin("cyd-tracker",false);
   char hardwareIdBuffer[20];
   snprintf(hardwareIdBuffer,sizeof(hardwareIdBuffer),"CYD-%012llX",(unsigned long long)ESP.getEfuseMac());

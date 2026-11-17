@@ -29,17 +29,12 @@ Create one sensor service as the sole owner of I²C initialization and sensor po
 Startup order:
 1. Start serial diagnostics and initialise the I²C bus on GPIO27/GPIO22 at 100 kHz.
 2. Scan the bus and record which expected addresses respond.
-3. Initialise QMC5883P using the exact, user-confirmed register write order:
-   - register 0x0B <- 0x01
-   - register 0x0A <- 0x01
-   - register 0x09 <- 0x1D
-4. Start the Adafruit_QMC5883P driver at address 0x2C and verify chip ID 0x80.
-5. Identify ADXL345 at 0x53; expected DEVID register 0x00 = 0xE5. Its full measurement configuration is a separate implementation/test step.
-6. Probe future angle/limit devices only when installed and verified.
+3. Identify HMC5883L at 0x1E by checking ID registers 0x0A–0x0C for 0x48, 0x34, 0x33.
+4. Configure HMC5883L: CRA 0x00=0x70 (8-sample average, 15 Hz), CRB 0x01=0x20 (±1.3 Ga), MODE 0x02=0x00 (continuous). Read XYZ from 0x03–0x08 as signed big-endian values in X/Z/Y register order.
+5. Identify ADXL345 at 0x53; DEVID register 0x00 must equal 0xE5. Configure BW_RATE 0x2C=0x0A, DATA_FORMAT 0x31=0x08 (full-resolution ±2 g), POWER_CTL 0x2D=0x08 (measurement). Read XYZ from 0x32–0x37 as signed little-endian values.
+6. Probe optional AS5600 shaft encoders and limit devices only when installed and verified.
 7. Start GPS UART2 receive on GPIO34 (9600 baud, RX only), then the UI/network services.
 8. Keep all motor STEP outputs inactive and driver ENABLE locked. Sensor failure must never enable motion.
-
-The QMC5883P register sequence above is fixed. Do not replace its driver with QMC5883L or HMC5883L code.
 
 ## 3. Read-only telemetry contract
 
@@ -56,9 +51,11 @@ Every sensor value must carry validity/status information. Never display a stale
 
 ## 4. Processing rules
 
-- QMC raw XYZ values are diagnostic until the magnetometer is calibrated in its final mechanical installation.
-- Do not calculate a production heading from the current hand-rotation data. The test proves communication and response, not absolute azimuth accuracy.
-- A reliable compass heading requires hard-/soft-iron calibration and tilt compensation using the accelerometer. Recalibrate after mounting changes or nearby ferromagnetic/electrical changes.
+- HMC5883L raw XYZ values are diagnostic until hard-/soft-iron calibration in the final mechanical installation. Firmware reports a preliminary tilt-compensated magnetic heading but marks it uncalibrated.
+- ADXL345 derives roll/pitch from gravity with a low-pass filter. Tilt is valid only while acceleration magnitude remains near 1 g; strong motion/vibration invalidates tilt.
+- Default mounting assumes +X forward, +Y right, +Z upward for both boards. Verify orientation physically; adjust axis signs if the modules are mounted differently.
+- Convert magnetic heading to true-north azimuth only after applying local magnetic declination. Firmware currently reports magnetic heading, not true heading.
+- Recalibrate after mounting changes or nearby ferromagnetic/electrical changes.
 - GPS provides station coordinates and UTC. GPS course-over-ground is not a stationary antenna heading.
 - Satellite pointing calculations use station coordinates, current UTC and satellite orbit data. They produce target azimuth/elevation; they do not directly authorise motor motion.
 - The final antenna axis feedback should come from installed angle sensors/encoders, not from assuming motor step count is actual position.
@@ -89,10 +86,8 @@ The controller must remain safe even if the mobile app, website or Wi-Fi connect
 |---|---|
 | Confirmed motor GPIO mapping: 4, 16, 17, 26 | Confirmed by user and motor test firmware |
 | GPS NEO-6M TX -> UART2 RX GPIO34 | Confirmed pin assignment; live GPS fix still to be checked |
-| QMC5883P detected at 0x2C | Verified |
-| QMC startup register writes in required order | Verified |
-| QMC continuous reads, ready=1, overflow=0 | Verified in V6 |
-| QMC response to approximate hand rotation | Verified; not a precision angle test |
+| HMC5883L ID check and register configuration | Implemented in firmware; physical test pending |
+| HMC5883L continuous XYZ sampling | Implemented in firmware; physical test pending |
 | ADXL345 identity at 0x53 / DEVID 0xE5 | Verified |
 | ADXL345 continuous XYZ sampling and tilt calculation | Implemented in firmware; physical test pending |
 | AS5600 angle feedback | Planned; not installed/verified |
@@ -103,10 +98,10 @@ The controller must remain safe even if the mobile app, website or Wi-Fi connect
 ## 8. Next implementation sequence
 
 1. Add a sensor service and typed telemetry snapshot without changing motor states.
-2. Integrate QMC5883P polling using the proven driver and fixed startup sequence.
-3. Add ADXL345 continuous sampling and validate axes while stationary and tilted.
-4. Connect sensor validity/staleness to the System and Antenna screens and status API.
-5. Only after the rotator is assembled, calibrate the magnetic sensor and validate installed angle feedback.
+2. Validate HMC5883L identity, continuous XYZ sampling and axis orientation on the assembled board.
+3. Validate ADXL345 gravity vector and pitch sign in level and tilted positions.
+4. Calibrate HMC hard-/soft-iron offsets and apply local magnetic declination before treating heading as true azimuth.
+5. Validate combined heading/tilt telemetry on the final antenna mount.
 6. Implement motor control as a separate safety-gated subsystem.
 
 

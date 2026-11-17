@@ -15,7 +15,7 @@ Status: integration specification, based on the currently verified hardware test
 Confirmed I²C devices:
 | Device | Address | Evidence / current status |
 |---|---:|---|
-| QMC5883P magnetometer | 0x2C | V6 continuous test: ready=1, overflow=0, successful reads and stable plateaus after hand rotation |
+| HMC5883L magnetometer | 0x1E | Firmware now checks ID registers 0x48/0x34/0x33 and polls XYZ data; physical test pending |
 | ADXL345 accelerometer | 0x53 | DEVID 0xE5 read successfully during the QMC test; continuous acceleration sampling is not yet validated |
 | AS5600 azimuth angle sensor (planned) | 0x36 | Wiring plan only; not yet installed or validated |
 | PCF8574 limit-input expander (planned) | usually 0x20 | Wiring plan only; scan and pin state validation required |
@@ -94,7 +94,7 @@ The controller must remain safe even if the mobile app, website or Wi-Fi connect
 | QMC continuous reads, ready=1, overflow=0 | Verified in V6 |
 | QMC response to approximate hand rotation | Verified; not a precision angle test |
 | ADXL345 identity at 0x53 / DEVID 0xE5 | Verified |
-| ADXL345 continuous acceleration and tilt | Not yet tested |
+| ADXL345 continuous XYZ sampling and tilt calculation | Implemented in firmware; physical test pending |
 | AS5600 angle feedback | Planned; not installed/verified |
 | PCF8574 limit inputs | Planned; not installed/verified |
 | HR4988 motor control | Locked; carrier and safety wiring must be verified first |
@@ -112,7 +112,7 @@ The controller must remain safe even if the mobile app, website or Wi-Fi connect
 
 ## 9. Dual AS5600 axis feedback
 
-- AZ AS5600: I2C0 / Wire, SDA GPIO27, SCL GPIO22, address 0x36. It shares the bus with QMC5883P (0x2C) and ADXL345 (0x53); addresses do not conflict.
+- AZ AS5600: I2C0 / Wire, SDA GPIO27, SCL GPIO22, address 0x36. It shares the bus with HMC5883L (0x1E) and ADXL345 (0x53); addresses do not conflict.
 - EL AS5600: I2C1 / ElevationWire, SDA GPIO18, SCL GPIO19, address 0x36. GPIO18/19 are the CYD SD-slot SPI pins; SD-card use is disabled/reserved in this pin profile.
 - Both sensors are polled every 100 ms. Firmware reads STATUS (0x0B), RAW ANGLE high (0x0C) and low (0x0D); the 12-bit value is converted to sensor degrees. STATUS.MD (bit 5) indicates that a magnet is detected. Bus response, register read, magnet detection and zero calibration are reported separately.
 - /api/v1/status exposes axis_sensors.azimuth and axis_sensors.elevation, including bus, presence, read status, magnet detection, raw angle, calibrated angle (only after zeroing), calibration state and sample age.

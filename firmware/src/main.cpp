@@ -1430,9 +1430,9 @@ static void sendLocalStatus() {
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
-  hardware["angle_sensor_connected"]=false;
-  hardware["azimuth_sensor_connected"]=false;
-  hardware["elevation_sensor_connected"]=false;
+  hardware["angle_sensor_connected"]=azimuthEncoder.present || elevationEncoder.present;
+  hardware["azimuth_sensor_connected"]=azimuthEncoder.present;
+  hardware["elevation_sensor_connected"]=elevationEncoder.present;
   hardware["compass_connected"]=sensorSuite.hmc_present;
   hardware["accelerometer_connected"]=sensorSuite.accel_present;
   hardware["motor_drivers_connected"]=false;

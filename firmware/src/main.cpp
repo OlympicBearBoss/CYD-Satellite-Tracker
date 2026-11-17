@@ -605,7 +605,7 @@ static void appendMappedKey(char c) {
   char value[2]={c,0}; appendKeyUtf8(value);
 }
 static void handleKeyboardTap(uint16_t x,uint16_t y) {
-  Serial.printf("KEYBOARD HIT x=%u y=%u page=%u field=%u\\n",x,y,(unsigned)symbolsPage,(unsigned)editingPassword);
+  Serial.printf("KEYBOARD HIT x=%u y=%u page=%u field=%u\n",x,y,(unsigned)symbolsPage,(unsigned)editingPassword);
   flashKeyboardKey(x,y);
   if(y>=209 && y<=239 && x>=5 && x<=195) { setupMessage=""; beginWiFi(); return; }
   if(y>=FIELD_HIT_TOP && y<65) {
@@ -622,7 +622,7 @@ static void handleKeyboardTap(uint16_t x,uint16_t y) {
   if(y>=108 && y<130) {
     if(x>=246 && x<318) {
       const int col=(x-246)/24;
-      if(col<3 && x<(246+col*24+22)) { Serial.printf("KEYMAP digit=%c mapped=%u,%u raw=%u,%u\\n","123"[col],x,y,rawTouchX,rawTouchY); appendMappedKey("123"[col]); }
+      if(col<3 && x<(246+col*24+22)) { Serial.printf("KEYMAP digit=%c mapped=%u,%u raw=%u,%u\n","123"[col],x,y,rawTouchX,rawTouchY); appendMappedKey("123"[col]); }
     } else if(x>=5 && x<225) {
       const int col=(x-5)/22;
       if(col<10 && x<5+col*22+21) appendMappedKey((symbolsPage?"!@#$%^&*()":"qwertyuiop")[col]);
@@ -632,7 +632,7 @@ static void handleKeyboardTap(uint16_t x,uint16_t y) {
   if(y>=133 && y<155) {
     if(x>=246 && x<318) {
       const int col=(x-246)/24;
-      if(col<3 && x<(246+col*24+22)) { Serial.printf("KEYMAP digit=%c mapped=%u,%u raw=%u,%u\\n","456"[col],x,y,rawTouchX,rawTouchY); appendMappedKey("456"[col]); }
+      if(col<3 && x<(246+col*24+22)) { Serial.printf("KEYMAP digit=%c mapped=%u,%u raw=%u,%u\n","456"[col],x,y,rawTouchX,rawTouchY); appendMappedKey("456"[col]); }
     } else if(x>=16 && x<232) {
       const int col=(x-16)/24;
       if(col<9 && x<16+col*26+22) appendMappedKey((symbolsPage?"-_=+[]{};:":"asdfghjkl")[col]);
@@ -642,7 +642,7 @@ static void handleKeyboardTap(uint16_t x,uint16_t y) {
   if(y>=158 && y<180) {
     if(x>=246 && x<318) {
       const int col=(x-246)/24;
-      if(col<3 && x<(246+col*24+22)) { Serial.printf("KEYMAP digit=%c mapped=%u,%u raw=%u,%u\\n","789"[col],x,y,rawTouchX,rawTouchY); appendMappedKey("789"[col]); }
+      if(col<3 && x<(246+col*24+22)) { Serial.printf("KEYMAP digit=%c mapped=%u,%u raw=%u,%u\n","789"[col],x,y,rawTouchX,rawTouchY); appendMappedKey("789"[col]); }
     } else if(x>=40 && x<215) {
       const int col=(x-40)/25;
       if(col<7 && x<40+col*25+22) appendMappedKey((symbolsPage?".,?/'\\\\|~":"zxcvbnm")[col]);
@@ -1041,7 +1041,7 @@ static void showTouchDiagnostic() {
 static void updateTouchDiagnostic(){
  uint16_t rx=0,ry=0;if(!readXpt2046(rx,ry)){touchWasDown=false;return;}
  if(touchWasDown||millis()-lastTouchAt<300)return;touchWasDown=true;lastTouchAt=millis();
- rawTouchX=rx;rawTouchY=ry;rawTouchDetected=true;Serial.printf("XPT2046 VSPI raw %u,%u\\n",rx,ry);
+ rawTouchX=rx;rawTouchY=ry;rawTouchDetected=true;Serial.printf("XPT2046 VSPI raw %u,%u\n",rx,ry);
  touchCalStep=1;drawCalibrationTarget(0);
 }
 static void updateTouchCalibration(){
@@ -1062,10 +1062,10 @@ static void updateTouchCalibration(){
  }
  rx=sx[3]; ry=sy[3];
  touchCorners[(touchCalStep-1)*2]=rx;touchCorners[(touchCalStep-1)*2+1]=ry;
- Serial.printf("Touch calibration %u/4 median7=%u,%u\\n",touchCalStep,rx,ry);++touchCalStep;
+ Serial.printf("Touch calibration %u/4 median7=%u,%u\n",touchCalStep,rx,ry);++touchCalStep;
  if(touchCalStep<=4){drawCalibrationTarget(touchCalStep-1);return;}
  prefs.putBytes("touchraw",touchCorners,sizeof(touchCorners));prefs.putUChar("touchv",5);
- Serial.printf("Touch corners TL=%u,%u TR=%u,%u BL=%u,%u BR=%u,%u\\n",touchCorners[0],touchCorners[1],touchCorners[2],touchCorners[3],touchCorners[4],touchCorners[5],touchCorners[6],touchCorners[7]);
+ Serial.printf("Touch corners TL=%u,%u TR=%u,%u BL=%u,%u BR=%u,%u\n",touchCorners[0],touchCorners[1],touchCorners[2],touchCorners[3],touchCorners[4],touchCorners[5],touchCorners[6],touchCorners[7]);
  touchCalibrated=true;
  prefs.putBytes("touchraw",touchCorners,sizeof(touchCorners)); prefs.putUChar("touchv",5);
  if(calibrationFromSystem) { calibrationFromSystem=false; touchWasDown=false; showSystemScreen(); }
@@ -1087,7 +1087,7 @@ static void handleTouch(){
  if(!readStableTouch(rx,ry,x,y))return;
  touchWasDown=true;lastTouchAt=millis();
  rawTouchX=rx; rawTouchY=ry;
- Serial.printf("Touch stable raw=%u,%u mapped=%u,%u rot=%u screen=%u\\n",rx,ry,x,y,tft.getRotation(),(unsigned)screen);
+ Serial.printf("Touch stable raw=%u,%u mapped=%u,%u rot=%u screen=%u\n",rx,ry,x,y,tft.getRotation(),(unsigned)screen);
  if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
  else if(screen==Screen::SystemInfo && y>=170 && y<=203) {
    if(x<108) {
@@ -1096,7 +1096,7 @@ static void handleTouch(){
    } else if(x<212) {
      WiFi.disconnect(false,false); editingPassword=false; setupMessage="Edit network, then press CONNECT";
      wifiScreenDrawn=false; showWifiSetup();
-   } else { Serial.printf("[LOCAL] API address: http://%s/\\n",WiFi.localIP().toString().c_str()); showSystemScreen(); }
+   } else { Serial.printf("[LOCAL] API address: http://%s/\n",WiFi.localIP().toString().c_str()); showSystemScreen(); }
  }
  else if(screen==Screen::Connecting && y>=190 && y<=235 && x>=14 && x<=157) {
    WiFi.disconnect(false,false);
@@ -1156,7 +1156,7 @@ static void handleSerialDisplayDiagnostics() {
       displayInvertTestState = !displayInvertTestState;
       tft.invertDisplay(displayInvertTestState);
       drawDisplayColorTest();
-      Serial.printf("DISPLAY INVERSION TEST: %s\\n",displayInvertTestState?"ON":"OFF");
+      Serial.printf("DISPLAY INVERSION TEST: %s\n",displayInvertTestState?"ON":"OFF");
     }
     else if(command=='b' || command=='B') restoreCurrentScreen();
   }
@@ -1245,7 +1245,7 @@ static void tleFetchWorker(void* parameter) {
   tleFetchResultReady=true;
   tleFetchInProgress=false;
   portEXIT_CRITICAL(&tleFetchMux);
-  Serial.printf("[ORBIT] background TLE fetch complete: NORAD %lu, ok=%u\\n",(unsigned long)request->norad,result.ok?1U:0U);
+  Serial.printf("[ORBIT] background TLE fetch complete: NORAD %lu, ok=%u\n",(unsigned long)request->norad,result.ok?1U:0U);
   delete request;
   vTaskDelete(nullptr);
 }
@@ -1286,7 +1286,7 @@ static void consumeSelectedTleResult() {
   if(!ready || result.norad!=selectedNoradId) return;
   if(!result.ok) {
     orbitDataMessage=String(result.error);
-    Serial.printf("[ORBIT] TLE fetch failed for NORAD %lu: %s\\n",(unsigned long)result.norad,result.error);
+    Serial.printf("[ORBIT] TLE fetch failed for NORAD %lu: %s\n",(unsigned long)result.norad,result.error);
     return;
   }
   const bool initialized=issSgp4.init(result.name,result.line1,result.line2);
@@ -1299,7 +1299,7 @@ static void consumeSelectedTleResult() {
   selectedSatelliteName=String(result.name);
   lastTleSuccessMs=millis();
   orbitDataMessage="TLE загружены: "+selectedSatelliteName;
-  Serial.printf("[ORBIT] TLE accepted NORAD %lu: %s\\n",(unsigned long)selectedNoradId,result.name);
+  Serial.printf("[ORBIT] TLE accepted NORAD %lu: %s\n",(unsigned long)selectedNoradId,result.name);
 }
 static void updateSelectedOrbit() {
   // Give the local control page and touch UI a clean startup window before
@@ -1423,7 +1423,16 @@ static void sendLocalStatus() {
   hardware["angle_sensor_connected"]=false;
   hardware["compass_connected"]=qmcPresent;
   hardware["motor_drivers_connected"]=false;
-  hardware["limit_switches_connected"]=false;\n  JsonObject mag=doc["magnetometer"].to<JsonObject>();\n  mag["present"]=qmcPresent;\n  mag["ready"]=qmcDataReady;\n  mag["overflow"]=qmcOverflow;\n  mag["read_ok"]=qmcReadOk;\n  mag["calibrated"]=false;\n  mag["heading_valid"]=false;\n  if(qmcReadOk){mag["raw_x"]=qmcRawX;mag["raw_y"]=qmcRawY;mag["raw_z"]=qmcRawZ;}\n  mag["sample_age_ms"]=qmcLastGoodAt?millis()-qmcLastGoodAt:0;
+  hardware["limit_switches_connected"]=false;
+  JsonObject mag=doc["magnetometer"].to<JsonObject>();
+  mag["present"]=qmcPresent;
+  mag["ready"]=qmcDataReady;
+  mag["overflow"]=qmcOverflow;
+  mag["read_ok"]=qmcReadOk;
+  mag["calibrated"]=false;
+  mag["heading_valid"]=false;
+  if(qmcReadOk){mag["raw_x"]=qmcRawX;mag["raw_y"]=qmcRawY;mag["raw_z"]=qmcRawZ;}
+  mag["sample_age_ms"]=qmcLastGoodAt?millis()-qmcLastGoodAt:0;
   doc["connection"]="local-wifi";
   doc["discovery"]="mdns";
   doc["ip"]=WiFi.localIP().toString();
@@ -1514,9 +1523,9 @@ refreshStatus();setInterval(refreshStatus,1000);
 </script></body></html>)HTML";
     // Keep the page in static flash storage; never allocate this large HTML
     // buffer on the request-handler stack or copy it into the heap.
-    Serial.printf("[LOCAL] GET / begin | free_heap=%u min_heap=%u\\n", ESP.getFreeHeap(), ESP.getMinFreeHeap());
+    Serial.printf("[LOCAL] GET / begin | free_heap=%u min_heap=%u\n", ESP.getFreeHeap(), ESP.getMinFreeHeap());
     localServer.send_P(200,"text/html; charset=utf-8",page);
-    Serial.printf("[LOCAL] GET / sent | free_heap=%u min_heap=%u\\n", ESP.getFreeHeap(), ESP.getMinFreeHeap());
+    Serial.printf("[LOCAL] GET / sent | free_heap=%u min_heap=%u\n", ESP.getFreeHeap(), ESP.getMinFreeHeap());
   });
   localServer.on("/api/v1/status",HTTP_GET,sendLocalStatus);
   localServer.on("/api/v1/status",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
@@ -1534,7 +1543,7 @@ refreshStatus();setInterval(refreshStatus,1000);
     size_t length=0;
     if(!decodeSatelliteJpegBase64(encoded,image,length)) {
       localServer.send(400,"application/json","{\"ok\":false,\"error\":\"invalid_base64_or_jpeg\"}");
-      Serial.printf("[PHOTO] rejected Base64 upload: NORAD %lu, encoded=%u chars\\n",(unsigned long)norad,(unsigned)encoded.length());
+      Serial.printf("[PHOTO] rejected Base64 upload: NORAD %lu, encoded=%u chars\n",(unsigned long)norad,(unsigned)encoded.length());
       return;
     }
     if(selectedSatelliteImageData) free(selectedSatelliteImageData);
@@ -1544,7 +1553,7 @@ refreshStatus();setInterval(refreshStatus,1000);
     if(screen==Screen::Dashboard) drawSelectedSatellitePhoto();
     localServer.sendHeader("Cache-Control","no-store");
     localServer.send(200,"application/json","{\"ok\":true,\"image_received\":true}");
-    Serial.printf("[PHOTO] local JPEG received: NORAD %lu, %u bytes\\n",(unsigned long)norad,(unsigned)length);
+    Serial.printf("[PHOTO] local JPEG received: NORAD %lu, %u bytes\n",(unsigned long)norad,(unsigned)length);
   });
   localServer.on("/api/v1/command",HTTP_OPTIONS,[](){sendLocalCorsHeaders();localServer.send(204,"text/plain","");});
   localServer.on("/api/v1/command",HTTP_POST,[](){
@@ -1616,7 +1625,7 @@ refreshStatus();setInterval(refreshStatus,1000);
     String body; serializeJson(out,body);
     localServer.sendHeader("Cache-Control","no-store");
     localServer.send(200,"application/json; charset=utf-8",body);
-    Serial.printf("[LOCAL] command=%s seq=%lu motors=LOCKED\\n",command.c_str(),(unsigned long)localCommandSequence);
+    Serial.printf("[LOCAL] command=%s seq=%lu motors=LOCKED\n",command.c_str(),(unsigned long)localCommandSequence);
   });
   localServer.onNotFound([](){
     localServer.send(404,"application/json","{\"ok\":false,\"error\":\"not_found\"}");
@@ -1626,7 +1635,7 @@ refreshStatus();setInterval(refreshStatus,1000);
   localServer.begin();
   if(MDNS.begin("cyd-tracker")) MDNS.addService("http","tcp",80);
   localApiStarted=true;
-  Serial.printf("[LOCAL] API ready: http://%s/ and http://cyd-tracker.local/\\n",WiFi.localIP().toString().c_str());
+  Serial.printf("[LOCAL] API ready: http://%s/ and http://cyd-tracker.local/\n",WiFi.localIP().toString().c_str());
 }
 static void serviceLocalApi() {
   if(WiFi.status()!=WL_CONNECTED) { localApiStarted=false; return; }
@@ -1652,7 +1661,7 @@ static void initQmc5883p() {
   delay(10);
   const bool r3=writeQmcRegister(0x09,0x1D);
   delay(20);
-  Serial.printf("[QMC5883P] startup writes 0B=%s 0A=%s 09=%s\\n",
+  Serial.printf("[QMC5883P] startup writes 0B=%s 0A=%s 09=%s\n",
     r1?"ACK":"FAIL",r2?"ACK":"FAIL",r3?"ACK":"FAIL");
   if(!(r1&&r2&&r3)) {
     Serial.println("[QMC5883P] initialization blocked: register write failed");
@@ -1660,7 +1669,7 @@ static void initQmc5883p() {
   }
   qmcPresent=true;
   qmcReady=qmc5883p.begin(0x2C,&Wire);
-  Serial.printf("[QMC5883P] begin=%s\\n",qmcReady?"OK":"FAIL");
+  Serial.printf("[QMC5883P] begin=%s\n",qmcReady?"OK":"FAIL");
   if(!qmcReady) qmcPresent=false;
 }
 
@@ -1680,7 +1689,7 @@ static void serviceQmc5883p() {
   static uint32_t lastLog=0;
   if(now-lastLog>=5000) {
     lastLog=now;
-    Serial.printf("[QMC5883P] present=%u ready=%u overflow=%u read=%u raw=%d,%d,%d\\n",
+    Serial.printf("[QMC5883P] present=%u ready=%u overflow=%u read=%u raw=%d,%d,%d\n",
       qmcPresent?1:0,qmcDataReady?1:0,qmcOverflow?1:0,qmcReadOk?1:0,
       qmcRawX,qmcRawY,qmcRawZ);
   }
@@ -1703,7 +1712,7 @@ void setup() {
   char hardwareIdBuffer[20];
   snprintf(hardwareIdBuffer,sizeof(hardwareIdBuffer),"CYD-%012llX",(unsigned long long)ESP.getEfuseMac());
   deviceHardwareId=hardwareIdBuffer;
-  Serial.printf("[DEVICE] hardware_id=%s\\n",deviceHardwareId.c_str());
+  Serial.printf("[DEVICE] hardware_id=%s\n",deviceHardwareId.c_str());
   wifiName=prefs.getString("ssid","");
   wifiPassword=prefs.getString("password","");
   if(!wifiName.length() && WIFI_SSID[0]) {

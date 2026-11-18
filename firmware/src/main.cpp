@@ -1792,7 +1792,7 @@ static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V99";
+  doc["firmware"]="V103";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
@@ -1857,6 +1857,11 @@ static void sendLocalStatus() {
   doc["control"]["tracking_requested"]=trackingRequested;
   doc["control"]["target_source"]=issPositionValid?"sgp4":"pending";
   doc["control"]["motors_enabled"]=false;
+  doc["control"]["motor_test_active"]=motorTestActive;
+  doc["control"]["motor_test_axis"]=motorTestAxis==0?"AZ":"EL";
+  doc["control"]["motor_test_direction"]=motorTestDirection==0?"forward":"reverse";
+  doc["control"]["motor_test_pulses"]=motorTestPulseCount;
+  doc["control"]["motor_test_pulses_per_phase"]=300;
   doc["last_command_sequence"]=localCommandSequence;
   String body; serializeJson(doc,body);
   sendLocalCorsHeaders();
@@ -1907,7 +1912,7 @@ async function sendCommand(payload){try{const r=await fetch('/api/v1/command',{m
 $('azInput').addEventListener('input',()=>{targetInputsDirty=true;});
 $('elInput').addEventListener('input',()=>{targetInputsDirty=true;});
 async function sendTarget(){if(targetSendBusy)return;const azText=$('azInput').value.trim(),elText=$('elInput').value.trim();if(azText===''||elText===''){set('commandMessage','Введите оба значения: азимут и угол места.');return;}const az=Number(azText),el=Number(elText);if(!Number.isFinite(az)||!Number.isFinite(el)||az<0||az>=360||el<0||el>90){set('commandMessage','Проверьте углы: азимут 0–менее 360°, угол места 0–90°.');return;}const btn=$('sendTargetBtn');targetSendBusy=true;btn.disabled=true;btn.textContent='ОТПРАВКА…';set('commandMessage','Передаю азимут и угол места одним запросом…');try{const d=await sendCommand({command:'set_target',azimuth_deg:az,elevation_deg:el});targetInputsDirty=false;set('commandMessage',d.message||'Оба угла приняты контроллером.');await refreshStatus();}catch(e){}finally{targetSendBusy=false;btn.disabled=false;btn.textContent='ОТПРАВИТЬ ЦЕЛЬ';}}
- async function toggleTracking()async function toggleTracking(){const enabled=!(lastStatus?.control?.tracking_requested===true);try{await sendCommand({command:'tracking',enabled});}catch(e){}}
+ async function toggleTracking(){const enabled=!(lastStatus?.control?.tracking_requested===true);try{await sendCommand({command:'tracking',enabled});}catch(e){}}
  async function requestStop(){if(!confirm('Отправить STOP? Это программная команда, не аппаратная аварийная остановка.'))return;try{await sendCommand({command:'stop'});}catch(e){}}
 refreshStatus();setInterval(refreshStatus,1000);
 </script></body></html>)HTML";
@@ -1959,7 +1964,25 @@ refreshStatus();setInterval(refreshStatus,1000);
     String message;
     if(command=="stop") {
       trackingRequested=false;
-      message="STOP принят. Двигатели заблокированы; аппаратное движение не включено.";
+      if(motorTestActive) stopMotorTest("Stopped by local browser STOP");
+      message="STOP принят. Тест остановлен, STEP переведены в LOW; автоматическое движение остаётся заблокированным.";
+    } else if(command=="motor_test_start") {
+      if(motorTestActive) {
+        out["ok"]=false; out["error"]="motor_test_busy";
+        out["message"]="Тест двигателей уже выполняется.";
+        String body; serializeJson(out,body); localServer.send(409,"application/json",body); return;
+      }
+      if(req["confirmed"]!=true) {
+        out["ok"]=false; out["error"]="confirmation_required";
+        out["message"]="Для запуска требуется явное подтверждение в интерфейсе.";
+        String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
+      }
+      trackingRequested=false;
+      startMotorTest();
+      message="Тест запущен: AZ вперёд/назад, затем EL вперёд/назад, по 300 импульсов на фазу.";
+    } else if(command=="motor_test_stop") {
+      if(motorTestActive) stopMotorTest("Stopped by local browser motor-test button");
+      message="Остановка теста запрошена; STEP удерживаются в LOW.";
     } else if(command=="set_target") {
       if(!(req["azimuth_deg"].is<float>() || req["azimuth_deg"].is<int>() || req["azimuth_deg"].is<long>()) || !(req["elevation_deg"].is<float>() || req["elevation_deg"].is<int>() || req["elevation_deg"].is<long>())) {
         out["ok"]=false; out["error"]="invalid_target";
@@ -2011,7 +2034,7 @@ refreshStatus();setInterval(refreshStatus,1000);
     }
     ++localCommandSequence;
     out["ok"]=true; out["command"]=command; out["sequence"]=localCommandSequence;
-    out["message"]=message; out["motors_enabled"]=false;
+    out["message"]=message; out["motors_enabled"]=false; out["motor_test_active"]=motorTestActive;
     String body; serializeJson(out,body);
     localServer.sendHeader("Cache-Control","no-store");
     localServer.send(200,"application/json; charset=utf-8",body);

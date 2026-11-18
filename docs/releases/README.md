@@ -20,7 +20,8 @@
 | V97 | 2026-11-17 | [2d3fbe8](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/2d3fbe8bf9b6e9828779c9f5a90da918b7a7bf8b) | Прошивка загружена пользователем на CYD; функциональная проверка ожидается |
 | V98 | 2026-11-17 | [1551221](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/15512218793bec8d6888b29959fd392802a46026) | Исторический кандидат; содержал ошибочную поддержку AS5600, исправляется в V99 |
 | V99 | 2026-11-17 | [9e4bdf7](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/9e4bdf7cd3fd1ec47d46195a1ebd2a36e4395e8c) | CI прошёл; удалена поддержка несуществующих AS5600; аппаратная проверка ожидается |
-| V100 | 2026-11-18 | [pending](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/tree/fix/firmware-v99-remove-as5600) | Добавлен ручной тест AZ/EL: по 300 импульсов в каждом направлении; CI и аппаратная проверка ожидаются |
+| V100 | 2026-11-18 | [d23bedb](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/d23bedb0d6847f7cf739c5169594b139a187933e) | CI прошёл; пользователь подтвердил движение обоих двигателей, но сообщил о рывках; готовится V101 с разгоном и торможением |
+| V101 | 2026-11-18 | [41d9078](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/41d9078d288d33cd1e0793e3f066b24f7beb513c) | Добавлен профиль разгона/торможения 40–100–40 шагов/с; CI и аппаратная проверка ожидаются |
 
 ## Важные исторические точки интерфейса
 

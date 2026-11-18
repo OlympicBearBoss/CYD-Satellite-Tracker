@@ -1438,9 +1438,10 @@ static void handleTouch(){
  Serial.printf("Touch stable raw=%u,%u mapped=%u,%u rot=%u screen=%u\n",rx,ry,x,y,tft.getRotation(),(unsigned)screen);
  if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
  else if(screen==Screen::MotorTestConfirm && y>=174 && y<=214) {
-   if(x<160) startMotorTest(); else showSystemScreen();
+   if(x>=15 && x<=155) startMotorTest();
+   else if(x>=165 && x<=305) showSystemScreen();
  }
- else if(screen==Screen::MotorTestRunning && y>=176 && y<=220) {
+ else if(screen==Screen::MotorTestRunning && y>=176 && y<=220 && x>=18 && x<=302) {
    stopMotorTest("Stopped by user");
  }
  else if(screen==Screen::SystemInfo && y>=158 && y<=204) {

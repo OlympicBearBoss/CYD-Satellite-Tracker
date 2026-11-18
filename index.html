@@ -597,6 +597,9 @@ function applyCompassHeading(value){
  const rotor=$("radarRotor"),rose=$("compassRose"),cardinals=$("radarCardinals");
  if(heading===null){
   window.demoDeviceHeading=null;
+  if(rotor)rotor.style.transform="rotate(0deg)";
+  if(rose)rose.style.transform="rotate(0deg)";
+  if(cardinals){cardinals.style.transform="rotate(0deg)";cardinals.querySelectorAll("span").forEach(el=>el.style.transform="rotate(0deg)");}
   if(readout)readout.textContent="—";
   if(direction)direction.textContent="Нет данных компаса CYD";
   return;
@@ -748,7 +751,7 @@ async function refreshCydDeviceLink(){
 function startCydDevicePolling(){
  if(cydDevicePollTimer)clearInterval(cydDevicePollTimer);
  refreshCydDeviceLink();
- cydDevicePollTimer=setInterval(refreshCydDeviceLink,2000);
+ cydDevicePollTimer=setInterval(refreshCydDeviceLink,500);
 }
 const cydAddressInput=$("cydDeviceAddress");
 if(cydAddressInput&&cydDeviceBaseUrl)cydAddressInput.value=cydDeviceBaseUrl;
@@ -1853,7 +1856,7 @@ if(host){
   const D=window.DeviceOrientationEvent;
   const onHeading=e=>{
    // When CYD is connected, its QMC5883P is the single source of compass data.
-   if(window.cydLiveConnected===true)return;
+   if(cydLiveConnected===true)return;
    let heading=null;
    if(Number.isFinite(e.webkitCompassHeading))heading=e.webkitCompassHeading;
    else if(e.absolute===true&&Number.isFinite(e.alpha))heading=(360-e.alpha)%360;

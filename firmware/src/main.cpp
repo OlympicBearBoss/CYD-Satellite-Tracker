@@ -1006,17 +1006,58 @@ static void drawDialNeedle(int cx,int cy,int length,float degrees,uint16_t color
 }
 
 static void updateDashboardCompass() {
-  if(screen!=Screen::Dashboard) return;
-  const int cx=250,cy=87;
-  // Clear only the compass hub; preserve the radar rings and surrounding markers.
-  tft.fillCircle(cx,cy,14,0x0000);
-  tft.drawCircle(cx,cy,15,0x1A45);
-  tft.drawFastHLine(cx-14,cy,28,0x2A69);
-  tft.drawFastVLine(cx,cy-14,28,0x2A69);
-  if(sensorSuite.heading_valid)
-    drawDialNeedle(cx,cy,13,sensorSuite.magnetic_heading_deg,TFT_CYAN);
-  else
+  const int cx=250,cy=87,r=49;
+  float heading=0.0f;
+  const bool valid=sensorSuite.heading_valid;
+  if(valid) {
+    heading=fmodf(sensorSuite.magnetic_heading_deg,360.0f);
+    if(heading<0.0f) heading+=360.0f;
+    if(heading>=360.0f) heading=0.0f;
+  }
+
+  // The compass card rotates beneath a fixed red north pointer.
+  tft.fillCircle(cx,cy,r+8,0x0000);
+  tft.drawCircle(cx,cy,r+7,0x03BF);
+  tft.drawCircle(cx,cy,r,0x2A69);
+  tft.drawCircle(cx,cy,32,0x1A45);
+  tft.drawFastHLine(cx-r,cy,2*r,0x2A69);
+  tft.drawFastVLine(cx,cy-r,2*r,0x2A69);
+  for(int a=0;a<360;a+=5) {
+    const float q=(a-heading)*0.0174532925f;
+    const int r1=r-2, r2=r-(a%30==0?10:(a%10==0?7:4));
+    const uint16_t color=a%30==0?TFT_CYAN:0x2A69;
+    tft.drawLine(cx+(int)(r1*sinf(q)),cy-(int)(r1*cosf(q)),
+                 cx+(int)(r2*sinf(q)),cy-(int)(r2*cosf(q)),color);
+  }
+
+  setUiTextDatum(MC_DATUM);
+  setUiTextColor(TFT_WHITE,0x0000);
+  const char* labels[4]={"N","E","S","W"};
+  for(int i=0;i<4;i++) {
+    const float q=(i*90.0f-heading)*0.0174532925f;
+    const int tx=cx+(int)(35.0f*sinf(q));
+    const int ty=cy-(int)(35.0f*cosf(q));
+    drawUiString(labels[i],tx,ty,1);
+  }
+
+  // Fixed red triangle: the direction at the top of the display is NORTH.
+  tft.fillTriangle(cx,cy-r+1,cx-5,cy-r+10,cx+5,cy-r+10,TFT_RED);
+  tft.drawCircle(cx,cy,14,0x1A45);
+  tft.fillCircle(cx,cy,11,0x0000);
+  if(valid) {
+    unsigned int shown=(unsigned int)floorf(heading);
+    if(shown>=360U) shown=0U;
+    char value[5];
+    snprintf(value,sizeof(value),"%03u",shown);
+    setUiTextColor(TFT_CYAN,0x0000);
+    drawUiString(value,cx,cy,1);
+  } else {
     tft.fillCircle(cx,cy,3,TFT_ORANGE);
+  }
+
+  // Keep the existing red station marker visible outside the compass hub.
+  tft.fillCircle(cx-25,cy+23,4,TFT_RED);
+  tft.drawCircle(cx-25,cy+23,6,0xF986);
 }
 
 static void drawGpsPanel() {
@@ -1027,31 +1068,8 @@ static void drawGpsPanel() {
   tft.fillRoundRect(5,31,181,113,9,0x0000);
   tft.drawRoundRect(5,31,181,113,9,edge);
   drawSelectedSatellitePhoto();
-  // Radar: luminous rings, graduated ticks, cardinal marks and target marker.
-  const int cx=250,cy=87,r=49;
-  tft.fillCircle(cx,cy,r+8,0x0000);
-  tft.drawCircle(cx,cy,r+7,0x03BF);
-  tft.drawCircle(cx,cy,r,0x2A69);
-  tft.drawCircle(cx,cy,32,0x1A45);
-  tft.drawCircle(cx,cy,15,0x1A45);
-  tft.drawFastHLine(cx-r,cy,2*r,0x2A69);
-  tft.drawFastVLine(cx,cy-r,2*r,0x2A69);
-  for(int a=0;a<360;a+=5) {
-    const float q=(a-90)*0.0174532925f;
-    const int r1=r-2, r2=r-(a%30==0?10:(a%10==0?7:4));
-    const uint16_t c=a%30==0?TFT_CYAN:0x2A69;
-    tft.drawLine(cx+(int)(r1*cosf(q)),cy+(int)(r1*sinf(q)),
-                 cx+(int)(r2*cosf(q)),cy+(int)(r2*sinf(q)),c);
-  }
-  setUiTextDatum(MC_DATUM); setUiTextColor(TFT_WHITE,BG);
-  drawUiString("N",cx,cy-r-2,2); drawUiString("E",cx+r+2,cy,2);
-  drawUiString("S",cx,cy+r+2,2); drawUiString("W",cx-r-2,cy,2);
-  if(sensorSuite.heading_valid)
-    drawDialNeedle(cx,cy,13,sensorSuite.magnetic_heading_deg,TFT_CYAN);
-  else
-    tft.fillCircle(cx,cy,3,TFT_ORANGE);
-  tft.fillCircle(cx-25,cy+23,4,TFT_RED);
-  tft.drawCircle(cx-25,cy+23,6,0xF986);
+  // Live rotating compass rose with a fixed red north pointer.
+  updateDashboardCompass();
   // Three aligned data cards with consistent inset, edge and typography.
   const int xs[3]={5,111,217}, ws[3]={101,101,98};
   for(int i=0;i<3;i++) {
@@ -1792,7 +1810,7 @@ static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V103";
+  doc["firmware"]="V105";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
@@ -1811,7 +1829,12 @@ static void sendLocalStatus() {
     mag["raw_x"]=sensorSuite.mag_x; mag["raw_y"]=sensorSuite.mag_y; mag["raw_z"]=sensorSuite.mag_z;
     mag["field_magnitude_raw"]=sensorSuite.field_magnitude;
   }
-  if(sensorSuite.heading_valid) mag["magnetic_heading_deg"]=sensorSuite.magnetic_heading_deg;
+  if(sensorSuite.heading_valid) {
+    float heading=fmodf(sensorSuite.magnetic_heading_deg,360.0f);
+    if(heading<0.0f) heading+=360.0f;
+    if(heading>=360.0f) heading=0.0f;
+    mag["magnetic_heading_deg"]=heading;
+  }
   mag["sample_age_ms"]=sensorSuite.mag_last_good_ms?millis()-sensorSuite.mag_last_good_ms:0;
   JsonObject accel=doc["accelerometer"].to<JsonObject>();
   accel["type"]="ADXL345"; accel["address"]="0x53";

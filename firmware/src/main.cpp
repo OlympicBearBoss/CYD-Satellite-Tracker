@@ -1045,7 +1045,7 @@ static void updateDashboardCompass() {
   tft.drawCircle(cx,cy,14,0x1A45);
   tft.fillCircle(cx,cy,11,0x0000);
   if(valid) {
-    unsigned int shown=(unsigned int)floorf(heading+0.5f);
+    unsigned int shown=(unsigned int)floorf(heading);
     if(shown>=360U) shown=0U;
     char value[5];
     snprintf(value,sizeof(value),"%03u",shown);

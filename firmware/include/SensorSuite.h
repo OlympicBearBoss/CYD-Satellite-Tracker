@@ -140,9 +140,9 @@ static void serviceSensorSuite() {
   // manual 360-degree turn is not split across short reporting windows.
   static uint32_t diagSampleSequence=0, diagRawBlockFail=0, diagRawMismatch=0;
   static uint32_t diagLastSummaryMs=0, diagSampleCount=0;
-  static int16_t diagMinX=INT16_MAX, diagMaxX=INT16_MIN;
-  static int16_t diagMinY=INT16_MAX, diagMaxY=INT16_MIN;
-  static int16_t diagMinZ=INT16_MAX, diagMaxZ=INT16_MIN;
+  static int16_t diagMinX=32767, diagMaxX=(-32768);
+  static int16_t diagMinY=32767, diagMaxY=(-32768);
+  static int16_t diagMinZ=32767, diagMaxZ=(-32768);
   static float diagMinAngle=360.0f, diagMaxAngle=0.0f;
   static int64_t diagSumX=0, diagSumY=0, diagSumZ=0;
   if(sensorSuite.mag_ready && now-qmcLastSampleMs>=QMC_SAMPLE_INTERVAL_MS) {
@@ -192,7 +192,7 @@ static void serviceSensorSuite() {
             if(z<diagMinZ)diagMinZ=z; if(z>diagMaxZ)diagMaxZ=z;
             if(sampleAngle<diagMinAngle)diagMinAngle=sampleAngle;
             if(sampleAngle>diagMaxAngle)diagMaxAngle=sampleAngle;
-            Serial.printf("[QMC-SAMPLE] seq=%lu ms=%lu STATUS=0x%02X lib=%d,%d,%d wire=%s%d,%d,%d match=%u rawXY=%.1f\\n",
+            Serial.printf("[QMC-SAMPLE] seq=%lu ms=%lu STATUS=0x%02X lib=%d,%d,%d wire=%s%d,%d,%d match=%u rawXY=%.1f\n",
               (unsigned long)diagSampleSequence,(unsigned long)now,status,
               x,y,z,rawBlockOk?"":"ERR/",wireX,wireY,wireZ,rawMatch?1:0,sampleAngle);
           } else {
@@ -236,13 +236,13 @@ static void serviceSensorSuite() {
   if(now-diagLastSummaryMs>=5000) {
     diagLastSummaryMs=now;
     if(diagSampleCount) {
-      Serial.printf("[QMC-SPAN] n=%lu X=%d..%d avg=%.1f Y=%d..%d avg=%.1f Z=%d..%d avg=%.1f rawXY=%.1f..%.1f byte_fail=%lu byte_mismatch=%lu\\n",
+      Serial.printf("[QMC-SPAN] n=%lu X=%d..%d avg=%.1f Y=%d..%d avg=%.1f Z=%d..%d avg=%.1f rawXY=%.1f..%.1f byte_fail=%lu byte_mismatch=%lu\n",
         (unsigned long)diagSampleCount,diagMinX,diagMaxX,(double)diagSumX/diagSampleCount,
         diagMinY,diagMaxY,(double)diagSumY/diagSampleCount,
         diagMinZ,diagMaxZ,(double)diagSumZ/diagSampleCount,
         diagMinAngle,diagMaxAngle,(unsigned long)diagRawBlockFail,(unsigned long)diagRawMismatch);
     } else {
-      Serial.printf("[QMC-SPAN] n=0 DRDY has not produced a valid sample\\n");
+      Serial.printf("[QMC-SPAN] n=0 DRDY has not produced a valid sample\n");
     }
   }
 

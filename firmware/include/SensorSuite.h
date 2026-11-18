@@ -169,7 +169,7 @@ static void serviceSensorSuite() {
   static uint32_t lastLog=0;
   if(now-lastLog>=1000) {
     lastLog=now;
-    Serial.printf("[MAG] present=%u read=%u ready=%u overflow=%u X=%d Y=%d Z=%d |B|=%.1f heading=%s%.1f deg | [TILT] present=%u read=%u raw=%d,%d,%d g=%.2f,%.2f,%.2f roll=%.1f pitch=%.1f\\n",
+    Serial.printf("[MAG] present=%u read=%u ready=%u overflow=%u X=%d Y=%d Z=%d |B|=%.1f heading=%s%.1f deg | [TILT] present=%u read=%u raw=%d,%d,%d g=%.2f,%.2f,%.2f roll=%.1f pitch=%.1f\n",
       sensorSuite.mag_present?1:0,sensorSuite.mag_read_ok?1:0,
       sensorSuite.mag_data_ready?1:0,sensorSuite.mag_overflow?1:0,
       sensorSuite.mag_x,sensorSuite.mag_y,sensorSuite.mag_z,sensorSuite.field_magnitude,

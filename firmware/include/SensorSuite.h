@@ -33,8 +33,8 @@ static SensorSuiteState sensorSuite;
 static Adafruit_QMC5883P qmc5883p;
 static constexpr uint8_t QMC5883P_ADDRESS=0x2C;
 static constexpr uint8_t ADXL345_ADDRESS=0x53;
-static constexpr uint32_t SENSOR_POLL_INTERVAL_MS=100;
-static constexpr uint32_t QMC_SAMPLE_INTERVAL_MS=250;
+static constexpr uint32_t SENSOR_POLL_INTERVAL_MS=10; // service loop at up to 100 Hz
+static constexpr uint32_t QMC_SAMPLE_INTERVAL_MS=10; // consume fresh QMC samples at up to 100 Hz
 static uint32_t sensorLastPollMs=0, qmcLastSampleMs=0;
 
 static bool sensorWriteRegister(uint8_t address,uint8_t reg,uint8_t value) {
@@ -130,11 +130,18 @@ static void serviceSensorSuite() {
     qmcLastSampleMs=now;
     sensorSuite.mag_data_ready=qmc5883p.isDataReady();
     sensorSuite.mag_overflow=qmc5883p.isOverflow();
-    int16_t x=0,y=0,z=0;
-    sensorSuite.mag_read_ok=qmc5883p.getRawMagnetic(&x,&y,&z);
-    if(sensorSuite.mag_read_ok) {
-      sensorSuite.mag_x=x; sensorSuite.mag_y=y; sensorSuite.mag_z=z;
-      sensorSuite.mag_last_good_ms=now;
+    // Do not repeatedly read the same conversion. Keep the last good sample
+    // until the QMC5883P signals a fresh one; discard overflowed conversions.
+    if(sensorSuite.mag_data_ready && !sensorSuite.mag_overflow) {
+      int16_t x=0,y=0,z=0;
+      const bool readOk=qmc5883p.getRawMagnetic(&x,&y,&z);
+      sensorSuite.mag_read_ok=readOk;
+      if(readOk) {
+        sensorSuite.mag_x=x; sensorSuite.mag_y=y; sensorSuite.mag_z=z;
+        sensorSuite.mag_last_good_ms=now;
+      }
+    } else if(sensorSuite.mag_overflow) {
+      sensorSuite.mag_read_ok=false;
     }
   }
 

@@ -24,6 +24,9 @@
 | V101 | 2026-11-18 | [41d9078](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/41d9078d288d33cd1e0793e3f066b24f7beb513c) | Пользователь подтвердил мягкий запуск и ровное вращение ненагруженных двигателей; CI прошёл |
 | V103 | 2026-11-18 | [83f583d](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/83f583d9b199ff68437f3756e0c34e10b485b576) | Локальная телеметрия GPS/QMC5883P/ADXL345, тест моторов с сайта, удалены фиктивные напряжение/ток; CI прошёл, аппаратная проверка ожидается |
 | V104 | 2026-11-18 | [80d5a3e](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/80d5a3e4e283776a8560a60f57be2009d1ab0356) | Исправлена главная телеметрия, добавлен GPS рядом с азимутом/наклоном, тест моторов перенесён на главную; CI ожидается |
+| V105 | 2026-11-18 | [0d3596a](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/0d3596ac3fc52205cbb752446fd6073d2457a501) | Компас CYD и сайта: диапазон 0–359.9°, вращающаяся роза, неподвижный красный указатель севера; CI и аппаратная проверка ожидаются |
+| V106 | 2026-11-18 | [33b825b](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/33b825b0d78dd9b67103d6d4f0d8b9372e79b0b8) | CI прошёл, Pages preview развернут; пользователь сообщил о заметном мерцании компаса на CYD |
+| V107 | 2026-11-18 | pending | Частота отрисовки компаса повышена до 60 FPS, опрос QMC5883P до 100 Гц; ожидаются CI и аппаратная проверка |
 
 ## Важные исторические точки интерфейса
 

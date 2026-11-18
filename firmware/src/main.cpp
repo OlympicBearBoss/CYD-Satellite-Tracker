@@ -1301,7 +1301,6 @@ static void cloudClaimWorker(void* parameter) {
     http.addHeader("Content-Type","application/json");
     JsonDocument request;
     request["code"]=job->code;
-    request["device_name"]="CYD Satellite Tracker";
     String body;
     serializeJson(request,body);
     const int code=http.POST(body);
@@ -1349,7 +1348,7 @@ static void startCloudClaim() {
     cloudPairMessage="Введите все 8 цифр";
     return;
   }
-  if(tleFetchInProgress||cloudHeartbeatTaskRunning||cloudClaimTaskRunning) {
+  if(tleFetchInProgress||cloudHeartbeatTaskRunning||cloudClaimTaskRunning||cloudClaimResultReady) {
     cloudPairMessage="Ожидание завершения сетевого запроса";
     return;
   }

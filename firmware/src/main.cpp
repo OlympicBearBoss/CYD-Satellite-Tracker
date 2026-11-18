@@ -1828,6 +1828,7 @@ static void sendLocalStatus() {
   doc["ip"]=WiFi.localIP().toString();
   doc["hostname"]="cyd-tracker.local";
   doc["wifi_rssi"]=WiFi.RSSI();
+  doc["gps_age_ms"]=gps.location.age();
   doc["gps_valid"]=gps.location.isValid() && gps.location.age()<10000;
   if(doc["gps_valid"].as<bool>()) {
     doc["latitude"]=gps.location.lat();

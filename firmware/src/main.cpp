@@ -1447,9 +1447,13 @@ static void handleCloudPairingTap(uint16_t x,uint16_t y) {
     } else showSystemScreen();
     return;
   }
-  if(y>=84&&y<196) {
-    const int row=(y-84)/29;
-    const int col=x<105?0:(x<194?1:2);
+  int row=-1;
+  for(int candidate=0;candidate<4;candidate++) {
+    const int top=84+candidate*29;
+    if(y>=top&&y<top+24) { row=candidate; break; }
+  }
+  const int col=(x>=45&&x<97)?0:(x>=134&&x<186)?1:(x>=223&&x<275)?2:-1;
+  if(row>=0&&col>=0) {
     if(row<3) {
       const char digit=(char)('1'+row*3+col);
       if(cloudPairCode.length()<8) cloudPairCode+=digit;

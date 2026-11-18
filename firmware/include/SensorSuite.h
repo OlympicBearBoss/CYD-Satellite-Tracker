@@ -179,7 +179,7 @@ static void serviceSensorSuite() {
       sensorSuite.accel_x_g,sensorSuite.accel_y_g,sensorSuite.accel_z_g,
       sensorSuite.roll_deg,sensorSuite.pitch_deg);
     const float rawHeading=sensorSuite.mag_read_ok?sensorNormalize360(atan2f(-(float)sensorSuite.mag_y,(float)sensorSuite.mag_x)*57.2957795f):0.0f;
-    Serial.printf("[QMC-RAW] present=%u read=%u X=%d Y=%d Z=%d raw_xy_heading=%s%.1f deg\\n",
+    Serial.printf("[QMC-RAW] present=%u read=%u X=%d Y=%d Z=%d raw_xy_heading=%s%.1f deg\n",
       sensorSuite.mag_present?1:0,sensorSuite.mag_read_ok?1:0,sensorSuite.mag_x,sensorSuite.mag_y,sensorSuite.mag_z,
       sensorSuite.mag_read_ok?"":"INVALID ",rawHeading);
   }

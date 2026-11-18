@@ -1382,7 +1382,7 @@ static void serviceCloudTelemetry() {
   if(gps.altitude.isValid()) doc["altitude"]=gps.altitude.meters();
   if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
   if(gps.hdop.isValid()) doc["gps_hdop"]=gps.hdop.hdop();
-  doc["gps_age_ms"]=gps.location.isValid()?gps.location.age():0;
+  if(gps.location.isValid()) doc["gps_age_ms"]=gps.location.age();
   doc["angle_sensor_connected"]=sensorSuite.accel_present;
   doc["compass_connected"]=sensorSuite.mag_present;
   // Driver and limit-switch telemetry is intentionally false until their
@@ -1405,7 +1405,7 @@ static void serviceCloudTelemetry() {
     mag["field_magnitude_raw"]=sensorSuite.field_magnitude;
   }
   if(sensorSuite.heading_valid) mag["magnetic_heading_deg"]=sensorSuite.magnetic_heading_deg;
-  mag["sample_age_ms"]=sensorSuite.mag_last_good_ms?now-sensorSuite.mag_last_good_ms:0;
+  if(sensorSuite.mag_last_good_ms) mag["sample_age_ms"]=now-sensorSuite.mag_last_good_ms;
   JsonObject accel=doc["accelerometer"].to<JsonObject>();
   accel["type"]="ADXL345";
   accel["address"]="0x53";
@@ -1424,7 +1424,7 @@ static void serviceCloudTelemetry() {
     accel["roll_deg"]=sensorSuite.roll_deg;
     accel["pitch_deg"]=sensorSuite.pitch_deg;
   }
-  accel["sample_age_ms"]=sensorSuite.accel_last_good_ms?now-sensorSuite.accel_last_good_ms:0;
+  if(sensorSuite.accel_last_good_ms) accel["sample_age_ms"]=now-sensorSuite.accel_last_good_ms;
   String payload;
   serializeJson(doc,payload);
   CloudHeartbeatJob* job=new CloudHeartbeatJob();

@@ -586,6 +586,38 @@ let lang="ru",selected="iss",logItems=[
 ["19:32:17","WIFI","Тестовый Wi-Fi сигнал стабилен","Demo Wi-Fi signal stable"]
 ];
 const $=id=>document.getElementById(id);
+function normalizeHeading360(value){
+ if(!Number.isFinite(Number(value)))return null;
+ const raw=((Number(value)%360)+360)%360;
+ return (Math.round(raw*10)%3600)/10;
+}
+function applyCompassHeading(value){
+ const heading=normalizeHeading360(value);
+ const readout=$("radarHeading"),direction=$("compassDirection");
+ const rotor=$("radarRotor"),rose=$("compassRose"),cardinals=$("radarCardinals");
+ if(heading===null){
+  window.demoDeviceHeading=null;
+  if(rotor)rotor.style.transform="rotate(0deg)";
+  if(rose)rose.style.transform="rotate(0deg)";
+  if(cardinals){cardinals.style.transform="rotate(0deg)";cardinals.querySelectorAll("span").forEach(el=>el.style.transform="translate(-50%,-50%) rotate(0deg)");}
+  if(readout)readout.textContent="—";
+  if(direction)direction.textContent="Нет данных компаса CYD";
+  return;
+ }
+ window.demoDeviceHeading=heading;
+ const angle=-heading;
+ if(rotor){rotor.style.transition="transform 90ms linear";rotor.style.transform="rotate("+angle+"deg)";}
+ if(rose){rose.style.transition="transform 90ms linear";rose.style.transform="rotate("+angle+"deg)";}
+ if(cardinals){
+  cardinals.style.transition="transform 90ms linear";
+  cardinals.style.transform="rotate("+angle+"deg)";
+  cardinals.querySelectorAll("span").forEach(el=>el.style.transform="translate(-50%,-50%) rotate("+(-angle)+"deg)");
+ }
+ if(rose)rose.querySelectorAll(".compass-label").forEach(el=>el.style.transform="translate(-50%,-50%) rotate("+(-angle)+"deg)");
+ if(readout)readout.textContent=heading.toFixed(1)+"°";
+ const names=["СЕВЕР","СЕВЕРО-ВОСТОК","ВОСТОК","ЮГО-ВОСТОК","ЮГ","ЮГО-ЗАПАД","ЗАПАД","СЕВЕРО-ЗАПАД"];
+ if(direction)direction.textContent=names[Math.round(heading/45)%8]+" · QMC5883P";
+}
 document.querySelectorAll("[data-i18n]").forEach(el=>{translations.ru[el.dataset.i18n]=el.innerHTML;});
 Object.assign(translations.ru,{centered:"Оси установлены в центр (демо).",stopped:"Движение остановлено (демо).",tracking:"Демонстрационное наведение на цель: ",connection_test_ok:"Проверка демо завершена: отображаются тестовые параметры подключения.",});
 function t(key){return translations[lang][key]||translations.ru[key]||key}
@@ -630,8 +662,12 @@ function setRuntimeMode(connected,status=null){
  const sensorNote=$("deviceSensorNote");if(sensorNote)sensorNote.textContent=connected?"GPS, магнитный курс QMC5883P и наклон ADXL345 поступают непосредственно с CYD.":"Нет связи с CYD: показания датчиков платы недоступны.";
  ["overviewAz","overviewEl","azOut","elOut","dishAz","dishEl"].forEach(id=>put(id,"—"));
  const mag=status&&status.magnetometer?status.magnetometer:{},acc=status&&status.accelerometer?status.accelerometer:{};
+ const magFresh=connected&&mag.heading_valid===true&&Number.isFinite(Number(mag.magnetic_heading_deg))&&Number(mag.sample_age_ms??999999)<5000;
+ if(connected)applyCompassHeading(magFresh?Number(mag.magnetic_heading_deg):null);
+ else applyCompassHeading(null);
+ const compassHeading=magFresh?normalizeHeading360(mag.magnetic_heading_deg):null;
  put("liveGpsFix",connected?(gps?"FIX":"НЕТ FIX"):"—");put("liveGpsLat",gps?Number(status.latitude).toFixed(6):"—");put("liveGpsLon",gps?Number(status.longitude).toFixed(6):"—");put("liveGpsAlt",connected&&status.altitude_m!=null?Number(status.altitude_m).toFixed(1)+" м":"—");put("liveGpsSats",connected&&status.gps_satellites!=null?String(status.gps_satellites):"—");
- put("liveMagPresent",connected?(mag.present?"ОБНАРУЖЕН":"НЕ НАЙДЕН"):"—");put("liveMagHeading",connected&&mag.heading_valid?Number(mag.magnetic_heading_deg).toFixed(1)+"° MAG":"—");put("liveMagRaw",connected&&mag.raw_x!=null?[mag.raw_x,mag.raw_y,mag.raw_z].join(" / "):"—");put("liveMagReady",connected?(mag.ready?"ГОТОВ":"ОЖИДАНИЕ"):"—");
+ put("liveMagPresent",connected?(mag.present?"ОБНАРУЖЕН":"НЕ НАЙДЕН"):"—");put("liveMagHeading",magFresh?compassHeading.toFixed(1)+"° MAG":"—");put("liveMagRaw",connected&&mag.raw_x!=null?[mag.raw_x,mag.raw_y,mag.raw_z].join(" / "):"—");put("liveMagReady",connected?(mag.ready?"ГОТОВ":"ОЖИДАНИЕ"):"—");
  put("liveAccelPresent",connected?(acc.present?"ОБНАРУЖЕН":"НЕ НАЙДЕН"):"—");put("liveAccelRoll",connected&&acc.tilt_valid?Number(acc.roll_deg).toFixed(1)+"°":"—");put("liveAccelPitch",connected&&acc.tilt_valid?Number(acc.pitch_deg).toFixed(1)+"°":"—");put("liveAccelRaw",connected&&acc.raw_x!=null?[acc.raw_x,acc.raw_y,acc.raw_z].join(" / "):"—");
  put("liveTelemetryIp",connected?(status.ip||cydDeviceBaseUrl):"—");put("liveTelemetryFirmware",connected?(status.firmware||"—"):"—");put("telemetryWifiRssi",connected&&status.wifi_rssi!=null?status.wifi_rssi+" dBm":"—");
  const telemetryBadge=$("telemetryModeBadge");if(telemetryBadge)telemetryBadge.textContent=connected?"CYD LIVE · ЛОКАЛЬНО":"NO LIVE DATA";
@@ -654,10 +690,9 @@ function setRuntimeMode(connected,status=null){
  put("liveDeviceCoords",gps?Number(status.latitude).toFixed(5)+", "+Number(status.longitude).toFixed(5):"—");
  put("liveDeviceSeen",connected?new Date().toLocaleTimeString():"—");
  renderTarget();
- const magFresh=connected&&mag.heading_valid===true&&Number.isFinite(Number(mag.magnetic_heading_deg))&&Number(mag.sample_age_ms??999999)<5000;
  const accFresh=connected&&acc.tilt_valid===true&&Number.isFinite(Number(acc.pitch_deg))&&Number(acc.sample_age_ms??999999)<5000;
  const gpsFresh=connected&&gps&&Number(status.gps_age_ms??0)<10000;
- put("kpiAz",magFresh?Number(mag.magnetic_heading_deg).toFixed(1)+"°":"—");
+ put("kpiAz",magFresh?compassHeading.toFixed(1)+"°":"—");
  put("kpiEl",accFresh?Number(acc.pitch_deg).toFixed(1)+"°":"—");
  put("kpiGps",gpsFresh?Number(status.latitude).toFixed(4)+"°, "+Number(status.longitude).toFixed(4)+"°":connected?"НЕТ FIX":"—");
  put("kpiGpsMeta",gpsFresh?"FIX · "+String(status.gps_satellites??"—")+" спутн.":connected?"Ожидание GPS":"Нет связи");
@@ -716,7 +751,7 @@ async function refreshCydDeviceLink(){
 function startCydDevicePolling(){
  if(cydDevicePollTimer)clearInterval(cydDevicePollTimer);
  refreshCydDeviceLink();
- cydDevicePollTimer=setInterval(refreshCydDeviceLink,2000);
+ cydDevicePollTimer=setInterval(refreshCydDeviceLink,100);
 }
 const cydAddressInput=$("cydDeviceAddress");
 if(cydAddressInput&&cydDeviceBaseUrl)cydAddressInput.value=cydDeviceBaseUrl;
@@ -1820,28 +1855,14 @@ if(host){
   },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
   const D=window.DeviceOrientationEvent;
   const onHeading=e=>{
+   // When CYD is connected, its QMC5883P is the single source of compass data.
+   if(cydLiveConnected===true)return;
    let heading=null;
    if(Number.isFinite(e.webkitCompassHeading))heading=e.webkitCompassHeading;
    else if(e.absolute===true&&Number.isFinite(e.alpha))heading=(360-e.alpha)%360;
    if(heading===null)return;
-   heading=((heading%360)+360)%360;
-   window.demoDeviceHeading=heading;
-   if(typeof window.renderRadarObjects==='function')window.renderRadarObjects();
-   const angle=-heading;
-   const rotor=document.getElementById('radarRotor');
-   const rose=document.getElementById('compassRose');
-   const cardinals=document.getElementById('radarCardinals');
-   if(rotor)rotor.style.transform='rotate('+angle+'deg)';
-   if(rose)rose.style.transform='rotate('+angle+'deg)';
-   if(cardinals)cardinals.style.transform='rotate('+angle+'deg)';
-   if(cardinals)cardinals.querySelectorAll('span').forEach(el=>el.style.transform='rotate('+(-angle)+'deg)');
-   if(rose)rose.querySelectorAll('.compass-label').forEach(el=>el.style.transform='translate(-50%,-50%) rotate('+(-angle)+'deg)');
-   const readout=document.getElementById('radarHeading');
-   if(readout)readout.textContent=heading.toFixed(1)+'°';
-   const names=['СЕВЕР','СЕВЕРО-ВОСТОК','ВОСТОК','ЮГО-ВОСТОК','ЮГ','ЮГО-ЗАПАД','ЗАПАД','СЕВЕРО-ЗАПАД'];
-   const dir=document.getElementById('compassDirection');
-   if(dir)dir.textContent=names[Math.round(heading/45)%8];
-   if(note)note.textContent='Радар ориентирован по магнитному/географическому курсу датчика устройства; точка наблюдения берётся из геолокации iPad.';
+   applyCompassHeading(heading);
+   if(note)note.textContent='Компас устройства используется только без связи с CYD; при подключении приоритет имеет QMC5883P платы.';
   };
   window.addEventListener('deviceorientationabsolute',onHeading,true);
   window.addEventListener('deviceorientation',onHeading,true);

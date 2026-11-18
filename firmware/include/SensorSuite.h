@@ -33,8 +33,8 @@ static SensorSuiteState sensorSuite;
 static Adafruit_QMC5883P qmc5883p;
 static constexpr uint8_t QMC5883P_ADDRESS=0x2C;
 static constexpr uint8_t ADXL345_ADDRESS=0x53;
-static constexpr uint32_t SENSOR_POLL_INTERVAL_MS=100;
-static constexpr uint32_t QMC_SAMPLE_INTERVAL_MS=250;
+static constexpr uint32_t SENSOR_POLL_INTERVAL_MS=50;
+static constexpr uint32_t QMC_SAMPLE_INTERVAL_MS=50;
 static uint32_t sensorLastPollMs=0, qmcLastSampleMs=0;
 
 static bool sensorWriteRegister(uint8_t address,uint8_t reg,uint8_t value) {
@@ -69,15 +69,20 @@ static void sensorCalculateOrientation() {
   const float my=sensorSuite.mag_y*SensorMount::MAG_Y_SIGN;
   const float mz=sensorSuite.mag_z*SensorMount::MAG_Z_SIGN;
   sensorSuite.field_magnitude=sqrtf(mx*mx+my*my+mz*mz);
+  // Heading validity depends on a fresh magnetometer sample, not on ADXL345.
+  // Keep tilt compensation when available; otherwise use horizontal X/Y.
   sensorSuite.heading_valid=sensorSuite.mag_present && sensorSuite.mag_read_ok &&
-    sensorSuite.tilt_valid && sensorSuite.mag_last_good_ms &&
-    millis()-sensorSuite.mag_last_good_ms<1500 && sensorSuite.field_magnitude>1.0f;
+    sensorSuite.mag_last_good_ms && millis()-sensorSuite.mag_last_good_ms<1500 &&
+    sensorSuite.field_magnitude>1.0f;
   if(sensorSuite.heading_valid) {
-    const float roll=sensorSuite.roll_deg*0.01745329252f;
-    const float pitch=sensorSuite.pitch_deg*0.01745329252f;
-    const float hx=mx*cosf(pitch)+mz*sinf(pitch);
-    const float hy=mx*sinf(roll)*sinf(pitch)+my*cosf(roll)-mz*sinf(roll)*cosf(pitch);
-    // +X points forward and +Y to the right: magnetic north is atan2(-Y, X).
+    float hx=mx, hy=my;
+    if(sensorSuite.tilt_valid) {
+      const float roll=sensorSuite.roll_deg*0.01745329252f;
+      const float pitch=sensorSuite.pitch_deg*0.01745329252f;
+      hx=mx*cosf(pitch)+mz*sinf(pitch);
+      hy=mx*sinf(roll)*sinf(pitch)+my*cosf(roll)-mz*sinf(roll)*cosf(pitch);
+    }
+    // +X forward, +Y right: magnetic north is atan2(-Y, X).
     sensorSuite.magnetic_heading_deg=sensorNormalize360(atan2f(-hy,hx)*57.2957795f);
   }
 }
@@ -130,11 +135,16 @@ static void serviceSensorSuite() {
     qmcLastSampleMs=now;
     sensorSuite.mag_data_ready=qmc5883p.isDataReady();
     sensorSuite.mag_overflow=qmc5883p.isOverflow();
-    int16_t x=0,y=0,z=0;
-    sensorSuite.mag_read_ok=qmc5883p.getRawMagnetic(&x,&y,&z);
-    if(sensorSuite.mag_read_ok) {
-      sensorSuite.mag_x=x; sensorSuite.mag_y=y; sensorSuite.mag_z=z;
-      sensorSuite.mag_last_good_ms=now;
+    if(sensorSuite.mag_data_ready && !sensorSuite.mag_overflow) {
+      int16_t x=0,y=0,z=0;
+      const bool readOk=qmc5883p.getRawMagnetic(&x,&y,&z);
+      if(readOk) {
+        sensorSuite.mag_x=x; sensorSuite.mag_y=y; sensorSuite.mag_z=z;
+        sensorSuite.mag_read_ok=true;
+        sensorSuite.mag_last_good_ms=now;
+      } else {
+        sensorSuite.mag_read_ok=false;
+      }
     }
   }
 

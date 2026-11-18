@@ -167,14 +167,15 @@ static void serviceSensorSuite() {
   sensorCalculateOrientation();
 
   static uint32_t lastLog=0;
-  if(now-lastLog>=5000) {
+  if(now-lastLog>=1000) {
     lastLog=now;
-    Serial.printf("[SENSORS] QMC=%u/%u RDY=%u OVF=%u raw=%d,%d,%d hdg=%s%.1f | ADXL=%u/%u g=%.2f,%.2f,%.2f roll=%.1f pitch=%.1f\n",
+    Serial.printf("[MAG] present=%u read=%u ready=%u overflow=%u X=%d Y=%d Z=%d |B|=%.1f heading=%s%.1f deg | [TILT] present=%u read=%u raw=%d,%d,%d g=%.2f,%.2f,%.2f roll=%.1f pitch=%.1f\\n",
       sensorSuite.mag_present?1:0,sensorSuite.mag_read_ok?1:0,
       sensorSuite.mag_data_ready?1:0,sensorSuite.mag_overflow?1:0,
-      sensorSuite.mag_x,sensorSuite.mag_y,sensorSuite.mag_z,
-      sensorSuite.heading_valid?"":"--",sensorSuite.magnetic_heading_deg,
+      sensorSuite.mag_x,sensorSuite.mag_y,sensorSuite.mag_z,sensorSuite.field_magnitude,
+      sensorSuite.heading_valid?"":"INVALID ",sensorSuite.magnetic_heading_deg,
       sensorSuite.accel_present?1:0,sensorSuite.accel_read_ok?1:0,
+      sensorSuite.accel_raw_x,sensorSuite.accel_raw_y,sensorSuite.accel_raw_z,
       sensorSuite.accel_x_g,sensorSuite.accel_y_g,sensorSuite.accel_z_g,
       sensorSuite.roll_deg,sensorSuite.pitch_deg);
   }

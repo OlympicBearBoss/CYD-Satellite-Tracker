@@ -33,8 +33,8 @@ static SensorSuiteState sensorSuite;
 static Adafruit_QMC5883P qmc5883p;
 static constexpr uint8_t QMC5883P_ADDRESS=0x2C;
 static constexpr uint8_t ADXL345_ADDRESS=0x53;
-static constexpr uint32_t SENSOR_POLL_INTERVAL_MS=20; // service loop at 50 Hz
-static constexpr uint32_t QMC_SAMPLE_INTERVAL_MS=20; // consume fresh QMC samples at up to 50 Hz
+static constexpr uint32_t SENSOR_POLL_INTERVAL_MS=10; // service loop at up to 100 Hz
+static constexpr uint32_t QMC_SAMPLE_INTERVAL_MS=10; // consume fresh QMC samples at up to 100 Hz
 static uint32_t sensorLastPollMs=0, qmcLastSampleMs=0;
 
 static bool sensorWriteRegister(uint8_t address,uint8_t reg,uint8_t value) {

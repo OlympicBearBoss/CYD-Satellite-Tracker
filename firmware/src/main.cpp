@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
+#include <U8g2_for_TFT_eSPI.h>
 #include <SPI.h>
 #include <WiFi.h>
 #include <WebServer.h>
@@ -21,7 +22,6 @@
 #include "splash_jpg.h"
 #include "ui_assets.h"
 #include "BoardConfig.h"
-#include "AxisEncoders.h"
 #include "WifiConfig.h"
 
 // Trust anchors for CelesTrak HTTPS: USERTrust RSA Certification Authority
@@ -159,25 +159,16 @@ bP6MvPJwNQzcmRk13NfIRmPVNnGuV/u3gm3c
 )PEM";
 
 TFT_eSPI tft;
+static U8g2_for_TFT_eSPI uiFont;
+static uint8_t uiLanguage = 1; // 0=English, 1=Russian, 2=Simplified Chinese
+static uint16_t uiTextFg = TFT_WHITE;
+static uint16_t uiTextBg = TFT_BLACK;
+static uint8_t uiTextDatum = TL_DATUM;
 SPIClass touchSPI(VSPI);
 TinyGPSPlus gps;
 Preferences prefs;
 
 // QMC5883P magnetometer (Adafruit_QMC5883P) and ADXL345 are managed by SensorSuite.h.
-static float azimuthZeroRawDeg=0.0f, elevationZeroRawDeg=0.0f;
-static bool azimuthZeroValid=false, elevationZeroValid=false;
-static float normalize360(float value){while(value<0.0f)value+=360.0f;while(value>=360.0f)value-=360.0f;return value;}
-static float normalizeSigned180(float value){while(value>180.0f)value-=360.0f;while(value<-180.0f)value+=360.0f;return value;}
-static float azimuthMeasuredDeg(){return normalize360(azimuthEncoder.sensor_angle_deg-azimuthZeroRawDeg);}
-static float elevationMeasuredDeg(){return normalizeSigned180(elevationEncoder.sensor_angle_deg-elevationZeroRawDeg);}
-static void loadAxisCalibration(){
-  azimuthZeroValid=prefs.getBool("az0valid",false);
-  elevationZeroValid=prefs.getBool("el0valid",false);
-  azimuthZeroRawDeg=prefs.getFloat("az0raw",0.0f);
-  elevationZeroRawDeg=prefs.getFloat("el0raw",0.0f);
-  Serial.printf("[AXIS] zero calibration AZ=%u EL=%u\\n",azimuthZeroValid?1:0,elevationZeroValid?1:0);
-}
-
 static constexpr uint8_t DISPLAY_ROTATION = 1;
 static constexpr uint32_t SPLASH_MS = 6000;
 static constexpr uint32_t INIT_MS = 3500;
@@ -186,12 +177,13 @@ static constexpr uint16_t TOUCH_THRESHOLD = 250;
 static constexpr uint16_t FIELD_HIT_TOP = 24;
 static constexpr uint16_t FIELD_HIT_BOTTOM = 99;
 
-enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, Failed };
+enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, MotorTestConfirm, MotorTestRunning, Failed };
 static Screen screen = Screen::Splash;
 static uint32_t screenStartedAt = 0;
 static uint32_t wifiAttemptAt = 0;
 static uint32_t lastTouchAt = 0;
 static uint32_t lastDashboardRefreshAt = 0;
+static uint32_t lastCompassRefreshAt = 0;
 static uint32_t lastHeaderIconsAt = 0;
 static uint32_t lastSiteClientAt = 0;
 static uint32_t firstSiteClientAt = 0;
@@ -216,6 +208,19 @@ static String setupMessage;
 static String deviceHardwareId;
 static WebServer localServer(80);
 static bool localApiStarted=false;
+// Manual motor pulse test state. Only STEP/DIR are driven; no ENABLE pin is assumed.
+static bool motorTestActive=false;
+static bool motorTestStepHigh=false;
+static uint8_t motorTestAxis=0;       // 0=AZ, 1=EL
+static uint8_t motorTestDirection=0;  // 0=DIR HIGH, 1=DIR LOW
+static uint16_t motorTestPulseCount=0;
+static uint32_t motorTestNextEdgeUs=0;
+static uint32_t motorTestLastUiMs=0;
+static uint32_t motorTestPulsePeriodUs=25000;
+static constexpr uint32_t MOTOR_TEST_START_PERIOD_US=25000; // 40 steps/s
+static constexpr uint32_t MOTOR_TEST_CRUISE_PERIOD_US=10000; // 100 steps/s
+static constexpr uint32_t MOTOR_TEST_STEP_HIGH_US=5;
+static constexpr uint16_t MOTOR_TEST_RAMP_PULSES=100;
 // Local browser control state. Targets are stored only; motors remain disabled.
 static float targetAzimuthDeg=0.0f;
 static float targetElevationDeg=0.0f;
@@ -248,9 +253,10 @@ static constexpr uint16_t BG = 0x0841;
 static constexpr uint16_t PANEL = 0x10A3;
 static constexpr uint16_t BLUE = 0x03B9;
 static constexpr uint16_t MUTED = 0x9CF3;
-static constexpr uint16_t KEY_BG = 0x10A3;
-static constexpr uint16_t KEY_NUM = 0x035F;
-static constexpr uint16_t KEY_EDGE = 0x07FF;
+static constexpr uint16_t KEY_BG = 0x0000;
+static constexpr uint16_t KEY_NUM = 0x0000;
+static constexpr uint16_t KEY_PRESSED = 0x07FF;
+static constexpr uint16_t KEY_EDGE = 0xFFFF;
 static uint16_t touchCal[5];
 static constexpr int TOUCH_CLK_PIN=25, TOUCH_MISO_PIN=39, TOUCH_MOSI_PIN=32, TOUCH_IRQ_PIN=36;
 static bool touchWasDown=false; static uint8_t touchCalStep=0; static uint16_t touchCorners[8]={0};
@@ -311,6 +317,184 @@ static bool loadTouchCalibration() {
   return true;
 }
 
+static void showSystemScreen();
+struct UiTextEntry { const char* source; const char* ru; const char* zh; };
+static String translatedUiBuffer;
+static const UiTextEntry UI_TEXT[] = {
+ {"TOUCH SETUP","НАСТРОЙКА СЕНСОРА","触摸设置"},
+ {"Touch the target","Коснитесь метки","触摸目标点"},
+ {"Keep finger steady","Не двигайте пальцем","保持手指稳定"},
+ {"4-CORNER PRECISION CALIBRATION","ТОЧНАЯ КАЛИБРОВКА ПО 4 УГЛАМ","四角精确校准"},
+ {"Motors remain disabled during startup","Двигатели заблокированы при запуске","启动期间电机保持禁用"},
+ {"NETWORK CONFIG","НАСТРОЙКА СЕТИ","网络配置"},
+ {"Cancel connection","Отменить подключение","取消连接"},
+ {"PHOTO NOT FOUND","ФОТО НЕ НАЙДЕНО","未找到照片"},
+ {"INTERNATIONAL","МЕЖДУНАРОДНАЯ","国际"},
+ {"SPACE STATION","КОСМИЧЕСКАЯ СТАНЦИЯ","空间站"},
+ {"PRIMARY","ОСНОВНОЙ","主目标"},
+ {"OTHER OBJECTS","ДРУГИЕ ОБЪЕКТЫ","其他目标"},
+ {"AZIMUTH","АЗИМУТ","方位角"},
+ {"ELEVATION","УГОЛ МЕСТА","仰角"},
+ {"DRIVE LOCKED  /  TARGET PENDING","ПРИВОД ЗАБЛОКИРОВАН / ОЖИДАНИЕ ЦЕЛИ","驱动已锁定 / 等待目标"},
+ {"WI-FI CONNECTION","ПОДКЛЮЧЕНИЕ WI-FI","无线网络连接"},
+ {"GPS RECEIVER","ПРИЁМНИК GPS","GPS 接收器"},
+ {"LOCAL API READY","ЛОКАЛЬНЫЙ API ГОТОВ","本地 API 已就绪"},
+ {"QUICK ACTIONS","БЫСТРЫЕ ДЕЙСТВИЯ","快捷操作"},
+ {"INITIALIZATION","ИНИЦИАЛИЗАЦИЯ","初始化"},
+ {"Hardware and service checks","Проверка оборудования и служб","硬件与服务检查"},
+ {"Connecting to the selected network","Подключение к выбранной сети","正在连接所选网络"},
+ {"SATELLITES","СПУТНИКИ","卫星"},
+ {"OBJECT CATALOG  /  TRACKING TARGETS","КАТАЛОГ ОБЪЕКТОВ / ЦЕЛИ СЛЕЖЕНИЯ","目标目录 / 跟踪目标"},
+ {"ROTATOR","РОТАТОР","转台"},
+ {"VHF 145 MHz  /  CIRCULAR YAGI","VHF 145 МГц / КРУГОВАЯ YAGI","VHF 145 MHz / 圆极化八木天线"},
+ {"SYSTEM","СИСТЕМА","系统"},
+ {"DEVICE HEALTH  /  CONFIGURATION","СОСТОЯНИЕ УСТРОЙСТВА / НАСТРОЙКА","设备状态 / 配置"},
+ {"CONNECTION FAILED","ОШИБКА ПОДКЛЮЧЕНИЯ","连接失败"},
+ {"Check the network name and password","Проверьте имя сети и пароль","请检查网络名称和密码"},
+ {"CONNECT","ПОДКЛЮЧИТЬ","连接"},
+ {"BACK / EDIT","НАЗАД / ИЗМЕНИТЬ","返回 / 编辑"},
+ {"HOME","ГЛАВНАЯ","主页"},
+ {"SAT","СПУТНИКИ","卫星"},
+ {"ANT","АНТЕННА","天线"},
+ {"TOUCH","СЕНСОР","触摸"},
+ {"WI-FI","WI-FI","无线网络"},
+ {"API","API","API"},
+ {"EDIT WI-FI","ИЗМЕНИТЬ WI-FI","编辑 Wi-Fi"},
+ {"DISPLAY","ДИСПЛЕЙ","显示屏"},
+ {"ESP32","ESP32","ESP32"},
+ {"GPS MODULE","МОДУЛЬ GPS","GPS 模块"},
+ {"MOTOR DRIVERS","ДРАЙВЕРЫ МОТОРОВ","电机驱动器"},
+ {"DISPLAY / ESP32","ДИСПЛЕЙ / ESP32","显示屏 / ESP32"},
+ {"COMPASS","КОМПАС","指南针"},
+ {"AZIMUTH SENSOR","ДАТЧИК АЗИМУТА","方位传感器"},
+ {"ELEVATION SENSOR","ДАТЧИК УГЛА МЕСТА","仰角传感器"},
+ {"ANGLE SENSOR","ДАТЧИК НАКЛОНА","倾角传感器"},
+ {"NOT FOUND","НЕ НАЙДЕН","未找到"},
+ {"NO DATA","НЕТ ДАННЫХ","无数据"},
+ {"WAITING","ОЖИДАНИЕ","等待中"},
+ {"READY","ГОТОВ","就绪"},
+ {"NETWORK","СЕТЬ","网络"},
+ {"STATUS","СТАТУС","状态"},
+ {"ONLINE","В СЕТИ","在线"},
+ {"OFFLINE","НЕ В СЕТИ","离线"},
+ {"FIX","ФИКСАЦИЯ","已定位"},
+ {"SEARCH","ПОИСК","搜索中"},
+ {"NO NETWORK","НЕТ СЕТИ","无网络"},
+ {"SATELLITES RECEIVED","СПУТНИКИ ПОЛУЧЕНЫ","已接收卫星数据"},
+ {"WAITING FOR DATA","ОЖИДАНИЕ ДАННЫХ","等待数据"},
+ {"LANGUAGE","ЯЗЫК","语言"},
+ {"LANGUAGE / ЯЗЫК","ЯЗЫК / LANGUAGE","语言"},
+ {"TOUCH TEST / XPT2046","ТЕСТ СЕНСОРА / XPT2046","触摸测试 / XPT2046"},
+ {"Tap once to start calibration","Коснитесь для начала калибровки","点击开始校准"},
+ {"Raw touch controller check","Проверка контроллера касания","触摸控制器检查"},
+ {"Touch anywhere to start","Коснитесь экрана для начала","触摸屏幕任意位置开始"},
+ {"calibration","калибровка","校准"},
+ {"GPS","GPS","GPS"},
+ {"SATELLITES","СПУТНИКИ","卫星"},
+ {"LINK","СВЯЗЬ","连接"},
+ {"DRIVE LOCKED","ПРИВОД ЗАБЛОКИРОВАН","驱动已锁定"},
+ {"TRACKING","СЛЕЖЕНИЕ","跟踪中"},
+ {"TLE PENDING","ОЖИДАНИЕ TLE","等待 TLE"},
+ {"WEATHER  /  APT","ПОГОДНЫЙ / APT","气象 / APT"},
+ {"NETWORK / SSID","СЕТЬ / SSID","网络 / SSID"},
+ {"PASSWORD","ПАРОЛЬ","密码"},
+ {"SELECT A FIELD  /  TYPE YOUR WI-FI DETAILS","ВЫБЕРИТЕ ПОЛЕ / ВВЕДИТЕ ПАРАМЕТРЫ WI-FI","选择字段 / 输入 Wi-Fi 信息"},
+ {"HIDE","СКРЫТЬ","隐藏"},
+ {"SHOW","ПОКАЗАТЬ","显示"},
+ {"CONNECTED","ПОДКЛЮЧЕНО","已连接"},
+ {"DATA","ДАННЫЕ","数据"},
+ {"SEARCHING","ПОИСК","搜索中"},
+ {"LOCKED","ЗАБЛОКИРОВАНО","已锁定"},
+ {"TLE OK","TLE ЗАГРУЖЕН","TLE 已加载"},
+ {"TLE WAIT","ОЖИДАНИЕ TLE","等待 TLE"},
+ {"GPS FIX","ФИКС GPS","GPS 定位"},
+ {"DEMO: YEKATERINBURG","ДЕМО: ЕКАТЕРИНБУРГ","演示：叶卡捷琳堡"},
+ {"Enter a network name first","Сначала введите имя сети","请先输入网络名称"},
+ {"Edit network name or password","Измените имя сети или пароль","编辑网络名称或密码"},
+ {"Edit network, then press CONNECT","Измените сеть и нажмите ПОДКЛЮЧИТЬ","编辑网络后点击连接"},
+ {"Check password, then connect","Проверьте пароль и подключитесь","检查密码后重新连接"},
+ {"Enter your router details","Введите параметры маршрутизатора","输入路由器信息"},
+ {"RED  F800","КРАСНЫЙ F800","红色 F800"},
+ {"GREEN 07E0","ЗЕЛЁНЫЙ 07E0","绿色 07E0"},
+ {"BLUE 001F","СИНИЙ 001F","蓝色 001F"},
+ {"WHITE FFFF","БЕЛЫЙ FFFF","白色 FFFF"},
+ {"CYAN 07FF","ГОЛУБОЙ 07FF","青色 07FF"},
+ {"MAGENTA F81F","ПУРПУРНЫЙ F81F","品红 F81F"},
+ {"SHIFT","СМЕНА РЕГИСТРА","切换大小写"},
+ {"SPACE","ПРОБЕЛ","空格"},
+ {"SYM","СИМВОЛЫ","符号"},
+ {"ABC","БУКВЫ","字母"},
+ {"DEL","УДАЛИТЬ","删除"},
+ {"SELECT A FIELD  /  TYPE YOUR WI-FI DETAILS","ВЫБЕРИТЕ ПОЛЕ / ВВЕДИТЕ ПАРАМЕТРЫ WI-FI","选择字段 / 输入 Wi-Fi 信息"},
+ {"UTC --:--","UTC --:--","UTC --:--"},
+ {"DO VOSKHODA","ДО ВОСХОДА","等待升起"},
+ {"DO ZAKHODA","ДО ЗАХОДА","等待落下"},
+ {"WAITING FOR ORBIT PASS","ОЖИДАНИЕ ПРОЛЁТА СПУТНИКА","等待卫星过境"}
+};
+static const char* translateUi(const char* source) {
+  if(!source || uiLanguage==0) return source ? source : "";
+  for(const auto& item:UI_TEXT) {
+    if(strcmp(source,item.source)==0) return uiLanguage==1?item.ru:item.zh;
+  }
+  // Countdown labels include a changing HH:MM:SS suffix; translate the fixed prefix.
+  for(const auto& item:UI_TEXT) {
+    const size_t prefixLength=strlen(item.source);
+    if(strncmp(source,item.source,prefixLength)==0 && source[prefixLength]==' ') {
+      translatedUiBuffer=String(uiLanguage==1?item.ru:item.zh)+String(source+prefixLength);
+      return translatedUiBuffer.c_str();
+    }
+  }
+  return source;
+}
+static void setUiTextColor(uint16_t fg,uint16_t bg) {
+  uiTextFg=fg; uiTextBg=bg; tft.setTextColor(fg,bg);
+}
+static void setUiTextDatum(uint8_t datum) {
+  uiTextDatum=datum; tft.setTextDatum(datum);
+}
+static void drawUiString(const String& original,int16_t x,int16_t y,uint8_t font) {
+  const char* source=original.c_str();
+  const char* value=translateUi(source);
+  // Opaque glyph cells prevent pixels from the previous frame showing through
+  // as black fragments inside letter counters and strokes.
+  uiFont.setFontMode(0);
+  uiFont.setForegroundColor(uiTextFg);
+  uiFont.setBackgroundColor(uiTextBg);
+  if(uiLanguage==2) {
+    if(font>=4) uiFont.setFont(u8g2_font_wqy16_t_gb2312);
+    else uiFont.setFont(font>=2?u8g2_font_wqy14_t_gb2312:u8g2_font_wqy12_t_gb2312);
+  } else if(uiLanguage==1) {
+    if(font>=4) uiFont.setFont(u8g2_font_10x20_t_cyrillic);
+    else uiFont.setFont(font>=2?u8g2_font_7x13_t_cyrillic:u8g2_font_6x12_t_cyrillic);
+  } else {
+    if(font>=4) uiFont.setFont(u8g2_font_10x20_tf);
+    else uiFont.setFont(font>=2?u8g2_font_7x14_tf:u8g2_font_6x12_tf);
+  }
+  const int16_t width=uiFont.getUTF8Width(value);
+  const int16_t ascent=uiFont.getFontAscent();
+  const int16_t descent=uiFont.getFontDescent();
+  int16_t px=x, baseline=y+ascent;
+  switch(uiTextDatum) {
+    case TC_DATUM: px=x-width/2; break;
+    case TR_DATUM: px=x-width; break;
+    case ML_DATUM: baseline=y+(ascent+descent)/2; break;
+    case MC_DATUM: px=x-width/2; baseline=y+(ascent+descent)/2; break;
+    case MR_DATUM: px=x-width; baseline=y+(ascent+descent)/2; break;
+    case BL_DATUM: baseline=y; break;
+    case BC_DATUM: px=x-width/2; baseline=y; break;
+    case BR_DATUM: px=x-width; baseline=y; break;
+    default: break;
+  }
+  uiFont.setCursor(px,baseline);
+  uiFont.print(value);
+}
+static void selectUiLanguage(uint8_t language) {
+  if(language>2) language=1;
+  uiLanguage=language;
+  prefs.putUChar("uilang",uiLanguage);
+  if(screen==Screen::SystemInfo) showSystemScreen();
+}
+
 static void drawCalibrationTarget(uint8_t n){
   // Calibration keeps the exact four raw sampling coordinates, but now uses
   // the same Space Dark visual language as the rest of the interface.
@@ -318,21 +502,21 @@ static void drawCalibrationTarget(uint8_t n){
   for(int i=0;i<18;i++){int sx=(i*47+19)%320, sy=(i*31+13)%240;tft.drawPixel(sx,sy,0x19A5);}
   tft.fillRect(0,0,320,35,0x0862); tft.fillRect(0,35,320,2,TFT_CYAN);
   tft.fillCircle(15,17,6,TFT_CYAN); tft.fillCircle(15,17,2,TFT_WHITE);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x0862);
-  tft.drawString("TOUCH SETUP",28,8,2);
-  tft.setTextDatum(TR_DATUM);tft.setTextColor(MUTED,0x0862);
-  tft.drawString("XPT2046",309,11,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_WHITE,0x0862);
+  drawUiString("TOUCH SETUP",28,8,2);
+  setUiTextDatum(TR_DATUM);setUiTextColor(MUTED,0x0862);
+  drawUiString("XPT2046",309,11,1);
   tft.drawRoundRect(54,78,212,88,12,0x2A69);
   tft.fillRoundRect(59,83,202,78,9,0x1028);
   char msg[32];snprintf(msg,sizeof(msg),"POINT %u / 4",n+1);
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_CYAN,0x1028);
-  tft.drawString(msg,160,103,2);
-  tft.setTextColor(TFT_WHITE,0x1028);tft.drawString("Touch the target",160,128,2);
-  tft.setTextColor(MUTED,0x1028);tft.drawString("Keep finger steady",160,148,1);
+  setUiTextDatum(MC_DATUM);setUiTextColor(TFT_CYAN,0x1028);
+  drawUiString(msg,160,103,2);
+  setUiTextColor(TFT_WHITE,0x1028);drawUiString("Touch the target",160,128,2);
+  setUiTextColor(MUTED,0x1028);drawUiString("Keep finger steady",160,148,1);
   tft.drawRoundRect(65,187,190,9,4,0x2A69);
   tft.fillRoundRect(67,189,(uint16_t)(186*(n+1)/4),5,2,TFT_CYAN);
-  tft.setTextDatum(BC_DATUM);tft.setTextColor(MUTED,BG);
-  tft.drawString("4-CORNER PRECISION CALIBRATION",160,222,1);
+  setUiTextDatum(BC_DATUM);setUiTextColor(MUTED,BG);
+  drawUiString("4-CORNER PRECISION CALIBRATION",160,222,1);
   int x=calX[n],y=calY[n];
   tft.drawCircle(x,y,14,TFT_WHITE);tft.drawCircle(x,y,9,TFT_CYAN);
   tft.fillCircle(x,y,3,TFT_YELLOW);
@@ -408,15 +592,15 @@ static void header(const char* title, const char* subtitle) {
   tft.fillRect(0,0,320,30,0x0862);
   tft.fillRect(0,29,320,1,0x2A69);tft.fillRect(0,30,320,2,TFT_CYAN);
   tft.fillCircle(16,15,8,0x03B9);tft.fillCircle(16,15,4,TFT_WHITE);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x0862);tft.drawString("CYD",30,5,2);
-  tft.setTextColor(MUTED,0x0862);tft.drawString("SATELLITE TRACKER",64,9,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_WHITE,0x0862);drawUiString("CYD",30,5,2);
+  setUiTextColor(MUTED,0x0862);drawUiString("SATELLITE TRACKER",64,9,1);
   drawHeaderConnectionIcons();
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,BG);tft.drawString(title,11,38,4);
-  tft.setTextColor(MUTED,BG);tft.drawString(subtitle,13,73,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_WHITE,BG);drawUiString(title,11,38,4);
+  setUiTextColor(MUTED,BG);drawUiString(subtitle,13,73,1);
   tft.drawFastHLine(10,83,300,0x2A69);
 }
 static void drawSectionLabel(const char* label,int x,int y,int w) {
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(TFT_CYAN,PANEL); tft.drawString(label,x,y,1);
+  setUiTextDatum(TL_DATUM); setUiTextColor(TFT_CYAN,PANEL); drawUiString(label,x,y,1);
   tft.drawFastHLine(x,y+13,w,0x2A69);
 }
 static void drawAzimuthDial(int cx,int cy,int r) {
@@ -427,48 +611,70 @@ static void drawAzimuthDial(int cx,int cy,int r) {
     int x2=cx+(int)((r-(a%90==0?10:6))*cosf(rad)), y2=cy+(int)((r-(a%90==0?10:6))*sinf(rad));
     tft.drawLine(x1,y1,x2,y2,a%90==0?TFT_CYAN:0x2A69);
   }
-  tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,PANEL);
-  tft.drawString("N",cx,cy-r+8,1); tft.drawString("E",cx+r-8,cy,1);
-  tft.drawString("S",cx,cy+r-8,1); tft.drawString("W",cx-r+8,cy,1);
+  setUiTextDatum(MC_DATUM); setUiTextColor(TFT_WHITE,PANEL);
+  drawUiString("N",cx,cy-r+8,1); drawUiString("E",cx+r-8,cy,1);
+  drawUiString("S",cx,cy+r-8,1); drawUiString("W",cx-r+8,cy,1);
   tft.fillCircle(cx,cy,3,TFT_CYAN);
 }
 static void drawElevationArc(int x,int y,int w) {
   tft.drawRoundRect(x,y,w,50,7,0x2A69); tft.drawFastHLine(x+10,y+37,w-20,0x2A69);
   for(int i=0;i<=6;i++){int px=x+12+i*(w-24)/6;tft.drawFastVLine(px,y+32,8,i==3?TFT_CYAN:0x2A69);}
-  tft.setTextDatum(TL_DATUM); tft.setTextColor(MUTED,PANEL);
-  tft.drawString("0",x+10,y+39,1); tft.drawString("90",x+w-23,y+39,1);
+  setUiTextDatum(TL_DATUM); setUiTextColor(MUTED,PANEL);
+  drawUiString("0",x+10,y+39,1); drawUiString("90",x+w-23,y+39,1);
 }
 
 static void statusRow(int y, const char* label, const char* value, uint16_t color) {
   tft.fillRoundRect(10,y,tft.width()-20,27,5,PANEL);
-  tft.setTextDatum(ML_DATUM);
-  tft.setTextColor(TFT_WHITE,PANEL); tft.drawString(label,18,y+14,2);
-  tft.setTextDatum(MR_DATUM);
-  tft.setTextColor(color,PANEL); tft.drawString(value,tft.width()-18,y+14,2);
+  setUiTextDatum(ML_DATUM);
+  setUiTextColor(TFT_WHITE,PANEL); drawUiString(label,18,y+14,2);
+  setUiTextDatum(MR_DATUM);
+  setUiTextColor(color,PANEL); drawUiString(value,tft.width()-18,y+14,2);
 }
 
+static void compactStatusRow(int y,const char* label,const char* value,uint16_t color) {
+  tft.fillRoundRect(10,y,300,21,4,PANEL);
+  setUiTextDatum(ML_DATUM);
+  setUiTextColor(TFT_WHITE,PANEL);
+  drawUiString(label,18,y+11,1);
+  setUiTextDatum(MR_DATUM);
+  setUiTextColor(color,PANEL);
+  drawUiString(value,302,y+11,1);
+}
+static const char* sensorStatusText(bool present,bool readOk,bool valid) {
+  if(!present) return "NOT FOUND";
+  if(!readOk) return "NO DATA";
+  return valid ? "READY" : "WAITING";
+}
+static uint16_t sensorStatusColor(bool present,bool readOk,bool valid) {
+  if(!present || !readOk) return TFT_ORANGE;
+  return valid ? TFT_GREEN : TFT_YELLOW;
+}
 static void showInitialization() {
   header("INITIALIZATION","Hardware and service checks");
-  statusRow(112,"DISPLAY","OK",TFT_GREEN);
-  statusRow(145,"ESP32","OK",TFT_GREEN);
-  statusRow(178,"GPS MODULE",gpsSeen?"DATA":"SEARCHING",gpsSeen?TFT_GREEN:TFT_YELLOW);
-  statusRow(211,"MOTOR DRIVERS","LOCKED",TFT_ORANGE);
-  tft.setTextDatum(BC_DATUM);
-  tft.setTextColor(MUTED,BG);
-  tft.drawString("Motors remain disabled during startup",tft.width()/2,tft.height()-3,1);
+  compactStatusRow(87,"DISPLAY / ESP32","OK",TFT_GREEN);
+  compactStatusRow(111,"COMPASS",
+    sensorStatusText(sensorSuite.mag_present,sensorSuite.mag_read_ok,sensorSuite.heading_valid),
+    sensorStatusColor(sensorSuite.mag_present,sensorSuite.mag_read_ok,sensorSuite.heading_valid));
+  compactStatusRow(135,"ANGLE / ADXL345",
+    sensorStatusText(sensorSuite.accel_present,sensorSuite.accel_read_ok,sensorSuite.tilt_valid),
+    sensorStatusColor(sensorSuite.accel_present,sensorSuite.accel_read_ok,sensorSuite.tilt_valid));
+  compactStatusRow(159,"GPS MODULE",gpsSeen?"DATA":"SEARCHING",gpsSeen?TFT_GREEN:TFT_YELLOW);
+  setUiTextDatum(BC_DATUM);
+  setUiTextColor(TFT_ORANGE,BG);
+  drawUiString("Motors remain disabled during startup",tft.width()/2,tft.height()-1,1);
 }
 
 static void drawButton(int x,int y,int w,int h,const char* label,uint16_t color) {
   tft.fillRoundRect(x,y,w,h,5,color);
   tft.drawRoundRect(x,y,w,h,5,TFT_WHITE);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor((color==0x07FF||color==0xFFE0)?TFT_BLACK:TFT_WHITE,color);
-  tft.drawString(label,x+w/2,y+h/2,2);
+  setUiTextDatum(MC_DATUM);
+  setUiTextColor((color==0x07FF||color==0xFFE0)?TFT_BLACK:TFT_WHITE,color);
+  drawUiString(label,x+w/2,y+h/2,2);
 }
 
 static void drawField(int y,const char* label,const String& value,bool selected,bool mask) {
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(selected?TFT_CYAN:MUTED,BG);tft.drawString(label,10,y-12,1);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(selected?TFT_CYAN:MUTED,BG);drawUiString(label,10,y-12,1);
   const uint16_t fill=selected?0x123B:0x0C63;
   tft.fillRoundRect(7,y,306,25,5,fill);
   tft.drawRoundRect(7,y,306,25,5,selected?TFT_CYAN:0x3151);
@@ -477,7 +683,7 @@ static void drawField(int y,const char* label,const String& value,bool selected,
   if(mask && !passwordVisible) {for(size_t i=0;i<value.length();++i) shown += '*';}
   else shown=value;
   if(shown.length()>36) shown="..."+shown.substring(shown.length()-33);
-  tft.setTextDatum(ML_DATUM);tft.setTextColor(TFT_WHITE,fill);tft.drawString(shown,19,y+13,2);
+  setUiTextDatum(ML_DATUM);setUiTextColor(TFT_WHITE,fill);drawUiString(shown,19,y+13,2);
 }
 
 static bool readStableTouch(uint16_t &rawX,uint16_t &rawY,uint16_t &screenX,uint16_t &screenY) {
@@ -500,38 +706,59 @@ static bool readStableTouch(uint16_t &rawX,uint16_t &rawY,uint16_t &screenX,uint
 static void beginWiFi();
 static void backspace();
 
-static void drawKey(int x,int y,int w,int h,const char* label, uint16_t fill=0x0000) {
-  const uint16_t edge=(fill==KEY_NUM)?0x2F9F:0x3A77;
-  tft.fillRoundRect(x,y+2,w,h,4,0x0000);
-  tft.fillRoundRect(x,y,w,h,4,fill);
-  tft.drawRoundRect(x,y,w,h,4,edge);
-  tft.drawFastHLine(x+4,y+1,w-8,fill==KEY_NUM?0x5DFF:0x2E9F);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(fill==0x07FF?TFT_BLACK:TFT_WHITE,fill);
-  tft.drawString(label,x+w/2,y+h/2,2);
+static void drawKey(int x,int y,int w,int h,const char* label, uint16_t fill=KEY_BG) {
+  const bool pressed=(fill==KEY_PRESSED);
+  const uint16_t keyFill=pressed?KEY_PRESSED:TFT_BLACK;
+  tft.fillRoundRect(x,y+2,w,h,4,TFT_BLACK);
+  tft.fillRoundRect(x,y,w,h,4,keyFill);
+  tft.drawRoundRect(x,y,w,h,4,pressed?TFT_WHITE:KEY_EDGE);
+  tft.drawFastHLine(x+4,y+1,w-8,pressed?TFT_WHITE:0x7BEF);
+  setUiTextDatum(MC_DATUM);
+  setUiTextColor(pressed?TFT_BLACK:TFT_WHITE,keyFill);
+  drawUiString(label,x+w/2,y+h/2,2);
+}
+static const char* russianKeyboardLabel(uint8_t row,uint8_t col,bool upper) {
+  static const char* lower[3][10]={
+    {"й","ц","у","к","е","н","г","ш","щ","з"},
+    {"ф","ы","в","а","п","р","о","л","д",nullptr},
+    {"я","ч","с","м","и","т","ь",nullptr,nullptr,nullptr}
+  };
+  static const char* upperRows[3][10]={
+    {"Й","Ц","У","К","Е","Н","Г","Ш","Щ","З"},
+    {"Ф","Ы","В","А","П","Р","О","Л","Д",nullptr},
+    {"Я","Ч","С","М","И","Т","Ь",nullptr,nullptr,nullptr}
+  };
+  if(row>2 || col>9) return "";
+  return upper?upperRows[row][col]:lower[row][col];
 }
 static void drawLetterRow(const char* keys,int y,int x,int keyW,int gap) {
+  const uint8_t row=(y==108)?0:((y==133)?1:2);
   for(int i=0;keys[i];++i) {
-    char label[2]={keys[i],0};
-    if(shiftKey && !symbolsPage && label[0]>='a' && label[0]<='z') label[0]=toupper(label[0]);
+    char ascii[2]={keys[i],0};
+    const char* label=ascii;
+    if(russianLayout && !symbolsPage) label=russianKeyboardLabel(row,(uint8_t)i,shiftKey);
+    else if(shiftKey && !symbolsPage && ascii[0]>='a' && ascii[0]<='z') {
+      ascii[0]=toupper(ascii[0]); label=ascii;
+    }
     drawKey(x+i*(keyW+gap),y,keyW,22,label,KEY_BG);
   }
 }
 static void flashKeyboardKey(uint16_t x,uint16_t y) {
-  int kx=-1,ky=0,kw=0,kh=22; char label[8]={0};
-  if(y>=108&&y<=130) {
-    ky=108;
-    if(x>=246) { int c=(x-246)/24; if(c>2)return; kx=246+c*24;kw=22;label[0]="123"[c]; }
-    else { int c=(x-5)/22;if(c<0||c>=10)return;kx=5+c*22;kw=21;label[0]=(symbolsPage?"!@#$%^&*()":"qwertyuiop")[c]; }
-  } else if(y>=133&&y<=155) {
-    ky=133;
-    if(x>=246) { int c=(x-246)/24;if(c>2)return;kx=246+c*24;kw=22;label[0]="456"[c]; }
-    else { int c=(x-16)/24;if(c<0||c>=9)return;kx=16+c*24;kw=22;label[0]=(symbolsPage?"-_=+[]{};:":"asdfghjkl")[c]; }
-  } else if(y>=158&&y<=180) {
-    ky=158;
-    if(x>=246) { int c=(x-246)/24;if(c>2)return;kx=246+c*24;kw=22;label[0]="789"[c]; }
-    else { int c=(x-40)/25;if(c<0||c>=7)return;kx=40+c*25;kw=22;label[0]=(symbolsPage?".,?/'\\\\|~":"zxcvbnm")[c]; }
-  } else if(y>=183&&y<=205) {
+  int kx=-1,ky=0,kw=0,kh=22,row=-1,col=-1;
+  char label[8]={0};
+  if(y>=108&&y<130) {
+    ky=108; row=0;
+    if(x>=246) { col=(x-246)/24; if(col>2)return; kx=246+col*24;kw=22;label[0]="123"[col]; row=-1; }
+    else { col=(x-5)/22;if(col<0||col>=10)return;kx=5+col*22;kw=21;label[0]=(symbolsPage?"!@#$%^&*()":"qwertyuiop")[col]; }
+  } else if(y>=133&&y<155) {
+    ky=133; row=1;
+    if(x>=246) { col=(x-246)/24;if(col>2)return;kx=246+col*24;kw=22;label[0]="456"[col]; row=-1; }
+    else { col=(x-16)/24;if(col<0||col>=9)return;kx=16+col*24;kw=22;label[0]=(symbolsPage?"-_=+[]{};:":"asdfghjkl")[col]; }
+  } else if(y>=158&&y<180) {
+    ky=158; row=2;
+    if(x>=246) { col=(x-246)/24;if(col>2)return;kx=246+col*24;kw=22;label[0]="789"[col]; row=-1; }
+    else { col=(x-40)/25;if(col<0||col>=7)return;kx=40+col*25;kw=22;label[0]=(symbolsPage?".,?/'\\\\|~":"zxcvbnm")[col]; }
+  } else if(y>=183&&y<205) {
     ky=184;kh=19;
     if(x>=5&&x<45){kx=5;kw=40;strcpy(label,russianLayout?"RU":"EN");}
     else if(x>=48&&x<91){kx=48;kw=43;strcpy(label,"SHIFT");}
@@ -542,29 +769,32 @@ static void flashKeyboardKey(uint16_t x,uint16_t y) {
     else return;
   } else return;
   if(x<kx||x>=kx+kw)return;
-  drawKey(kx,ky,kw,kh,label,KEY_NUM);
-  delay(45);
+  if(row>=0 && russianLayout && !symbolsPage)
+    strncpy(label,russianKeyboardLabel((uint8_t)row,(uint8_t)col,shiftKey),sizeof(label)-1);
+  drawKey(kx,ky,kw,kh,label,KEY_PRESSED);
+  delay(35);
   drawKey(kx,ky,kw,kh,label,KEY_BG);
 }
 static void showWifiSetup() {
   const bool firstDraw = (screen != Screen::WifiSetup) || !wifiScreenDrawn;
   screen=Screen::WifiSetup;
   if(firstDraw) {
+    russianLayout=(uiLanguage==1);
     tft.fillScreen(BG);
     for(int i=0;i<12;i++){int sx=(i*59+23)%320,sy=(i*37+7)%100;tft.drawPixel(sx,sy,0x19A5);}
     tft.fillRect(0,0,320,27,0x0862);tft.fillRect(0,27,320,2,TFT_CYAN);
     tft.fillCircle(14,13,5,TFT_CYAN);tft.fillCircle(14,13,2,TFT_WHITE);
-    tft.setTextDatum(TL_DATUM);
-    tft.setTextColor(TFT_WHITE,0x0862);tft.drawString("NETWORK CONFIG",26,5,2);
+    setUiTextDatum(TL_DATUM);
+    setUiTextColor(TFT_WHITE,0x0862);drawUiString("NETWORK CONFIG",26,5,2);
     // Keep the right side clear for the shared connection icons.
   }
-  tft.setTextDatum(TL_DATUM);
+  setUiTextDatum(TL_DATUM);
   drawField(37,"NETWORK / SSID",wifiName,!editingPassword,false);
   drawField(68,"PASSWORD",wifiPassword,editingPassword,true);
   tft.fillRoundRect(7,96,306,10,4,0x1028);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(setupMessage.length()?TFT_YELLOW:MUTED,0x1028);
-  tft.drawString(setupMessage.length()?setupMessage.c_str():"SELECT A FIELD  /  TYPE YOUR WI-FI DETAILS",12,97,1);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(setupMessage.length()?TFT_YELLOW:MUTED,0x1028);
+  drawUiString(setupMessage.length()?setupMessage.c_str():"SELECT A FIELD  /  TYPE YOUR WI-FI DETAILS",12,97,1);
   if(firstDraw || keyboardNeedsRedraw) {
     if(!symbolsPage) {
       drawLetterRow("qwertyuiop",108,5,21,1);
@@ -589,8 +819,8 @@ static void showWifiSetup() {
   
     keyboardNeedsRedraw=false;
   }
-  tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_WHITE,BG);
-  tft.drawString(passwordVisible?"HIDE":"SHOW",315,91,1);
+  setUiTextDatum(MR_DATUM); setUiTextColor(TFT_WHITE,BG);
+  drawUiString(passwordVisible?"HIDE":"SHOW",315,91,1);
   drawHeaderConnectionIcons();
   wifiScreenDrawn=true;
 }
@@ -643,7 +873,7 @@ static void handleKeyboardTap(uint16_t x,uint16_t y) {
       if(col<3 && x<(246+col*24+22)) { Serial.printf("KEYMAP digit=%c mapped=%u,%u raw=%u,%u\n","456"[col],x,y,rawTouchX,rawTouchY); appendMappedKey("456"[col]); }
     } else if(x>=16 && x<232) {
       const int col=(x-16)/24;
-      if(col<9 && x<16+col*26+22) appendMappedKey((symbolsPage?"-_=+[]{};:":"asdfghjkl")[col]);
+      if(col<9 && x<16+col*24+22) appendMappedKey((symbolsPage?"-_=+[]{};:":"asdfghjkl")[col]);
     }
     showWifiSetup(); return;
   }
@@ -676,8 +906,8 @@ static void showConnecting() {
   tft.drawRoundRect(169,199,137,10,4,0x3151);
   tft.fillRoundRect(171,201,((millis()/35)%133),6,3,BLUE);
   drawButton(14,190,143,30,"BACK / EDIT",BLUE);
-  tft.setTextDatum(BC_DATUM); tft.setTextColor(MUTED,BG);
-  tft.drawString("Cancel connection",86,232,1);
+  setUiTextDatum(BC_DATUM); setUiTextColor(MUTED,BG);
+  drawUiString("Cancel connection",86,232,1);
 }
 
 
@@ -755,16 +985,16 @@ static void drawSelectedSatellitePhoto() {
     TJpgDec.drawJpg(15,34,selectedSatelliteImageData,selectedSatelliteImageSize);
   } else {
     drawSatelliteArtwork(96,74,2);
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_YELLOW,0x0822);
-    tft.drawString("PHOTO NOT FOUND",96,105,1);
+    setUiTextDatum(MC_DATUM);
+    setUiTextColor(TFT_YELLOW,0x0822);
+    drawUiString("PHOTO NOT FOUND",96,105,1);
   }
   tft.fillRect(8,114,175,27,0x0010);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_WHITE,0x0010);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(TFT_WHITE,0x0010);
   String label=selectedSatelliteName;
   if(label.length()>25) label=label.substring(0,25);
-  tft.drawString(label,14,116,1);
+  drawUiString(label,14,116,1);
 }
 static void drawDialNeedle(int cx,int cy,int length,float degrees,uint16_t color) {
   const float a=(degrees-90.0f)*0.0174532925f;
@@ -773,6 +1003,20 @@ static void drawDialNeedle(int cx,int cy,int length,float degrees,uint16_t color
   tft.drawLine(cx,cy,ex,ey,color);
   tft.fillCircle(cx,cy,5,0xBDF7);
   tft.drawCircle(cx,cy,5,TFT_WHITE);
+}
+
+static void updateDashboardCompass() {
+  if(screen!=Screen::Dashboard) return;
+  const int cx=250,cy=87;
+  // Clear only the compass hub; preserve the radar rings and surrounding markers.
+  tft.fillCircle(cx,cy,14,0x0000);
+  tft.drawCircle(cx,cy,15,0x1A45);
+  tft.drawFastHLine(cx-14,cy,28,0x2A69);
+  tft.drawFastVLine(cx,cy-14,28,0x2A69);
+  if(sensorSuite.heading_valid)
+    drawDialNeedle(cx,cy,13,sensorSuite.magnetic_heading_deg,TFT_CYAN);
+  else
+    tft.fillCircle(cx,cy,3,TFT_ORANGE);
 }
 
 static void drawGpsPanel() {
@@ -799,11 +1043,13 @@ static void drawGpsPanel() {
     tft.drawLine(cx+(int)(r1*cosf(q)),cy+(int)(r1*sinf(q)),
                  cx+(int)(r2*cosf(q)),cy+(int)(r2*sinf(q)),c);
   }
-  tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_WHITE,BG);
-  tft.drawString("N",cx,cy-r-2,2); tft.drawString("E",cx+r+2,cy,2);
-  tft.drawString("S",cx,cy+r+2,2); tft.drawString("W",cx-r-2,cy,2);
-  tft.fillTriangle(cx,cy-13,cx-6,cy+7,cx+6,cy+7,TFT_CYAN);
-  tft.fillCircle(cx,cy,3,TFT_WHITE);
+  setUiTextDatum(MC_DATUM); setUiTextColor(TFT_WHITE,BG);
+  drawUiString("N",cx,cy-r-2,2); drawUiString("E",cx+r+2,cy,2);
+  drawUiString("S",cx,cy+r+2,2); drawUiString("W",cx-r-2,cy,2);
+  if(sensorSuite.heading_valid)
+    drawDialNeedle(cx,cy,13,sensorSuite.magnetic_heading_deg,TFT_CYAN);
+  else
+    tft.fillCircle(cx,cy,3,TFT_ORANGE);
   tft.fillCircle(cx-25,cy+23,4,TFT_RED);
   tft.drawCircle(cx-25,cy+23,6,0xF986);
   // Three aligned data cards with consistent inset, edge and typography.
@@ -813,10 +1059,10 @@ static void drawGpsPanel() {
     tft.fillRoundRect(xs[i]+2,151,ws[i]-4,46,5,panelHi);
     tft.drawRoundRect(xs[i],149,ws[i],50,7,i==0?edge:0x2A69);
   }
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_CYAN,panelHi); tft.drawString("GPS",11,155,1);
-  tft.setTextColor(TFT_CYAN,panelHi); tft.drawString("SATELLITES",117,155,1);
-  tft.setTextColor(TFT_CYAN,panelHi); tft.drawString("LINK",223,155,1);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(TFT_CYAN,panelHi); drawUiString("GPS",11,155,1);
+  setUiTextColor(TFT_CYAN,panelHi); drawUiString("SATELLITES",117,155,1);
+  setUiTextColor(TFT_CYAN,panelHi); drawUiString("LINK",223,155,1);
   updateGpsTelemetry();
 }
 static void updateGpsTelemetry() {
@@ -825,29 +1071,29 @@ static void updateGpsTelemetry() {
   char line[32];
   // GPS fix and altitude.
   tft.fillRect(10,169,91,25,0x1045);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,0x1045);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(fix?TFT_GREEN:TFT_YELLOW,0x1045);
   if(fix) snprintf(line,sizeof(line),"%.2f %.2f",gps.location.lat(),gps.location.lng());
   else snprintf(line,sizeof(line),"SEARCHING");
-  tft.drawString(line,11,169,1);
+  drawUiString(line,11,169,1);
   if(fix) snprintf(line,sizeof(line),"ALT %.0fm",gps.altitude.meters());
   else snprintf(line,sizeof(line),"ALT ---");
-  tft.setTextColor(TFT_WHITE,0x1045); tft.drawString(line,11,183,1);
+  setUiTextColor(TFT_WHITE,0x1045); drawUiString(line,11,183,1);
   // This is the GNSS receiver's satellite count, not the orbital catalog.
   tft.fillRect(116,169,91,25,0x1045);
-  tft.setTextDatum(MC_DATUM);
+  setUiTextDatum(MC_DATUM);
   snprintf(line,sizeof(line),"%02lu",(unsigned long)(gps.satellites.isValid()?gps.satellites.value():0));
-  tft.setTextColor(TFT_WHITE,0x1045); tft.drawString(line,161,182,4);
+  setUiTextColor(TFT_WHITE,0x1045); drawUiString(line,161,182,4);
   // Wi-Fi state and UTC clock.
   tft.fillRect(222,169,90,25,0x1045);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(wifi?TFT_GREEN:TFT_ORANGE,0x1045);
-  tft.drawString(wifi?"CONNECTED":"OFFLINE",266,174,1);
-  tft.setTextColor(TFT_WHITE,0x1045);
+  setUiTextDatum(MC_DATUM);
+  setUiTextColor(wifi?TFT_GREEN:TFT_ORANGE,0x1045);
+  drawUiString(wifi?"CONNECTED":"OFFLINE",266,174,1);
+  setUiTextColor(TFT_WHITE,0x1045);
   if(gps.time.isValid()) {
     snprintf(line,sizeof(line),"%02u:%02u:%02u",gps.time.hour(),gps.time.minute(),gps.time.second());
-    tft.drawString(line,266,188,1);
-  } else tft.drawString("UTC --:--",266,188,1);
+    drawUiString(line,266,188,1);
+  } else drawUiString("UTC --:--",266,188,1);
 }
 static void updateTargetTelemetry() {
   char line[40];
@@ -855,18 +1101,18 @@ static void updateTargetTelemetry() {
     // Refresh the target readout without repainting the selected spacecraft photo.
     tft.fillRect(8,128,175,13,0x0010);
     snprintf(line,sizeof(line),"AZ %.1f%c  EL %.1f%c",targetAzimuthDeg,(char)247,targetElevationDeg,(char)247);
-    tft.setTextDatum(TL_DATUM);
-    tft.setTextColor(TFT_CYAN,0x0010);
-    tft.drawString(line,14,129,1);
+    setUiTextDatum(TL_DATUM);
+    setUiTextColor(TFT_CYAN,0x0010);
+    drawUiString(line,14,129,1);
   } else if(screen==Screen::Antenna) {
     // Live azimuth: update the numeric heading and rotate the compass needle
     // without repainting the compass rose, labels, panels, or whole screen.
     tft.fillRect(15,93,132,16,0x0822);
     if(sensorSuite.heading_valid) snprintf(line,sizeof(line),"AZ MAG %.1f%c",sensorSuite.magnetic_heading_deg,(char)247);
     else snprintf(line,sizeof(line),"AZ MAG --");
-    tft.setTextDatum(TL_DATUM);
-    tft.setTextColor(sensorSuite.heading_valid?TFT_CYAN:TFT_ORANGE,0x0822);
-    tft.drawString(line,17,95,2);
+    setUiTextDatum(TL_DATUM);
+    setUiTextColor(sensorSuite.heading_valid?TFT_CYAN:TFT_ORANGE,0x0822);
+    drawUiString(line,17,95,2);
     const int cx=81, cy=150;
     tft.fillCircle(cx,cy,22,0x0822);
     drawDialNeedle(cx,cy,19,targetAzimuthDeg,TFT_ORANGE);
@@ -874,15 +1120,15 @@ static void updateTargetTelemetry() {
     // Keep the motor-lock warning visible alongside the latest target values.
     tft.fillRect(10,186,300,9,0x4000);
     snprintf(line,sizeof(line),"DRIVE LOCKED  /  QMC %s",sensorSuite.mag_present?(sensorSuite.mag_read_ok?"READY · UNCAL":"NO DATA"):"NOT FOUND");
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_YELLOW,0x4000);
-    tft.drawString(line,160,190,1);
+    setUiTextDatum(MC_DATUM);
+    setUiTextColor(TFT_YELLOW,0x4000);
+    drawUiString(line,160,190,1);
     tft.fillRect(184,139,106,25,0x0822);
     if(sensorSuite.tilt_valid) snprintf(line,sizeof(line),"%.1f%c",sensorSuite.pitch_deg,(char)247);
     else snprintf(line,sizeof(line),"--");
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(sensorSuite.tilt_valid?TFT_WHITE:TFT_ORANGE,0x0822);
-    tft.drawString(line,237,151,4);
+    setUiTextDatum(MC_DATUM);
+    setUiTextColor(sensorSuite.tilt_valid?TFT_WHITE:TFT_ORANGE,0x0822);
+    drawUiString(line,237,151,4);
   }
 }
 static void showDashboard() {
@@ -894,9 +1140,9 @@ static void showDashboard() {
   tft.fillRect(0,0,320,27,top);
   tft.fillRect(0,26,320,2,0x03BF);
   tft.drawCircle(15,13,7,TFT_CYAN); tft.fillCircle(15,13,3,TFT_WHITE);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_WHITE,top); tft.drawString("CYD",29,4,2);
-  tft.setTextColor(0x8E7F,top); tft.drawString("SATELLITE TRACKER",65,8,1);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(TFT_WHITE,top); drawUiString("CYD",29,4,2);
+  setUiTextColor(0x8E7F,top); drawUiString("SATELLITE TRACKER",65,8,1);
   // Same live Wi-Fi and browser-link indicators as every other screen.
   drawHeaderConnectionIcons();
   drawGpsPanel();
@@ -910,10 +1156,10 @@ static void satelliteRow(int y,const char* name,const char* type,bool selected) 
   tft.fillRoundRect(9,y,302,19,5,fill);
   tft.drawRoundRect(9,y,302,19,5,selected?TFT_CYAN:0x2A69);
   tft.fillCircle(19,y+9,3,selected?TFT_GREEN:TFT_CYAN);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,fill);tft.drawString(name,29,y+2,1);
-  tft.setTextColor(MUTED,fill);tft.drawString(type,100,y+3,1);
-  tft.setTextDatum(MR_DATUM);tft.setTextColor(TFT_YELLOW,fill);
-  tft.drawString(selected?"TRACKING":"TLE PENDING",302,y+9,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_WHITE,fill);drawUiString(name,29,y+2,1);
+  setUiTextColor(MUTED,fill);drawUiString(type,100,y+3,1);
+  setUiTextDatum(MR_DATUM);setUiTextColor(TFT_YELLOW,fill);
+  drawUiString(selected?"TRACKING":"TLE PENDING",302,y+9,1);
 }
 
 static void showSatelliteScreen() {
@@ -924,15 +1170,15 @@ static void showSatelliteScreen() {
   tft.drawRoundRect(8,88,304,65,9,0x07FF);
   tft.fillRoundRect(13,93,76,55,6,0x0010);
   drawUiImage(19,96,ui_iss_jpg,sizeof(ui_iss_jpg));
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_WHITE,0x0822);
-  tft.drawString("INTERNATIONAL",99,96,1);
-  tft.drawString("SPACE STATION",99,108,2);
-  tft.setTextColor(TFT_CYAN,0x0822);tft.drawString("ISS  /  ZARYA",99,132,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_WHITE,0x0822);
+  drawUiString("INTERNATIONAL",99,96,1);
+  drawUiString("SPACE STATION",99,108,2);
+  setUiTextColor(TFT_CYAN,0x0822);drawUiString("ISS  /  ZARYA",99,132,1);
   tft.fillRoundRect(242,96,60,17,7,0x0320);
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_GREEN,0x0320);
-  tft.drawString("PRIMARY",272,104,1);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(MUTED,BG);
-  tft.drawString("OTHER OBJECTS",11,157,1);
+  setUiTextDatum(MC_DATUM);setUiTextColor(TFT_GREEN,0x0320);
+  drawUiString("PRIMARY",272,104,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(MUTED,BG);
+  drawUiString("OTHER OBJECTS",11,157,1);
   satelliteRow(169,"NOAA-18","WEATHER  /  APT",false);
   satelliteRow(190,"NOAA-19","WEATHER  /  APT",false);
   drawNavigation(1);
@@ -943,7 +1189,7 @@ static void showAntennaScreen() {
   // Instrument console with a compass rose and elevation arc.
   tft.fillRoundRect(8,88,147,109,9,0x0822);tft.drawRoundRect(8,88,147,109,9,0x2A69);
   tft.fillRoundRect(163,88,149,109,9,0x0822);tft.drawRoundRect(163,88,149,109,9,0x2A69);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,0x0822);tft.drawString("TARGET AZIMUTH",17,95,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_CYAN,0x0822);drawUiString("TARGET AZIMUTH",17,95,1);
   const int cx=81,cy=150,rr=38;
   tft.drawCircle(cx,cy,rr,0x07FF);tft.drawCircle(cx,cy,rr-3,0x2A69);
   for(int a=0;a<360;a+=5) {
@@ -953,12 +1199,12 @@ static void showAntennaScreen() {
                  cx+(int)(r2*cosf(rad)),cy+(int)(r2*sinf(rad)),
                  a%30==0?TFT_CYAN:0x2A69);
   }
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,0x0822);
-  tft.drawString("N",cx,cy-26,1);tft.drawString("E",cx+26,cy,1);
-  tft.drawString("S",cx,cy+26,1);tft.drawString("W",cx-26,cy,1);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,0x0822);tft.drawString("ELEVATION",173,95,1);
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(MUTED,0x0822);tft.drawString("0°",180,181,1);
-  tft.drawString("45°",237,181,1);tft.drawString("90°",294,181,1);
+  setUiTextDatum(MC_DATUM);setUiTextColor(TFT_WHITE,0x0822);
+  drawUiString("N",cx,cy-26,1);drawUiString("E",cx+26,cy,1);
+  drawUiString("S",cx,cy+26,1);drawUiString("W",cx-26,cy,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_CYAN,0x0822);drawUiString("ELEVATION",173,95,1);
+  setUiTextDatum(MC_DATUM);setUiTextColor(MUTED,0x0822);drawUiString("0°",180,181,1);
+  drawUiString("45°",237,181,1);drawUiString("90°",294,181,1);
   tft.drawArc(237,151,48,39,180,360,0x2A69,0x0822,true);
   tft.drawArc(237,151,43,35,180,360,TFT_CYAN,0x0822,true);
   for(int a=180;a<=360;a+=15) {
@@ -967,10 +1213,10 @@ static void showAntennaScreen() {
                  237+(int)(37*cosf(rad)),151+(int)(37*sinf(rad)),
                  a%45==0?TFT_WHITE:0x2A69);
   }
-  tft.setTextDatum(MC_DATUM);tft.setTextColor(TFT_WHITE,0x0822);
-  tft.drawString("--.-°",237,151,4);
+  setUiTextDatum(MC_DATUM);setUiTextColor(TFT_WHITE,0x0822);
+  drawUiString("--.-°",237,151,4);
   tft.fillRoundRect(8,184,304,13,5,0x4000);tft.drawRoundRect(8,184,304,13,5,TFT_ORANGE);
-  tft.setTextColor(TFT_YELLOW,0x4000);tft.drawString("DRIVE LOCKED  /  MAG UNCALIBRATED",160,190,1);
+  setUiTextColor(TFT_YELLOW,0x4000);drawUiString("DRIVE LOCKED  /  MAG UNCALIBRATED",160,190,1);
   drawNavigation(2);
   updateTargetTelemetry();
 }
@@ -979,22 +1225,131 @@ static void showSystemScreen() {
   header("SYSTEM","DEVICE HEALTH  /  CONFIGURATION");
   const bool wifi=WiFi.status()==WL_CONNECTED;
   const bool fix=gps.location.isValid() && gps.location.age()<10000;
-  // Two status panels with clear state hierarchy.
-  tft.fillRoundRect(8,89,148,65,8,0x0822);tft.drawRoundRect(8,89,148,65,8,0x2A69);
-  tft.fillRoundRect(164,89,148,65,8,0x0822);tft.drawRoundRect(164,89,148,65,8,0x2A69);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(MUTED,0x0822);
-  tft.drawString("WI-FI CONNECTION",17,97,1);tft.drawString("GPS RECEIVER",173,97,1);
-  tft.setTextColor(wifi?TFT_GREEN:TFT_ORANGE,0x0822);tft.drawString(wifi?"ONLINE":"OFFLINE",17,114,4);
-  tft.setTextColor(fix?TFT_GREEN:TFT_YELLOW,0x0822);tft.drawString(fix?"FIX":"SEARCH",173,114,4);
-  tft.setTextColor(MUTED,0x0822);tft.drawString(wifi?WiFi.localIP().toString().c_str():"NO NETWORK",17,140,1);
-  tft.drawString(gps.satellites.isValid()?"SATELLITES RECEIVED":"WAITING FOR DATA",173,140,1);
-  tft.setTextColor(TFT_CYAN,0x0822);
-  tft.drawString("LOCAL API READY",173,151,1);
-  tft.setTextDatum(TL_DATUM);tft.setTextColor(TFT_CYAN,BG);tft.drawString("QUICK ACTIONS",10,160,1);
-  drawButton(7,174,98,26,"TOUCH",0x035F);
-  drawButton(111,174,98,26,"WI-FI",0x03B9);
-  drawButton(215,174,98,26,"API",0x03B9);
+  tft.fillRoundRect(8,89,148,57,8,0x0822);tft.drawRoundRect(8,89,148,57,8,0x2A69);
+  tft.fillRoundRect(164,89,148,57,8,0x0822);tft.drawRoundRect(164,89,148,57,8,0x2A69);
+  setUiTextDatum(TL_DATUM);setUiTextColor(MUTED,0x0822);
+  drawUiString("WI-FI CONNECTION",17,95,1);drawUiString("GPS RECEIVER",173,95,1);
+  setUiTextColor(wifi?TFT_GREEN:TFT_ORANGE,0x0822);drawUiString(wifi?"ONLINE":"OFFLINE",17,109,2);
+  setUiTextColor(fix?TFT_GREEN:TFT_YELLOW,0x0822);drawUiString(fix?"FIX":"SEARCH",173,109,2);
+  setUiTextColor(MUTED,0x0822);drawUiString(wifi?WiFi.localIP().toString():"NO NETWORK",17,132,1);
+  drawUiString(gps.satellites.isValid()?"SATELLITES RECEIVED":"WAITING FOR DATA",173,132,1);
+  setUiTextDatum(TL_DATUM);setUiTextColor(TFT_CYAN,BG);drawUiString("LANGUAGE",10,150,1);
+  const uint16_t active=0x03B9,idle=0x001F;
+  drawButton(7,160,98,21,"RU",uiLanguage==1?active:idle);
+  drawButton(111,160,98,21,"EN",uiLanguage==0?active:idle);
+  drawButton(215,160,98,21,"ZH",uiLanguage==2?active:idle);
+  drawButton(7,183,98,21,"TOUCH",0x035F);
+  drawButton(111,183,98,21,"WI-FI",0x03B9);
+  drawButton(215,183,98,21,"MOTOR TEST",0x03B9);
   drawNavigation(3);
+}
+
+static int motorStepPin() { return motorTestAxis==0?Pins::AZ_STEP:Pins::EL_STEP; }
+static int motorDirPin() { return motorTestAxis==0?Pins::AZ_DIR:Pins::EL_DIR; }
+static void drawMotorTestProgress() {
+  tft.fillRect(12,96,296,66,BG);
+  setUiTextDatum(MC_DATUM);
+  setUiTextColor(TFT_CYAN,BG);
+  drawUiString(motorTestAxis==0?"AZIMUTH MOTOR":"ELEVATION MOTOR",160,108,2);
+  setUiTextColor(TFT_WHITE,BG);
+  drawUiString(motorTestDirection==0?"DIRECTION 1 / 2":"DIRECTION 2 / 2",160,132,1);
+  char countText[32];
+  snprintf(countText,sizeof(countText),"PULSES %u / 300",motorTestPulseCount);
+  setUiTextColor(TFT_YELLOW,BG);
+  drawUiString(countText,160,151,1);
+}
+static void showMotorTestConfirm() {
+  screen=Screen::MotorTestConfirm;
+  header("ТЕСТ ДВИГАТЕЛЕЙ","AZ затем EL · 300 импульсов в каждую сторону");
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(TFT_WHITE,BG);
+  drawUiString("Проверьте свободный ход антенны.",14,101,1);
+  drawUiString("При полном шаге 300 импульсов = 1,5 оборота.",14,122,1);
+  setUiTextColor(TFT_ORANGE,BG);
+  drawUiString("Концевики не проверяются этим тестом!",14,145,1);
+  drawButton(15,177,140,31,"START TEST",0x07E0);
+  drawButton(165,177,140,31,"CANCEL",0xF800);
+}
+static void showMotorTestRunning() {
+  screen=Screen::MotorTestRunning;
+  header("ТЕСТ ДВИГАТЕЛЕЙ","Нажмите STOP для немедленной остановки");
+  drawMotorTestProgress();
+  drawButton(18,181,284,32,"STOP TEST",0xF800);
+  motorTestLastUiMs=millis();
+}
+static void stopMotorTest(const char* reason) {
+  motorTestActive=false;
+  motorTestStepHigh=false;
+  digitalWrite(Pins::AZ_STEP,LOW);
+  digitalWrite(Pins::EL_STEP,LOW);
+  Serial.printf("[MOTOR TEST] %s\n",reason);
+  showSystemScreen();
+}
+static uint32_t motorTestPeriodForPulse(uint16_t pulseIndex) {
+  // Symmetric trapezoidal speed profile: ramp up, cruise, ramp down.
+  const uint16_t fromStart=pulseIndex;
+  const uint16_t fromEnd=(uint16_t)(299U-pulseIndex);
+  const uint16_t edgeDistance=fromStart<fromEnd?fromStart:fromEnd;
+  if(edgeDistance>=MOTOR_TEST_RAMP_PULSES) return MOTOR_TEST_CRUISE_PERIOD_US;
+  const uint32_t reduction=(MOTOR_TEST_START_PERIOD_US-MOTOR_TEST_CRUISE_PERIOD_US)*edgeDistance/MOTOR_TEST_RAMP_PULSES;
+  return MOTOR_TEST_START_PERIOD_US-reduction;
+}
+static void startMotorTest() {
+  motorTestAxis=0;
+  motorTestDirection=0;
+  motorTestPulseCount=0;
+  motorTestPulsePeriodUs=MOTOR_TEST_START_PERIOD_US;
+  motorTestStepHigh=false;
+  motorTestActive=true;
+  digitalWrite(Pins::AZ_STEP,LOW);
+  digitalWrite(Pins::EL_STEP,LOW);
+  digitalWrite(Pins::AZ_DIR,HIGH);
+  showMotorTestRunning();
+  motorTestNextEdgeUs=micros()+MOTOR_TEST_START_PERIOD_US;
+  Serial.println("[MOTOR TEST] V101 ramp: 40->100->40 steps/s; 300 pulses each direction; AZ then EL");
+}
+static void serviceMotorTest() {
+  if(!motorTestActive) return;
+  const uint32_t nowUs=micros();
+  if((int32_t)(nowUs-motorTestNextEdgeUs)<0) return;
+  const int stepPin=motorStepPin();
+  if(!motorTestStepHigh) {
+    motorTestPulsePeriodUs=motorTestPeriodForPulse(motorTestPulseCount);
+    digitalWrite(stepPin,HIGH);
+    motorTestStepHigh=true;
+    motorTestNextEdgeUs=nowUs+MOTOR_TEST_STEP_HIGH_US;
+  } else {
+    digitalWrite(stepPin,LOW);
+    motorTestStepHigh=false;
+    ++motorTestPulseCount;
+    if(motorTestPulseCount>=300) {
+      motorTestPulseCount=0;
+      if(motorTestDirection==0) {
+        motorTestDirection=1;
+        digitalWrite(motorDirPin(),LOW);
+        drawMotorTestProgress();
+        motorTestNextEdgeUs=micros()+MOTOR_TEST_START_PERIOD_US; // DIR setup + gentle restart
+      } else if(motorTestAxis==0) {
+        motorTestAxis=1;
+        motorTestDirection=0;
+        digitalWrite(Pins::EL_DIR,HIGH);
+        drawMotorTestProgress();
+        motorTestNextEdgeUs=micros()+MOTOR_TEST_START_PERIOD_US;
+      } else {
+        motorTestActive=false;
+        digitalWrite(Pins::AZ_STEP,LOW);
+        digitalWrite(Pins::EL_STEP,LOW);
+        Serial.println("[MOTOR TEST] Completed: 300 AZ + 300 AZ reverse + 300 EL + 300 EL reverse");
+        showSystemScreen();
+        return;
+      }
+    } else {
+      // Keep the STEP low interval long enough while preserving the target period.
+      const uint32_t lowUs=motorTestPulsePeriodUs>MOTOR_TEST_STEP_HIGH_US
+        ? motorTestPulsePeriodUs-MOTOR_TEST_STEP_HIGH_US : 5;
+      motorTestNextEdgeUs=nowUs+lowUs;
+    }
+  }
 }
 
 static void showConnected() {
@@ -1036,15 +1391,15 @@ static void showTouchDiagnostic() {
   screen=Screen::TouchTest;
   tft.fillScreen(TFT_BLACK);
   tft.fillRect(0,0,tft.width(),42,0x3186);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_YELLOW,0x3186); tft.drawString("TOUCH TEST / XPT2046",8,7,2);
-  tft.setTextColor(TFT_WHITE,0x3186); tft.drawString("Tap once to start calibration",8,26,1);
-  tft.setTextColor(TFT_WHITE,TFT_BLACK);
-  tft.drawString("Raw touch controller check",12,68,2);
-  tft.drawString("X:",18,112,2); tft.drawString("Y:",18,145,2);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(TFT_YELLOW,0x3186); drawUiString("TOUCH TEST / XPT2046",8,7,2);
+  setUiTextColor(TFT_WHITE,0x3186); drawUiString("Tap once to start calibration",8,26,1);
+  setUiTextColor(TFT_WHITE,TFT_BLACK);
+  drawUiString("Raw touch controller check",12,68,2);
+  drawUiString("X:",18,112,2); drawUiString("Y:",18,145,2);
   tft.drawRoundRect(10,190,220,54,6,TFT_CYAN);
-  tft.setTextColor(TFT_YELLOW,TFT_BLACK); tft.drawString("Touch anywhere to start",16,207,2);
-  tft.setTextColor(TFT_WHITE,TFT_BLACK); tft.drawString("calibration",16,229,2);
+  setUiTextColor(TFT_YELLOW,TFT_BLACK); drawUiString("Touch anywhere to start",16,207,2);
+  setUiTextColor(TFT_WHITE,TFT_BLACK); drawUiString("calibration",16,229,2);
   rawTouchDetected=false;
 }
 
@@ -1099,14 +1454,25 @@ static void handleTouch(){
  rawTouchX=rx; rawTouchY=ry;
  Serial.printf("Touch stable raw=%u,%u mapped=%u,%u rot=%u screen=%u\n",rx,ry,x,y,tft.getRotation(),(unsigned)screen);
  if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
- else if(screen==Screen::SystemInfo && y>=170 && y<=203) {
-   if(x<108) {
+ else if(screen==Screen::MotorTestConfirm && y>=174 && y<=214) {
+   if(x>=15 && x<=155) startMotorTest();
+   else if(x>=165 && x<=305) showSystemScreen();
+ }
+ else if(screen==Screen::MotorTestRunning && y>=176 && y<=220 && x>=18 && x<=302) {
+   stopMotorTest("Stopped by user");
+ }
+ else if(screen==Screen::SystemInfo && y>=158 && y<=204) {
+   if(y<=181) {
+     if(x<108) selectUiLanguage(1);
+     else if(x<212) selectUiLanguage(0);
+     else selectUiLanguage(2);
+   } else if(x<108) {
      calibrationFromSystem=true; touchCalibrated=false; touchCalStep=1;
      screen=Screen::TouchTest; touchWasDown=false; drawCalibrationTarget(0);
    } else if(x<212) {
      WiFi.disconnect(false,false); editingPassword=false; setupMessage="Edit network, then press CONNECT";
      wifiScreenDrawn=false; showWifiSetup();
-   } else { Serial.printf("[LOCAL] API address: http://%s/\n",WiFi.localIP().toString().c_str()); showSystemScreen(); }
+   } else { showMotorTestConfirm(); }
  }
  else if(screen==Screen::Connecting && y>=190 && y<=235 && x>=14 && x<=157) {
    WiFi.disconnect(false,false);
@@ -1141,9 +1507,9 @@ static void drawDisplayColorTest() {
     const int y=8+i*37;
     tft.fillRect(8,y,304,30,colors[i]);
     tft.drawRect(8,y,304,30,TFT_WHITE);
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor((i==3||i==4)?TFT_BLACK:TFT_WHITE,colors[i]);
-    tft.drawString(labels[i],160,y+15,2);
+    setUiTextDatum(MC_DATUM);
+    setUiTextColor((i==3||i==4)?TFT_BLACK:TFT_WHITE,colors[i]);
+    drawUiString(labels[i],160,y+15,2);
   }
   Serial.printf("DISPLAY COLOR TEST | rotation=%u | size=%dx%d | RGB565: F800/07E0/001F/FFFF/07FF/F81F\n",
                 tft.getRotation(),tft.width(),tft.height());
@@ -1175,22 +1541,22 @@ static void handleSerialDisplayDiagnostics() {
 static void updateOrbitTelemetry() {
   if(screen!=Screen::Satellite) return;
   tft.fillRect(10,88,300,105,BG);
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_CYAN,BG);
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(TFT_CYAN,BG);
   String label=selectedSatelliteName;
   if(label.length()>25) label=label.substring(0,25);
-  tft.drawString(label,14,91,2);
+  drawUiString(label,14,91,2);
   char norad[32]; snprintf(norad,sizeof(norad),"NORAD %lu",(unsigned long)selectedNoradId);
-  tft.setTextColor(MUTED,BG); tft.drawString(norad,14,111,1);
-  tft.setTextColor(issTleValid?TFT_GREEN:TFT_YELLOW,BG);
-  tft.drawString(issTleValid?"TLE OK":"TLE WAIT",220,111,1);
+  setUiTextColor(MUTED,BG); drawUiString(norad,14,111,1);
+  setUiTextColor(issTleValid?TFT_GREEN:TFT_YELLOW,BG);
+  drawUiString(issTleValid?"TLE OK":"TLE WAIT",220,111,1);
   char line[40];
-  tft.setTextColor(TFT_WHITE,BG);
-  snprintf(line,sizeof(line),"AZ  %6.1f deg",issAzimuthDeg); tft.drawString(line,14,132,2);
-  snprintf(line,sizeof(line),"EL  %6.1f deg",issElevationDeg); tft.drawString(line,14,153,2);
-  snprintf(line,sizeof(line),"RANGE %7.1f km",issRangeKm); tft.drawString(line,164,153,1);
-  tft.setTextColor(MUTED,BG);
-  tft.drawString(observerUsesGps?"GPS FIX":"DEMO: YEKATERINBURG",14,178,1);
+  setUiTextColor(TFT_WHITE,BG);
+  snprintf(line,sizeof(line),"AZ  %6.1f deg",issAzimuthDeg); drawUiString(line,14,132,2);
+  snprintf(line,sizeof(line),"EL  %6.1f deg",issElevationDeg); drawUiString(line,14,153,2);
+  snprintf(line,sizeof(line),"RANGE %7.1f km",issRangeKm); drawUiString(line,164,153,1);
+  setUiTextColor(MUTED,BG);
+  drawUiString(observerUsesGps?"GPS FIX":"DEMO: YEKATERINBURG",14,178,1);
 }
 
 static void startOrbitTimeSync() {
@@ -1426,13 +1792,12 @@ static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V96";
+  doc["firmware"]="V103";
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
-  hardware["angle_sensor_connected"]=azimuthEncoder.present || elevationEncoder.present;
-  hardware["azimuth_sensor_connected"]=azimuthEncoder.present;
-  hardware["elevation_sensor_connected"]=elevationEncoder.present;
+  hardware["angle_sensor_connected"]=sensorSuite.accel_present;
+  hardware["azimuth_sensor_connected"]=sensorSuite.mag_present;
   hardware["compass_connected"]=sensorSuite.mag_present;
   hardware["accelerometer_connected"]=sensorSuite.accel_present;
   hardware["motor_drivers_connected"]=false;
@@ -1458,23 +1823,6 @@ static void sendLocalStatus() {
   }
   if(sensorSuite.tilt_valid) { accel["roll_deg"]=sensorSuite.roll_deg; accel["pitch_deg"]=sensorSuite.pitch_deg; }
   accel["sample_age_ms"]=sensorSuite.accel_last_good_ms?millis()-sensorSuite.accel_last_good_ms:0;
-  JsonObject axes=doc["axis_sensors"].to<JsonObject>();
-  JsonObject az=axes["azimuth"].to<JsonObject>();
-  az["type"]="AS5600"; az["bus"]="I2C0";
-  az["present"]=azimuthEncoder.present; az["read_ok"]=azimuthEncoder.read_ok;
-  az["magnet_detected"]=azimuthEncoder.magnet_detected;
-  az["angle_valid"]=azimuthEncoderValid(); az["calibrated"]=azimuthZeroValid;
-  if(azimuthEncoder.read_ok){az["raw_angle_deg"]=azimuthEncoder.sensor_angle_deg;if(azimuthZeroValid)az["angle_deg"]=azimuthMeasuredDeg();}
-  az["zero_raw_deg"]=azimuthZeroRawDeg;
-  az["sample_age_ms"]=azimuthEncoder.last_good_at?millis()-azimuthEncoder.last_good_at:0;
-  JsonObject el=axes["elevation"].to<JsonObject>();
-  el["type"]="AS5600"; el["bus"]="I2C1";
-  el["present"]=elevationEncoder.present; el["read_ok"]=elevationEncoder.read_ok;
-  el["magnet_detected"]=elevationEncoder.magnet_detected;
-  el["angle_valid"]=elevationEncoderValid(); el["calibrated"]=elevationZeroValid;
-  if(elevationEncoder.read_ok){el["raw_angle_deg"]=elevationEncoder.sensor_angle_deg;if(elevationZeroValid)el["angle_deg"]=elevationMeasuredDeg();}
-  el["zero_raw_deg"]=elevationZeroRawDeg;
-  el["sample_age_ms"]=elevationEncoder.last_good_at?millis()-elevationEncoder.last_good_at:0;
   doc["connection"]="local-wifi";
   doc["discovery"]="mdns";
   doc["ip"]=WiFi.localIP().toString();
@@ -1509,6 +1857,11 @@ static void sendLocalStatus() {
   doc["control"]["tracking_requested"]=trackingRequested;
   doc["control"]["target_source"]=issPositionValid?"sgp4":"pending";
   doc["control"]["motors_enabled"]=false;
+  doc["control"]["motor_test_active"]=motorTestActive;
+  doc["control"]["motor_test_axis"]=motorTestAxis==0?"AZ":"EL";
+  doc["control"]["motor_test_direction"]=motorTestDirection==0?"forward":"reverse";
+  doc["control"]["motor_test_pulses"]=motorTestPulseCount;
+  doc["control"]["motor_test_pulses_per_phase"]=300;
   doc["last_command_sequence"]=localCommandSequence;
   String body; serializeJson(doc,body);
   sendLocalCorsHeaders();
@@ -1546,20 +1899,20 @@ button{font:inherit;cursor:pointer}.layout{min-height:100vh}.sidebar{position:fi
  <div class="actions"><button class="btn" id="sendTargetBtn" onclick="sendTarget()">ОТПРАВИТЬ ЦЕЛЬ</button><button class="btn" id="trackingBtn" onclick="toggleTracking()">СЛЕЖЕНИЕ: ВЫКЛ</button><button class="btn stop" onclick="requestStop()">STOP</button></div>
  <div class="statusline"><span>Принятая цель</span><b id="targetState">Азимут 0° · место 0°</b></div><div class="statusline"><span>Режим слежения</span><b id="trackingState">Выключен</b></div><p class="hint" id="commandMessage">Команды принимаются по локальному Wi‑Fi. Сейчас прошивка только сохраняет целевые углы и флаг слежения — физическое движение двигателей не запускается.</p>
  </article></section>
-<section class="view" id="system"><div class="heading"><div><div class="eyebrow">DEVICE HEALTH / ESP32</div><h1>Система</h1><p>Диагностика платы, GPS и сетевого соединения</p></div></div><div class="grid system-grid"><article class="panel"><div class="panel-head"><h2>Контроллер</h2><span class="micro">ESP32</span></div><div class="statusline"><span>Устройство</span><b>CYD Satellite Tracker</b></div><div class="statusline"><span>Версия ПО</span><b id="sysFirmware">—</b></div><div class="statusline"><span>IP</span><b id="sysIp">—</b></div><div class="statusline"><span>Wi‑Fi RSSI</span><b id="sysRssi">—</b></div></article><article class="panel"><div class="panel-head"><h2>GPS / GNSS</h2><span class="micro">NEO-6M</span></div><div class="statusline"><span>Фиксация</span><b id="sysGps">—</b></div><div class="statusline"><span>Спутники</span><b id="sysSats">—</b></div><div class="statusline"><span>Широта</span><b id="sysLat">—</b></div><div class="statusline"><span>Долгота</span><b id="sysLon">—</b></div></article><article class="panel"><div class="panel-head"><h2>Датчики осей</h2><span class="micro">2 × AS5600</span></div><div class="statusline"><span>Азимут · I²C0</span><b id="sysAzEncoder">—</b></div><div class="statusline"><span>Угол места · I²C1</span><b id="sysElEncoder">—</b></div><div class="actions"><button class="btn" onclick="calibrateAxis('azimuth')">НУЛЬ AZ · СЕВЕР</button><button class="btn" onclick="calibrateAxis('elevation')">НУЛЬ EL · ГОРИЗОНТ</button></div><p class="hint">Перед установкой нуля AZ направьте антенну на истинный север. Для EL выставьте ось горизонтально. Калибровка сохраняется в памяти CYD.</p></article><article class="panel"><div class="panel-head"><h2>Безопасность управления</h2><span class="micro">ТЕКУЩИЕ ОГРАНИЧЕНИЯ</span></div><div class="badge warn">ДВИЖЕНИЕ ЗАБЛОКИРОВАНО</div><p class="hint">Команды поворота антенны ещё не реализованы. Драйверы и двигатели нельзя включать до проверки концевых выключателей, аппаратного STOP и механических ограничителей.</p><div class="actions"><button class="btn stop" onclick="requestStop()">ТЕСТОВЫЙ ЗАПРОС STOP</button></div><p class="hint">Эта кнопка отправляет диагностический запрос. Она не является аварийной остановкой и не отключает питание двигателей.</p></article><article class="panel"><div class="panel-head"><h2>Локальная связь</h2><span class="micro">LOCAL LINK</span></div><div class="statusline"><span>Привязка</span><b id="sysCloud">—</b></div><p class="hint">Прошивка не обращается к облачным серверам. Телеметрия и команды передаются напрямую между браузером и CYD по локальному Wi‑Fi.</p></article></div></section>
+<section class="view" id="system"><div class="heading"><div><div class="eyebrow">DEVICE HEALTH / ESP32</div><h1>Система</h1><p>Диагностика платы, GPS и сетевого соединения</p></div></div><div class="grid system-grid"><article class="panel"><div class="panel-head"><h2>Контроллер</h2><span class="micro">ESP32</span></div><div class="statusline"><span>Устройство</span><b>CYD Satellite Tracker</b></div><div class="statusline"><span>Версия ПО</span><b id="sysFirmware">—</b></div><div class="statusline"><span>IP</span><b id="sysIp">—</b></div><div class="statusline"><span>Wi‑Fi RSSI</span><b id="sysRssi">—</b></div></article><article class="panel"><div class="panel-head"><h2>GPS / GNSS</h2><span class="micro">NEO-6M</span></div><div class="statusline"><span>Фиксация</span><b id="sysGps">—</b></div><div class="statusline"><span>Спутники</span><b id="sysSats">—</b></div><div class="statusline"><span>Широта</span><b id="sysLat">—</b></div><div class="statusline"><span>Долгота</span><b id="sysLon">—</b></div></article><article class="panel"><div class="panel-head"><h2>Датчики направления</h2><span class="micro">QMC5883P + ADXL345</span></div><div class="statusline"><span>Компас · QMC5883P</span><b id="sysCompass">—</b></div><div class="statusline"><span>Наклон · ADXL345</span><b id="sysTilt">—</b></div><p class="hint">Азимут вычисляется по магнитометру QMC5883P, наклон — по ADXL345. В этой аппаратной конфигурации отдельные энкодеры осей не используются.</p></article><article class="panel"><div class="panel-head"><h2>Безопасность управления</h2><span class="micro">ТЕКУЩИЕ ОГРАНИЧЕНИЯ</span></div><div class="badge warn">ДВИЖЕНИЕ ЗАБЛОКИРОВАНО</div><p class="hint">Команды поворота антенны ещё не реализованы. Драйверы и двигатели нельзя включать до проверки концевых выключателей, аппаратного STOP и механических ограничителей.</p><div class="actions"><button class="btn stop" onclick="requestStop()">ТЕСТОВЫЙ ЗАПРОС STOP</button></div><p class="hint">Эта кнопка отправляет диагностический запрос. Она не является аварийной остановкой и не отключает питание двигателей.</p></article><article class="panel"><div class="panel-head"><h2>Локальная связь</h2><span class="micro">LOCAL LINK</span></div><div class="statusline"><span>Привязка</span><b id="sysCloud">—</b></div><p class="hint">Прошивка не обращается к облачным серверам. Телеметрия и команды передаются напрямую между браузером и CYD по локальному Wi‑Fi.</p></article></div></section>
 <section class="view" id="connection"><div class="heading"><div><div class="eyebrow">NETWORK / LOCAL ACCESS</div><h1>Подключение</h1><p>Адреса для браузера и мобильного приложения в этой Wi‑Fi сети</p></div></div><article class="panel"><div class="panel-head"><h2>Доступ к контроллеру</h2><span class="badge"><i class="dot"></i> API ДОСТУПЕН</span></div><p class="micro">ЛОКАЛЬНЫЙ HTTP АДРЕС</p><p class="device-address" id="fullAddress">http://192.168.0.48/</p><div class="actions"><button class="btn" onclick="copyAddress()">КОПИРОВАТЬ АДРЕС</button><button class="btn" onclick="window.location.href='/api/v1/status'">ОТКРЫТЬ JSON API</button></div><div class="statusline"><span>mDNS адрес</span><b>http://cyd-tracker.local/</b></div><div class="statusline"><span>Статус API</span><b id="connApi">Работает</b></div><div class="statusline"><span>Обновление данных</span><b>Каждую секунду</b></div><p class="hint">Телефон, планшет или компьютер должны быть подключены к той же Wi‑Fi сети, что и CYD. Для локального управления используйте этот адрес, а не HTTPS-сайт Cloudflare: браузер ограничивает обращения с HTTPS-страницы к локальному HTTP-устройству.</p></article></section>
 </main><nav class="mobile-nav"><button class="active" data-view="overview"><span>⌂</span>Обзор</button><button data-view="system"><span>◈</span>Система</button><button data-view="connection"><span>⌁</span>Сеть</button></nav></div></div>
 <script>
 let lastStatus=null;let targetInputsDirty=false;let targetSendBusy=false;const $=id=>document.getElementById(id);function showView(name){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===name));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));$('crumbName').textContent=({overview:'ОБЗОР СТАНЦИИ',system:'СИСТЕМА',connection:'ПОДКЛЮЧЕНИЕ'})[name]||'ОБЗОР';window.scrollTo({top:0,behavior:'smooth'});}document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));function openSystem(){showView('system')}
 function set(id,value){const e=$(id);if(e)e.textContent=value}function fmt(v,n=6){return typeof v==='number'?v.toFixed(n):'—'}
-async function refreshStatus(){try{const response=await fetch('/api/v1/status',{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);const d=await response.json();lastStatus=d;set('topState','ПОДКЛЮЧЕНО');set('apiState','ОТВЕЧАЕТ · HTTP 200');set('connApi','Работает · HTTP 200');set('firmware',d.firmware||'—');set('sysFirmware',d.firmware||'—');set('ip',d.ip||'—');set('sysIp',d.ip||'—');set('sideIp',d.ip||'—');set('hostname',d.hostname||'—');set('connectionType',d.connection||'local-wifi');set('fullAddress','http://'+(d.ip||location.hostname)+'/');set('rssi',(d.wifi_rssi??'—')+' dBm');set('sysRssi',(d.wifi_rssi??'—')+' dBm');const pct=Math.max(0,Math.min(100,((Number(d.wifi_rssi)+100)/60)*100));$('rssiBar').style.width=pct+'%';set('rssiLabel',d.wifi_rssi>-60?'Отличный сигнал':d.wifi_rssi>-75?'Хороший сигнал':'Слабый сигнал');const gps=!!d.gps_valid;set('gps',gps?'FIX':'ПОИСК');set('gpsLabel',gps?'Координаты получены':'Ожидание фиксации');set('sysGps',gps?'Есть фиксация':'Нет фиксации');set('sats',d.gps_satellites??'—');set('sysSats',d.gps_satellites??'—');set('lat',gps?fmt(d.latitude):'Нет фиксации');set('lon',gps?fmt(d.longitude):'Нет фиксации');set('sysLat',gps?fmt(d.latitude):'—');set('sysLon',gps?fmt(d.longitude):'—');const axes=d.axis_sensors||{},az=axes.azimuth||{},el=axes.elevation||{};set('sysAzEncoder',az.angle_valid?(az.calibrated?Number(az.angle_deg).toFixed(1)+'°':'RAW '+Number(az.raw_angle_deg).toFixed(1)+'° · НЕ КАЛИБР.'):(az.present?'НЕТ МАГНИТА/ДАННЫХ':'НЕ НАЙДЕН'));set('sysElEncoder',el.angle_valid?(el.calibrated?Number(el.angle_deg).toFixed(1)+'°':'RAW '+Number(el.raw_angle_deg).toFixed(1)+'° · НЕ КАЛИБР.'):(el.present?'НЕТ МАГНИТА/ДАННЫХ':'НЕ НАЙДЕН'));set('alt',d.altitude_m!=null?d.altitude_m.toFixed(1)+' м':'—');set('gpsHint',gps?'GPS-координаты получены от модуля.':'GPS-модуль пока не выдал действительные координаты. Проверьте антенну GPS и подключение NEO-6M.');set('cloud','LOCAL');set('cloudLabel','Работа только в локальной сети');set('sysCloud','Облако отключено');updateControlState(d);$('connectionBadge').classList.toggle('warn',false);$('topState').previousElementSibling.style.background='var(--green)';}catch(e){set('topState','НЕТ СВЯЗИ');set('apiState','ОШИБКА СОЕДИНЕНИЯ');set('connApi','Нет ответа');$('topState').previousElementSibling.style.background='var(--red)';}}
+async function refreshStatus(){try{const response=await fetch('/api/v1/status',{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);const d=await response.json();lastStatus=d;set('topState','ПОДКЛЮЧЕНО');set('apiState','ОТВЕЧАЕТ · HTTP 200');set('connApi','Работает · HTTP 200');set('firmware',d.firmware||'—');set('sysFirmware',d.firmware||'—');set('ip',d.ip||'—');set('sysIp',d.ip||'—');set('sideIp',d.ip||'—');set('hostname',d.hostname||'—');set('connectionType',d.connection||'local-wifi');set('fullAddress','http://'+(d.ip||location.hostname)+'/');set('rssi',(d.wifi_rssi??'—')+' dBm');set('sysRssi',(d.wifi_rssi??'—')+' dBm');const pct=Math.max(0,Math.min(100,((Number(d.wifi_rssi)+100)/60)*100));$('rssiBar').style.width=pct+'%';set('rssiLabel',d.wifi_rssi>-60?'Отличный сигнал':d.wifi_rssi>-75?'Хороший сигнал':'Слабый сигнал');const gps=!!d.gps_valid;set('gps',gps?'FIX':'ПОИСК');set('gpsLabel',gps?'Координаты получены':'Ожидание фиксации');set('sysGps',gps?'Есть фиксация':'Нет фиксации');set('sats',d.gps_satellites??'—');set('sysSats',d.gps_satellites??'—');set('lat',gps?fmt(d.latitude):'Нет фиксации');set('lon',gps?fmt(d.longitude):'Нет фиксации');set('sysLat',gps?fmt(d.latitude):'—');set('sysLon',gps?fmt(d.longitude):'—');const mag=d.magnetometer||{},tilt=d.accelerometer||{};set('sysCompass',mag.heading_valid?Number(mag.magnetic_heading_deg).toFixed(1)+'° MAG':(mag.present?'НЕТ ДАННЫХ':'НЕ НАЙДЕН'));set('sysTilt',tilt.tilt_valid?('ROLL '+Number(tilt.roll_deg).toFixed(1)+'° · PITCH '+Number(tilt.pitch_deg).toFixed(1)+'°'):(tilt.present?'НЕТ ДАННЫХ':'НЕ НАЙДЕН'));set('alt',d.altitude_m!=null?d.altitude_m.toFixed(1)+' м':'—');set('gpsHint',gps?'GPS-координаты получены от модуля.':'GPS-модуль пока не выдал действительные координаты. Проверьте антенну GPS и подключение NEO-6M.');set('cloud','LOCAL');set('cloudLabel','Работа только в локальной сети');set('sysCloud','Облако отключено');updateControlState(d);$('connectionBadge').classList.toggle('warn',false);$('topState').previousElementSibling.style.background='var(--green)';}catch(e){set('topState','НЕТ СВЯЗИ');set('apiState','ОШИБКА СОЕДИНЕНИЯ');set('connApi','Нет ответа');$('topState').previousElementSibling.style.background='var(--red)';}}
 function updateControlState(d){const c=d.control||{};const az=Number(c.target_azimuth_deg??0),el=Number(c.target_elevation_deg??0);if(!targetInputsDirty){$('azInput').value=az.toFixed(1);$('elInput').value=el.toFixed(1);}set('targetState','Азимут '+az.toFixed(1)+'° · место '+el.toFixed(1)+'°');const on=c.tracking_requested===true;set('trackingState',on?'Запрошено':'Выключено');set('trackingBtn',on?'СЛЕЖЕНИЕ: ВКЛ':'СЛЕЖЕНИЕ: ВЫКЛ');}
 function copyAddress(){const a='http://'+(lastStatus?.ip||location.hostname)+'/';if(navigator.clipboard?.writeText)navigator.clipboard.writeText(a).then(()=>alert('Адрес скопирован: '+a)).catch(()=>prompt('Скопируйте адрес',a));else prompt('Скопируйте адрес',a)}
 async function sendCommand(payload){try{const r=await fetch('/api/v1/command',{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify(payload)});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.message||d.error||('HTTP '+r.status));set('commandMessage',d.message||'Команда принята');return d;}catch(e){set('commandMessage','Ошибка команды: '+e.message);throw e;}}
 $('azInput').addEventListener('input',()=>{targetInputsDirty=true;});
 $('elInput').addEventListener('input',()=>{targetInputsDirty=true;});
 async function sendTarget(){if(targetSendBusy)return;const azText=$('azInput').value.trim(),elText=$('elInput').value.trim();if(azText===''||elText===''){set('commandMessage','Введите оба значения: азимут и угол места.');return;}const az=Number(azText),el=Number(elText);if(!Number.isFinite(az)||!Number.isFinite(el)||az<0||az>=360||el<0||el>90){set('commandMessage','Проверьте углы: азимут 0–менее 360°, угол места 0–90°.');return;}const btn=$('sendTargetBtn');targetSendBusy=true;btn.disabled=true;btn.textContent='ОТПРАВКА…';set('commandMessage','Передаю азимут и угол места одним запросом…');try{const d=await sendCommand({command:'set_target',azimuth_deg:az,elevation_deg:el});targetInputsDirty=false;set('commandMessage',d.message||'Оба угла приняты контроллером.');await refreshStatus();}catch(e){}finally{targetSendBusy=false;btn.disabled=false;btn.textContent='ОТПРАВИТЬ ЦЕЛЬ';}}
- async function calibrateAxis(axis){const label=axis==='azimuth'?'AZ · истинный север':'EL · горизонт';if(!confirm('Сохранить текущее положение как ноль '+label+'? Убедитесь, что ось физически выставлена правильно.'))return;try{const d=await sendCommand({command:'calibrate_zero',axis});set('commandMessage',d.message||'Ноль сохранён');await refreshStatus();}catch(e){}}async function toggleTracking(){const enabled=!(lastStatus?.control?.tracking_requested===true);try{await sendCommand({command:'tracking',enabled});}catch(e){}}
+ async function toggleTracking(){const enabled=!(lastStatus?.control?.tracking_requested===true);try{await sendCommand({command:'tracking',enabled});}catch(e){}}
  async function requestStop(){if(!confirm('Отправить STOP? Это программная команда, не аппаратная аварийная остановка.'))return;try{await sendCommand({command:'stop'});}catch(e){}}
 refreshStatus();setInterval(refreshStatus,1000);
 </script></body></html>)HTML";
@@ -1611,7 +1964,25 @@ refreshStatus();setInterval(refreshStatus,1000);
     String message;
     if(command=="stop") {
       trackingRequested=false;
-      message="STOP принят. Двигатели заблокированы; аппаратное движение не включено.";
+      if(motorTestActive) stopMotorTest("Stopped by local browser STOP");
+      message="STOP принят. Тест остановлен, STEP переведены в LOW; автоматическое движение остаётся заблокированным.";
+    } else if(command=="motor_test_start") {
+      if(motorTestActive) {
+        out["ok"]=false; out["error"]="motor_test_busy";
+        out["message"]="Тест двигателей уже выполняется.";
+        String body; serializeJson(out,body); localServer.send(409,"application/json",body); return;
+      }
+      if(!req["confirmed"].is<bool>() || !req["confirmed"].as<bool>()) {
+        out["ok"]=false; out["error"]="confirmation_required";
+        out["message"]="Для запуска требуется явное подтверждение в интерфейсе.";
+        String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
+      }
+      trackingRequested=false;
+      startMotorTest();
+      message="Тест запущен: AZ вперёд/назад, затем EL вперёд/назад, по 300 импульсов на фазу.";
+    } else if(command=="motor_test_stop") {
+      if(motorTestActive) stopMotorTest("Stopped by local browser motor-test button");
+      message="Остановка теста запрошена; STEP удерживаются в LOW.";
     } else if(command=="set_target") {
       if(!(req["azimuth_deg"].is<float>() || req["azimuth_deg"].is<int>() || req["azimuth_deg"].is<long>()) || !(req["elevation_deg"].is<float>() || req["elevation_deg"].is<int>() || req["elevation_deg"].is<long>())) {
         out["ok"]=false; out["error"]="invalid_target";
@@ -1627,31 +1998,6 @@ refreshStatus();setInterval(refreshStatus,1000);
       }
       targetAzimuthDeg=az; targetElevationDeg=el;
       message="Целевые углы сохранены. Моторы пока не задействованы.";
-    } else if(command=="calibrate_zero") {
-      const String axis=req["axis"]| "";
-      if(axis=="azimuth") {
-        if(!azimuthEncoderValid()) {
-          out["ok"]=false;out["error"]="azimuth_sensor_unavailable";
-          out["message"]="AS5600 азимута не готов: проверьте питание, I2C0 и магнит.";
-          String body;serializeJson(out,body);localServer.send(409,"application/json",body);return;
-        }
-        azimuthZeroRawDeg=azimuthEncoder.sensor_angle_deg;azimuthZeroValid=true;
-        prefs.putFloat("az0raw",azimuthZeroRawDeg);prefs.putBool("az0valid",true);
-        message="Ноль азимута сохранён. Текущее положение принято за 0° (истинный север).";
-      } else if(axis=="elevation") {
-        if(!elevationEncoderValid()) {
-          out["ok"]=false;out["error"]="elevation_sensor_unavailable";
-          out["message"]="AS5600 угла места не готов: проверьте питание, I2C1 и магнит.";
-          String body;serializeJson(out,body);localServer.send(409,"application/json",body);return;
-        }
-        elevationZeroRawDeg=elevationEncoder.sensor_angle_deg;elevationZeroValid=true;
-        prefs.putFloat("el0raw",elevationZeroRawDeg);prefs.putBool("el0valid",true);
-        message="Ноль угла места сохранён. Текущее положение принято за 0° (горизонт).";
-      } else {
-        out["ok"]=false;out["error"]="invalid_axis";
-        out["message"]="axis должен быть azimuth или elevation.";
-        String body;serializeJson(out,body);localServer.send(400,"application/json",body);return;
-      }
     } else if(command=="follow_satellite") {
       const uint32_t norad=req["norad_id"]|0U;
       if(norad<1 || norad>999999) {
@@ -1683,12 +2029,12 @@ refreshStatus();setInterval(refreshStatus,1000);
       message=trackingRequested ? "Запрос слежения принят; движение моторов заблокировано." : "Слежение выключено.";
     } else {
       out["ok"]=false; out["error"]="unsupported_command";
-      out["message"]="Допустимые команды: stop, set_target, follow_satellite, tracking, calibrate_zero.";
+      out["message"]="Допустимые команды: stop, set_target, follow_satellite, tracking.";
       String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;
     }
     ++localCommandSequence;
     out["ok"]=true; out["command"]=command; out["sequence"]=localCommandSequence;
-    out["message"]=message; out["motors_enabled"]=false;
+    out["message"]=message; out["motors_enabled"]=false; out["motor_test_active"]=motorTestActive;
     String body; serializeJson(out,body);
     localServer.sendHeader("Cache-Control","no-store");
     localServer.send(200,"application/json; charset=utf-8",body);
@@ -1716,17 +2062,23 @@ void setup() {
   pinMode(Pins::TFT_BACKLIGHT,OUTPUT);
   digitalWrite(Pins::TFT_BACKLIGHT,HIGH); // Constant backlight; no PWM/fade in firmware.
   tft.init();
+  uiFont.begin(tft);
   tft.invertDisplay(true);
   pinMode(TOUCH_CS,OUTPUT);digitalWrite(TOUCH_CS,HIGH);
   pinMode(TOUCH_IRQ_PIN,INPUT);
   touchSPI.begin(TOUCH_CLK_PIN,TOUCH_MISO_PIN,TOUCH_MOSI_PIN,TOUCH_CS);
   tft.setRotation(DISPLAY_ROTATION);
   tft.fillScreen(TFT_BLACK);
+  // Configure the four HR4988 STEP/DIR signals in a quiet state at boot.
+  // No ENABLE pin is driven because its wiring/polarity is not verified.
+  pinMode(Pins::AZ_STEP,OUTPUT); digitalWrite(Pins::AZ_STEP,LOW);
+  pinMode(Pins::AZ_DIR,OUTPUT);  digitalWrite(Pins::AZ_DIR,LOW);
+  pinMode(Pins::EL_STEP,OUTPUT); digitalWrite(Pins::EL_STEP,LOW);
+  pinMode(Pins::EL_DIR,OUTPUT);  digitalWrite(Pins::EL_DIR,LOW);
   Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1);
   beginSensorSuite();
-  beginAxisEncoders();
   prefs.begin("cyd-tracker",false);
-  loadAxisCalibration();
+  uiLanguage=prefs.getUChar("uilang",1); if(uiLanguage>2) uiLanguage=1;
   char hardwareIdBuffer[20];
   snprintf(hardwareIdBuffer,sizeof(hardwareIdBuffer),"CYD-%012llX",(unsigned long long)ESP.getEfuseMac());
   deviceHardwareId=hardwareIdBuffer;
@@ -1749,9 +2101,13 @@ void loop() {
   while(Serial2.available()) {
     if(gps.encode(Serial2.read()) && gps.location.isValid()) gpsSeen=true;
   }
-  serviceAxisEncoders();
-  serviceSensorSuite();
+  if(!motorTestActive) serviceSensorSuite();
+  serviceMotorTest();
   const uint32_t now=millis();
+  if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastCompassRefreshAt>=250) {
+    updateDashboardCompass();
+    lastCompassRefreshAt=now;
+  }
   if(!displayDiagnosticActive && screen==Screen::Splash && now-screenStartedAt>=SPLASH_MS) {
     if(touchCalibrated) { screen=Screen::Init; showInitialization(); screenStartedAt=now; }
     else {
@@ -1780,15 +2136,15 @@ void loop() {
     }
   }
   if(!displayDiagnosticActive) handleTouch();
-  if(!displayDiagnosticActive && screen!=Screen::Splash && screen!=Screen::TouchTest && now-lastHeaderIconsAt>=500) {
+  if(!displayDiagnosticActive && !motorTestActive && screen!=Screen::Splash && screen!=Screen::TouchTest && now-lastHeaderIconsAt>=500) {
     drawHeaderConnectionIcons();
     lastHeaderIconsAt=now;
   }
   // Service local requests before optional outbound HTTPS work.
-  if(!displayDiagnosticActive) serviceLocalApi();
-  if(!displayDiagnosticActive) updateSelectedOrbit();
+  if(!displayDiagnosticActive && !motorTestActive) serviceLocalApi();
+  if(!displayDiagnosticActive && !motorTestActive) updateSelectedOrbit();
   // Refresh only dynamic telemetry; keep artwork and navigation static.
-  if(!displayDiagnosticActive && now-lastDashboardRefreshAt>=1000) {
+  if(!displayDiagnosticActive && !motorTestActive && now-lastDashboardRefreshAt>=1000) {
     if(screen==Screen::Dashboard) { updateGpsTelemetry(); updateTargetTelemetry(); }
     if(screen==Screen::Antenna) updateTargetTelemetry();
     if(screen==Screen::Satellite) updateOrbitTelemetry();

@@ -17,6 +17,12 @@
 | Версия | Дата | Исходный коммит | Статус |
 |---|---|---|---|
 | V96 | 2026-11-17 | [f504bd6](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/f504bd6c7358b35ab4a97a7624188aab8e2240b8) | Сборка CI прошла; аппаратная проверка не подтверждена; не считать стабильным релизом |
+| V97 | 2026-11-17 | [2d3fbe8](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/2d3fbe8bf9b6e9828779c9f5a90da918b7a7bf8b) | Прошивка загружена пользователем на CYD; функциональная проверка ожидается |
+| V98 | 2026-11-17 | [1551221](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/15512218793bec8d6888b29959fd392802a46026) | Исторический кандидат; содержал ошибочную поддержку AS5600, исправляется в V99 |
+| V99 | 2026-11-17 | [9e4bdf7](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/9e4bdf7cd3fd1ec47d46195a1ebd2a36e4395e8c) | CI прошёл; удалена поддержка несуществующих AS5600; аппаратная проверка ожидается |
+| V100 | 2026-11-18 | [d23bedb](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/d23bedb0d6847f7cf739c5169594b139a187933e) | CI прошёл; пользователь подтвердил движение обоих двигателей, но сообщил о рывках; готовится V101 с разгоном и торможением |
+| V101 | 2026-11-18 | [41d9078](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/41d9078d288d33cd1e0793e3f066b24f7beb513c) | Пользователь подтвердил мягкий запуск и ровное вращение ненагруженных двигателей; CI прошёл |
+| V103 | 2026-11-18 | [83f583d](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/83f583d9b199ff68437f3756e0c34e10b485b576) | Локальная телеметрия GPS/QMC5883P/ADXL345, тест моторов с сайта, удалены фиктивные напряжение/ток; CI прошёл, аппаратная проверка ожидается |
 
 ## Важные исторические точки интерфейса
 

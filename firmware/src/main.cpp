@@ -177,7 +177,7 @@ static constexpr uint16_t TOUCH_THRESHOLD = 250;
 static constexpr uint16_t FIELD_HIT_TOP = 24;
 static constexpr uint16_t FIELD_HIT_BOTTOM = 99;
 
-enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, MotorTestConfirm, MotorTestRunning, Failed };
+enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, CloudPairing, MotorTestConfirm, MotorTestRunning, Failed };
 static Screen screen = Screen::Splash;
 static uint32_t screenStartedAt = 0;
 static uint32_t wifiAttemptAt = 0;
@@ -206,6 +206,14 @@ static String wifiName;
 static String wifiPassword;
 static String setupMessage;
 static String deviceHardwareId;
+static String cloudDeviceToken;
+static String cloudPairCode;
+static String cloudPairMessage="Код привязки создаётся в личном кабинете сайта";
+static uint32_t cloudLastHeartbeatAt=0;
+static volatile bool cloudHeartbeatTaskRunning=false;
+static volatile bool cloudTokenRejected=false;
+static volatile int cloudHeartbeatHttpCode=0;
+static volatile bool cloudHeartbeatOk=false;
 static WebServer localServer(80);
 static bool localApiStarted=false;
 // Manual motor pulse test state. Only STEP/DIR are driven; no ENABLE pin is assumed.
@@ -1238,10 +1246,221 @@ static void showSystemScreen() {
   drawButton(7,160,98,21,"RU",uiLanguage==1?active:idle);
   drawButton(111,160,98,21,"EN",uiLanguage==0?active:idle);
   drawButton(215,160,98,21,"ZH",uiLanguage==2?active:idle);
-  drawButton(7,183,98,21,"TOUCH",0x035F);
-  drawButton(111,183,98,21,"WI-FI",0x03B9);
-  drawButton(215,183,98,21,"MOTOR TEST",0x03B9);
+  drawButton(4,183,76,21,"TOUCH",0x035F);
+  drawButton(82,183,76,21,"WI-FI",0x03B9);
+  drawButton(160,183,76,21,"LINK",cloudDeviceToken.length()?0x07E0:0x03B9);
+  drawButton(238,183,78,21,"MOTOR",0x03B9);
   drawNavigation(3);
+}
+
+
+static void showCloudPairing() {
+  screen=Screen::CloudPairing;
+  header("CLOUD LINK","ONE-TIME CODE FROM YOUR WEBSITE ACCOUNT");
+  tft.fillRoundRect(10,50,300,28,6,0x0822);
+  tft.drawRoundRect(10,50,300,28,6,0x2A69);
+  setUiTextDatum(MC_DATUM);
+  setUiTextColor(TFT_CYAN,0x0822);
+  drawUiString(cloudPairCode.length()?cloudPairCode:"_ _ _ _ _ _ _ _",160,64,2);
+  setUiTextDatum(MC_DATUM);
+  setUiTextColor(cloudDeviceToken.length()?TFT_GREEN:TFT_YELLOW,BG);
+  String state=cloudPairMessage;
+  if(state.length()>43) state=state.substring(0,43);
+  drawUiString(state,160,78,1);
+  const char* keys[12]={"1","2","3","4","5","6","7","8","9","CLR","0","DEL"};
+  for(uint8_t i=0;i<12;i++) {
+    const int row=i/3, col=i%3;
+    const int x=45+col*89, y=84+row*29;
+    drawButton(x,y,52,24,keys[i],(i==9||i==11)?0x4208:0x001F);
+  }
+  drawButton(12,207,144,28,"CONNECT",0x07E0);
+  drawButton(164,207,144,28,"CANCEL",0xF800);
+}
+
+static bool claimCloudDevice() {
+  if(WiFi.status()!=WL_CONNECTED) {
+    cloudPairMessage="Сначала подключите CYD к Wi-Fi";
+    return false;
+  }
+  if(cloudPairCode.length()!=8) {
+    cloudPairMessage="Введите все 8 цифр";
+    return false;
+  }
+  WiFiClientSecure client;
+  client.setCACert(CELESTRAK_CA_BUNDLE);
+  HTTPClient http;
+  http.setConnectTimeout(5000);
+  http.setTimeout(8000);
+  const String url="https://cyd-satellite-tracker.pages.dev/api/devices/claim";
+  if(!http.begin(client,url)) {
+    cloudPairMessage="Не удалось открыть HTTPS соединение";
+    return false;
+  }
+  http.addHeader("Content-Type","application/json");
+  JsonDocument request;
+  request["code"]=cloudPairCode;
+  request["device_name"]="CYD Satellite Tracker";
+  String body;
+  serializeJson(request,body);
+  const int code=http.POST(body);
+  const String response=http.getString();
+  http.end();
+  JsonDocument reply;
+  const DeserializationError parseError=deserializeJson(reply,response);
+  if(code<200||code>=300||parseError) {
+    const char* error=reply["error"]|"";
+    cloudPairMessage=(error&&strlen(error))?String(error):("Ошибка привязки · HTTP "+String(code));
+    return false;
+  }
+  const String token=reply["device_token"]|"";
+  if(token.length()<32||token.length()>256) {
+    cloudPairMessage="Сервер не вернул корректный токен";
+    return false;
+  }
+  cloudDeviceToken=token;
+  prefs.putString("cloudtok",cloudDeviceToken);
+  cloudLastHeartbeatAt=0;
+  cloudPairCode="";
+  cloudPairMessage="Плата привязана · облачная связь включена";
+  Serial.println("[CLOUD] device pairing completed; token stored in NVS");
+  return true;
+}
+
+struct CloudHeartbeatJob {
+  String token;
+  String payload;
+};
+
+static void cloudHeartbeatWorker(void* parameter) {
+  CloudHeartbeatJob* job=(CloudHeartbeatJob*)parameter;
+  int httpCode=-1;
+  bool ok=false;
+  WiFiClientSecure client;
+  client.setCACert(CELESTRAK_CA_BUNDLE);
+  HTTPClient http;
+  http.setConnectTimeout(4000);
+  http.setTimeout(5000);
+  const String url="https://cyd-satellite-tracker.pages.dev/api/devices/heartbeat";
+  if(http.begin(client,url)) {
+    http.addHeader("Content-Type","application/json");
+    http.addHeader("Authorization",String("Bearer ")+job->token);
+    httpCode=http.POST(job->payload);
+    ok=httpCode>=200&&httpCode<300;
+    http.end();
+  }
+  cloudHeartbeatHttpCode=httpCode;
+  cloudHeartbeatOk=ok;
+  if(httpCode==401) cloudTokenRejected=true;
+  Serial.printf("[CLOUD] heartbeat HTTP %d, payload=%u bytes\n",httpCode,(unsigned)job->payload.length());
+  delete job;
+  cloudHeartbeatTaskRunning=false;
+  vTaskDelete(nullptr);
+}
+
+static void serviceCloudTelemetry() {
+  if(WiFi.status()!=WL_CONNECTED||!cloudDeviceToken.length()) return;
+  const uint32_t now=millis();
+  if(cloudHeartbeatTaskRunning) return;
+  if(cloudLastHeartbeatAt&&now-cloudLastHeartbeatAt<15000) return;
+  cloudLastHeartbeatAt=now;
+  JsonDocument doc;
+  doc["firmware"]="V102";
+  doc["hardware_id"]=deviceHardwareId;
+  doc["ip"]=WiFi.localIP().toString();
+  doc["wifi_rssi"]=WiFi.RSSI();
+  const bool gpsFix=gps.location.isValid()&&gps.location.age()<10000;
+  doc["gps_connected"]=gps.charsProcessed()>0;
+  doc["gps_valid"]=gpsFix;
+  if(gpsFix) {
+    doc["latitude"]=gps.location.lat();
+    doc["longitude"]=gps.location.lng();
+  }
+  if(gps.altitude.isValid()) doc["altitude"]=gps.altitude.meters();
+  if(gps.satellites.isValid()) doc["gps_satellites"]=gps.satellites.value();
+  if(gps.hdop.isValid()) doc["gps_hdop"]=gps.hdop.hdop();
+  doc["gps_age_ms"]=gps.location.isValid()?gps.location.age():0;
+  doc["angle_sensor_connected"]=sensorSuite.accel_present;
+  doc["compass_connected"]=sensorSuite.mag_present;
+  // Driver and limit-switch telemetry is intentionally false until their
+  // electrical interfaces are verified; no current/voltage is fabricated.
+  doc["motor_drivers_connected"]=false;
+  doc["limit_switches_connected"]=false;
+  JsonObject mag=doc["magnetometer"].to<JsonObject>();
+  mag["type"]="QMC5883P";
+  mag["address"]="0x2C";
+  mag["present"]=sensorSuite.mag_present;
+  mag["read_ok"]=sensorSuite.mag_read_ok;
+  mag["data_ready"]=sensorSuite.mag_data_ready;
+  mag["overflow"]=sensorSuite.mag_overflow;
+  mag["heading_valid"]=sensorSuite.heading_valid;
+  mag["calibrated"]=false;
+  if(sensorSuite.mag_read_ok) {
+    mag["raw_x"]=sensorSuite.mag_x;
+    mag["raw_y"]=sensorSuite.mag_y;
+    mag["raw_z"]=sensorSuite.mag_z;
+    mag["field_magnitude_raw"]=sensorSuite.field_magnitude;
+  }
+  if(sensorSuite.heading_valid) mag["magnetic_heading_deg"]=sensorSuite.magnetic_heading_deg;
+  mag["sample_age_ms"]=sensorSuite.mag_last_good_ms?now-sensorSuite.mag_last_good_ms:0;
+  JsonObject accel=doc["accelerometer"].to<JsonObject>();
+  accel["type"]="ADXL345";
+  accel["address"]="0x53";
+  accel["present"]=sensorSuite.accel_present;
+  accel["read_ok"]=sensorSuite.accel_read_ok;
+  accel["tilt_valid"]=sensorSuite.tilt_valid;
+  if(sensorSuite.accel_read_ok) {
+    accel["raw_x"]=sensorSuite.accel_raw_x;
+    accel["raw_y"]=sensorSuite.accel_raw_y;
+    accel["raw_z"]=sensorSuite.accel_raw_z;
+    accel["x_g"]=sensorSuite.accel_x_g;
+    accel["y_g"]=sensorSuite.accel_y_g;
+    accel["z_g"]=sensorSuite.accel_z_g;
+  }
+  if(sensorSuite.tilt_valid) {
+    accel["roll_deg"]=sensorSuite.roll_deg;
+    accel["pitch_deg"]=sensorSuite.pitch_deg;
+  }
+  accel["sample_age_ms"]=sensorSuite.accel_last_good_ms?now-sensorSuite.accel_last_good_ms:0;
+  String payload;
+  serializeJson(doc,payload);
+  CloudHeartbeatJob* job=new CloudHeartbeatJob();
+  if(!job) return;
+  job->token=cloudDeviceToken;
+  job->payload=payload;
+  cloudHeartbeatTaskRunning=true;
+  const BaseType_t started=xTaskCreatePinnedToCore(cloudHeartbeatWorker,"cyd-cloud",8192,job,1,nullptr,0);
+  if(started!=pdPASS) {
+    cloudHeartbeatTaskRunning=false;
+    delete job;
+    Serial.println("[CLOUD] unable to start heartbeat worker");
+  }
+}
+
+static void handleCloudPairingTap(uint16_t x,uint16_t y) {
+  if(y>=207&&y<=237) {
+    if(x<160) {
+      cloudPairMessage="Проверка кода и привязка…";
+      showCloudPairing();
+      const bool linked=claimCloudDevice();
+      (void)linked;
+      showCloudPairing();
+    } else showSystemScreen();
+    return;
+  }
+  if(y>=84&&y<196) {
+    const int row=(y-84)/29;
+    const int col=x<105?0:(x<194?1:2);
+    if(row<3) {
+      const char digit=(char)('1'+row*3+col);
+      if(cloudPairCode.length()<8) cloudPairCode+=digit;
+    } else {
+      if(col==0) cloudPairCode="";
+      else if(col==1) { if(cloudPairCode.length()<8) cloudPairCode+='0'; }
+      else if(cloudPairCode.length()) cloudPairCode.remove(cloudPairCode.length()-1);
+    }
+    cloudPairMessage=cloudPairCode.length()==8?"Нажмите CONNECT для привязки":"Введите 8 цифр из личного кабинета";
+    showCloudPairing();
+  }
 }
 
 static int motorStepPin() { return motorTestAxis==0?Pins::AZ_STEP:Pins::EL_STEP; }
@@ -1454,6 +1673,7 @@ static void handleTouch(){
  rawTouchX=rx; rawTouchY=ry;
  Serial.printf("Touch stable raw=%u,%u mapped=%u,%u rot=%u screen=%u\n",rx,ry,x,y,tft.getRotation(),(unsigned)screen);
  if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
+ else if(screen==Screen::CloudPairing) handleCloudPairingTap(x,y);
  else if(screen==Screen::MotorTestConfirm && y>=174 && y<=214) {
    if(x>=15 && x<=155) startMotorTest();
    else if(x>=165 && x<=305) showSystemScreen();
@@ -1466,12 +1686,16 @@ static void handleTouch(){
      if(x<108) selectUiLanguage(1);
      else if(x<212) selectUiLanguage(0);
      else selectUiLanguage(2);
-   } else if(x<108) {
+   } else if(x<81) {
      calibrationFromSystem=true; touchCalibrated=false; touchCalStep=1;
      screen=Screen::TouchTest; touchWasDown=false; drawCalibrationTarget(0);
-   } else if(x<212) {
+   } else if(x<159) {
      WiFi.disconnect(false,false); editingPassword=false; setupMessage="Edit network, then press CONNECT";
      wifiScreenDrawn=false; showWifiSetup();
+   } else if(x<237) {
+     cloudPairCode="";
+     cloudPairMessage=cloudDeviceToken.length()?"Устройство уже привязано · можно заменить код":"Введите 8 цифр из личного кабинета";
+     showCloudPairing();
    } else { showMotorTestConfirm(); }
  }
  else if(screen==Screen::Connecting && y>=190 && y<=235 && x>=14 && x<=157) {
@@ -1792,7 +2016,8 @@ static void sendLocalStatus() {
   JsonDocument doc;
   doc["ok"]=true;
   doc["device"]="CYD Satellite Tracker";
-  doc["firmware"]="V99";
+  doc["firmware"]="V102";
+  doc["cloud_linked"]=cloudDeviceToken.length()>0;
   doc["hardware_id"]=deviceHardwareId;
   JsonObject hardware=doc["hardware"].to<JsonObject>();
   hardware["gps_connected"]=gps.charsProcessed()>0;
@@ -2055,6 +2280,7 @@ void setup() {
   Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1);
   beginSensorSuite();
   prefs.begin("cyd-tracker",false);
+  cloudDeviceToken=prefs.getString("cloudtok","");
   uiLanguage=prefs.getUChar("uilang",1); if(uiLanguage>2) uiLanguage=1;
   char hardwareIdBuffer[20];
   snprintf(hardwareIdBuffer,sizeof(hardwareIdBuffer),"CYD-%012llX",(unsigned long long)ESP.getEfuseMac());
@@ -2119,6 +2345,14 @@ void loop() {
   }
   // Service local requests before optional outbound HTTPS work.
   if(!displayDiagnosticActive && !motorTestActive) serviceLocalApi();
+  if(!displayDiagnosticActive && !motorTestActive) serviceCloudTelemetry();
+  if(cloudTokenRejected) {
+    cloudTokenRejected=false;
+    cloudDeviceToken="";
+    prefs.remove("cloudtok");
+    cloudPairMessage="Токен отклонён сервером · привяжите плату заново";
+    Serial.println("[CLOUD] token rejected; removed from NVS");
+  }
   if(!displayDiagnosticActive && !motorTestActive) updateSelectedOrbit();
   // Refresh only dynamic telemetry; keep artwork and navigation static.
   if(!displayDiagnosticActive && !motorTestActive && now-lastDashboardRefreshAt>=1000) {

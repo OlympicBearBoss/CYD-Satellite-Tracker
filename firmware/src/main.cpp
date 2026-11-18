@@ -186,6 +186,9 @@ static uint32_t wifiAttemptAt = 0;
 static uint32_t lastTouchAt = 0;
 static uint32_t lastDashboardRefreshAt = 0;
 static uint32_t lastCompassRefreshAt = 0;
+static bool compassHasRendered = false;
+static bool compassLastRenderedValid = false;
+static float compassLastRenderedHeading = 0.0f;
 static uint32_t lastHeaderIconsAt = 0;
 static uint32_t lastSiteClientAt = 0;
 static uint32_t firstSiteClientAt = 0;
@@ -2134,9 +2137,21 @@ void loop() {
   if(!motorTestActive) serviceSensorSuite();
   serviceMotorTest();
   const uint32_t now=millis();
-  if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastCompassRefreshAt>=16) {
-    updateDashboardCompass();
-    lastCompassRefreshAt=now;
+  if(!displayDiagnosticActive && screen==Screen::Dashboard) {
+    const bool headingValid=sensorSuite.heading_valid;
+    const float headingNow=headingValid?sensorSuite.magnetic_heading_deg:0.0f;
+    float headingDelta=fabsf(headingNow-compassLastRenderedHeading);
+    if(headingDelta>180.0f) headingDelta=360.0f-headingDelta;
+    const bool changed=!compassHasRendered || headingValid!=compassLastRenderedValid ||
+      (headingValid && headingDelta>=0.8f);
+    // Avoid retransmitting an unchanged 116x116 sprite. Limit updates to 20 FPS.
+    if(changed && now-lastCompassRefreshAt>=50) {
+      updateDashboardCompass();
+      lastCompassRefreshAt=now;
+      compassHasRendered=true;
+      compassLastRenderedValid=headingValid;
+      compassLastRenderedHeading=headingNow;
+    }
   }
   if(!displayDiagnosticActive && screen==Screen::Splash && now-screenStartedAt>=SPLASH_MS) {
     if(touchCalibrated) { screen=Screen::Init; showInitialization(); screenStartedAt=now; }

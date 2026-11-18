@@ -696,6 +696,7 @@ function setRuntimeMode(connected,status=null){
  put("liveDeviceSeen",connected?new Date().toLocaleTimeString():"—");
  renderTarget();
 }
+let cloudTelemetryOnline=false,cloudTelemetryHadDevice=false,cloudTelemetryBusy=false;
 async function refreshCydDeviceLink(){
  if(cloudTelemetryOnline||!cydDeviceBaseUrl||cydDevicePollBusy)return;
  cydDevicePollBusy=true;
@@ -736,7 +737,6 @@ async function connectCydDevice(){
  if(cydLiveConnected)startCydDevicePolling();
 }
 
-let cloudTelemetryOnline=false,cloudTelemetryHadDevice=false,cloudTelemetryBusy=false;
 async function refreshCloudTelemetry(){
  if(cloudTelemetryBusy)return;
  cloudTelemetryBusy=true;

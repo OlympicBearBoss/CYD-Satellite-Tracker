@@ -2134,7 +2134,7 @@ void loop() {
   if(!motorTestActive) serviceSensorSuite();
   serviceMotorTest();
   const uint32_t now=millis();
-  if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastCompassRefreshAt>=50) {
+  if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastCompassRefreshAt>=16) {
     updateDashboardCompass();
     lastCompassRefreshAt=now;
   }

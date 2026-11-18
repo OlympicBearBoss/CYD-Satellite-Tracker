@@ -179,9 +179,12 @@ static constexpr uint16_t TOUCH_THRESHOLD = 250;
 static constexpr uint16_t FIELD_HIT_TOP = 24;
 static constexpr uint16_t FIELD_HIT_BOTTOM = 99;
 
-enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, MotorTestConfirm, MotorTestRunning, Failed };
+enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, MagDiagnostic, MotorTestConfirm, MotorTestRunning, Failed };
 static Screen screen = Screen::Splash;
 static uint32_t screenStartedAt = 0;
+static uint32_t magDiagLastUiMs = 0;
+static bool magDiagRangeValid = false;
+static int16_t magDiagMinX=0,magDiagMaxX=0,magDiagMinY=0,magDiagMaxY=0,magDiagMinZ=0,magDiagMaxZ=0;
 static uint32_t wifiAttemptAt = 0;
 static uint32_t lastTouchAt = 0;
 static uint32_t lastDashboardRefreshAt = 0;
@@ -1262,10 +1265,86 @@ static void showSystemScreen() {
   drawButton(7,160,98,21,"RU",uiLanguage==1?active:idle);
   drawButton(111,160,98,21,"EN",uiLanguage==0?active:idle);
   drawButton(215,160,98,21,"ZH",uiLanguage==2?active:idle);
-  drawButton(7,183,98,21,"TOUCH",0x035F);
-  drawButton(111,183,98,21,"WI-FI",0x03B9);
-  drawButton(215,183,98,21,"MOTOR TEST",0x03B9);
+  drawButton(7,183,74,21,"TOUCH",0x035F);
+  drawButton(84,183,74,21,"WI-FI",0x03B9);
+  drawButton(161,183,74,21,"MAG TEST",0x03B9);
+  drawButton(238,183,75,21,"MOTOR",0x03B9);
   drawNavigation(3);
+}
+
+static void showMagDiagnosticScreen() {
+  screen=Screen::MagDiagnostic;
+  magDiagRangeValid=false;
+  magDiagLastUiMs=0;
+  header("QMC5883P TEST","RAW MAGNETOMETER / NO TILT COMPENSATION");
+  const int xs[3]={8,111,214};
+  const char* labels[3]={"RAW X","RAW Y","RAW Z"};
+  for(uint8_t i=0;i<3;i++) {
+    tft.fillRoundRect(xs[i],88,98,48,7,0x0822);
+    tft.drawRoundRect(xs[i],88,98,48,7,0x2A69);
+    setUiTextDatum(TC_DATUM);setUiTextColor(MUTED,0x0822);
+    drawUiString(labels[i],xs[i]+49,94,1);
+  }
+  tft.fillRoundRect(8,143,304,34,7,0x0822);
+  tft.drawRoundRect(8,143,304,34,7,0x2A69);
+  setUiTextDatum(TL_DATUM);setUiTextColor(MUTED,0x0822);
+  drawUiString("RAW XY ANGLE",17,147,1);
+  drawUiString("QMC STATUS",176,147,1);
+  setUiTextDatum(MC_DATUM);setUiTextColor(TFT_CYAN,0x0822);
+  drawUiString("---.- deg",87,164,2);
+  setUiTextColor(TFT_YELLOW,0x0822);
+  drawUiString("WAITING",244,164,2);
+  drawNavigation(3);
+}
+
+static void updateMagDiagnosticScreen() {
+  if(screen!=Screen::MagDiagnostic)return;
+  const uint32_t now=millis();
+  if(now-magDiagLastUiMs<250)return;
+  magDiagLastUiMs=now;
+  if(sensorSuite.mag_read_ok && sensorSuite.mag_last_good_ms && now-sensorSuite.mag_last_good_ms<1500) {
+    if(!magDiagRangeValid) {
+      magDiagMinX=magDiagMaxX=sensorSuite.mag_x;
+      magDiagMinY=magDiagMaxY=sensorSuite.mag_y;
+      magDiagMinZ=magDiagMaxZ=sensorSuite.mag_z;
+      magDiagRangeValid=true;
+    } else {
+      magDiagMinX=min(magDiagMinX,sensorSuite.mag_x);magDiagMaxX=max(magDiagMaxX,sensorSuite.mag_x);
+      magDiagMinY=min(magDiagMinY,sensorSuite.mag_y);magDiagMaxY=max(magDiagMaxY,sensorSuite.mag_y);
+      magDiagMinZ=min(magDiagMinZ,sensorSuite.mag_z);magDiagMaxZ=max(magDiagMaxZ,sensorSuite.mag_z);
+    }
+  }
+  char value[24];
+  const int16_t raw[3]={sensorSuite.mag_x,sensorSuite.mag_y,sensorSuite.mag_z};
+  const int xs[3]={8,111,214};
+  for(uint8_t i=0;i<3;i++) {
+    tft.fillRect(xs[i]+5,108,88,23,0x0822);
+    snprintf(value,sizeof(value),"%d",raw[i]);
+    setUiTextDatum(MC_DATUM);setUiTextColor(TFT_WHITE,0x0822);
+    drawUiString(value,xs[i]+49,119,2);
+  }
+  const bool valid=sensorSuite.mag_present && sensorSuite.mag_read_ok && sensorSuite.mag_last_good_ms && now-sensorSuite.mag_last_good_ms<1500;
+  const float rawHeading=valid?sensorNormalize360(atan2f(-(float)sensorSuite.mag_y,(float)sensorSuite.mag_x)*57.2957795f):0.0f;
+  tft.fillRect(18,159,137,16,0x0822);
+  tft.fillRect(180,159,122,16,0x0822);
+  setUiTextDatum(MC_DATUM);
+  if(valid) {
+    snprintf(value,sizeof(value),"%.1f deg",rawHeading);
+    setUiTextColor(TFT_CYAN,0x0822);drawUiString(value,87,166,2);
+    setUiTextColor(TFT_GREEN,0x0822);drawUiString("ONLINE",244,166,2);
+  } else {
+    setUiTextColor(TFT_ORANGE,0x0822);drawUiString("NO DATA",87,166,2);
+    drawUiString("CHECK I2C",244,166,1);
+  }
+  tft.fillRect(10,179,300,16,BG);
+  if(magDiagRangeValid) {
+    char range[72];
+    snprintf(range,sizeof(range),"X %d..%d  Y %d..%d  Z %d..%d",magDiagMinX,magDiagMaxX,magDiagMinY,magDiagMaxY,magDiagMinZ,magDiagMaxZ);
+    setUiTextDatum(MC_DATUM);setUiTextColor(MUTED,BG);drawUiString(range,160,187,1);
+  } else {
+    setUiTextDatum(MC_DATUM);setUiTextColor(MUTED,BG);drawUiString("MIN / MAX: WAITING FOR FIRST SAMPLE",160,187,1);
+  }
+  // Raw heading deliberately ignores ADXL345, roll, pitch and tilt compensation.
 }
 
 static int motorStepPin() { return motorTestAxis==0?Pins::AZ_STEP:Pins::EL_STEP; }
@@ -1490,13 +1569,14 @@ static void handleTouch(){
      if(x<108) selectUiLanguage(1);
      else if(x<212) selectUiLanguage(0);
      else selectUiLanguage(2);
-   } else if(x<108) {
+   } else if(x<84) {
      calibrationFromSystem=true; touchCalibrated=false; touchCalStep=1;
      screen=Screen::TouchTest; touchWasDown=false; drawCalibrationTarget(0);
-   } else if(x<212) {
+   } else if(x<161) {
      WiFi.disconnect(false,false); editingPassword=false; setupMessage="Edit network, then press CONNECT";
      wifiScreenDrawn=false; showWifiSetup();
-   } else { showMotorTestConfirm(); }
+   } else if(x<238) { showMagDiagnosticScreen(); }
+   else { showMotorTestConfirm(); }
  }
  else if(screen==Screen::Connecting && y>=190 && y<=235 && x>=14 && x<=157) {
    WiFi.disconnect(false,false);
@@ -1509,7 +1589,7 @@ static void handleTouch(){
  else if(screen==Screen::Dashboard && y>=160 && y<200) {
    showSatelliteScreen();
  }
- else if((screen==Screen::Dashboard||screen==Screen::Satellite||screen==Screen::Antenna||screen==Screen::SystemInfo)&&y>=204) {
+ else if((screen==Screen::Dashboard||screen==Screen::Satellite||screen==Screen::Antenna||screen==Screen::SystemInfo||screen==Screen::MagDiagnostic)&&y>=204) {
    if(x<81) showDashboard();
    else if(x<160) showSatelliteScreen();
    else if(x<239) showAntennaScreen();
@@ -1545,6 +1625,7 @@ static void restoreCurrentScreen() {
     case Screen::Satellite: showSatelliteScreen(); break;
     case Screen::Antenna: showAntennaScreen(); break;
     case Screen::SystemInfo: showSystemScreen(); break;
+    case Screen::MagDiagnostic: showMagDiagnosticScreen(); break;
     default: showDashboard(); break;
   }
 }
@@ -2189,6 +2270,7 @@ void loop() {
   if(!displayDiagnosticActive && !motorTestActive) serviceLocalApi();
   if(!displayDiagnosticActive && !motorTestActive) updateSelectedOrbit();
   // Refresh only dynamic telemetry; keep artwork and navigation static.
+  if(!displayDiagnosticActive && screen==Screen::MagDiagnostic) updateMagDiagnosticScreen();
   if(!displayDiagnosticActive && !motorTestActive && now-lastDashboardRefreshAt>=1000) {
     if(screen==Screen::Dashboard) { updateGpsTelemetry(); updateTargetTelemetry(); }
     if(screen==Screen::Antenna) updateTargetTelemetry();

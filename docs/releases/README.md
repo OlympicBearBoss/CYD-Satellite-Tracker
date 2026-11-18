@@ -23,6 +23,7 @@
 | V100 | 2026-11-18 | [d23bedb](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/d23bedb0d6847f7cf739c5169594b139a187933e) | CI прошёл; пользователь подтвердил движение обоих двигателей, но сообщил о рывках; готовится V101 с разгоном и торможением |
 | V101 | 2026-11-18 | [41d9078](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/41d9078d288d33cd1e0793e3f066b24f7beb513c) | Пользователь подтвердил мягкий запуск и ровное вращение ненагруженных двигателей; CI прошёл |
 | V103 | 2026-11-18 | [83f583d](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/83f583d9b199ff68437f3756e0c34e10b485b576) | Локальная телеметрия GPS/QMC5883P/ADXL345, тест моторов с сайта, удалены фиктивные напряжение/ток; CI прошёл, аппаратная проверка ожидается |
+| V104 | 2026-11-18 | [80d5a3e](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/80d5a3e4e283776a8560a60f57be2009d1ab0356) | Исправлена главная телеметрия, добавлен GPS рядом с азимутом/наклоном, тест моторов перенесён на главную; CI ожидается |
 
 ## Важные исторические точки интерфейса
 

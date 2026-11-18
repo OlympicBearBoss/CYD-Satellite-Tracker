@@ -215,6 +215,7 @@ static uint8_t motorTestAxis=0;       // 0=AZ, 1=EL
 static uint8_t motorTestDirection=0;  // 0=DIR HIGH, 1=DIR LOW
 static uint16_t motorTestPulseCount=0;
 static uint32_t motorTestNextEdgeUs=0;
+static uint32_t motorTestLastUiMs=0;
 static uint32_t motorTestPulsePeriodUs=25000;
 static constexpr uint32_t MOTOR_TEST_START_PERIOD_US=25000; // 40 steps/s
 static constexpr uint32_t MOTOR_TEST_CRUISE_PERIOD_US=10000; // 100 steps/s

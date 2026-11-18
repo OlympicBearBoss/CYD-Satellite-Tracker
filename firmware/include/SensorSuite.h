@@ -33,8 +33,8 @@ static SensorSuiteState sensorSuite;
 static Adafruit_QMC5883P qmc5883p;
 static constexpr uint8_t QMC5883P_ADDRESS=0x2C;
 static constexpr uint8_t ADXL345_ADDRESS=0x53;
-static constexpr uint32_t SENSOR_POLL_INTERVAL_MS=100;
-static constexpr uint32_t QMC_SAMPLE_INTERVAL_MS=250;
+static constexpr uint32_t SENSOR_POLL_INTERVAL_MS=10; // service loop at up to 100 Hz
+static constexpr uint32_t QMC_SAMPLE_INTERVAL_MS=10; // consume fresh QMC samples at up to 100 Hz
 static uint32_t sensorLastPollMs=0, qmcLastSampleMs=0;
 
 static bool sensorWriteRegister(uint8_t address,uint8_t reg,uint8_t value) {
@@ -130,11 +130,18 @@ static void serviceSensorSuite() {
     qmcLastSampleMs=now;
     sensorSuite.mag_data_ready=qmc5883p.isDataReady();
     sensorSuite.mag_overflow=qmc5883p.isOverflow();
-    int16_t x=0,y=0,z=0;
-    sensorSuite.mag_read_ok=qmc5883p.getRawMagnetic(&x,&y,&z);
-    if(sensorSuite.mag_read_ok) {
-      sensorSuite.mag_x=x; sensorSuite.mag_y=y; sensorSuite.mag_z=z;
-      sensorSuite.mag_last_good_ms=now;
+    // Do not repeatedly read the same conversion. Keep the last good sample
+    // until the QMC5883P signals a fresh one; discard overflowed conversions.
+    if(sensorSuite.mag_data_ready && !sensorSuite.mag_overflow) {
+      int16_t x=0,y=0,z=0;
+      const bool readOk=qmc5883p.getRawMagnetic(&x,&y,&z);
+      sensorSuite.mag_read_ok=readOk;
+      if(readOk) {
+        sensorSuite.mag_x=x; sensorSuite.mag_y=y; sensorSuite.mag_z=z;
+        sensorSuite.mag_last_good_ms=now;
+      }
+    } else if(sensorSuite.mag_overflow) {
+      sensorSuite.mag_read_ok=false;
     }
   }
 
@@ -160,15 +167,20 @@ static void serviceSensorSuite() {
   sensorCalculateOrientation();
 
   static uint32_t lastLog=0;
-  if(now-lastLog>=5000) {
+  if(now-lastLog>=1000) {
     lastLog=now;
-    Serial.printf("[SENSORS] QMC=%u/%u RDY=%u OVF=%u raw=%d,%d,%d hdg=%s%.1f | ADXL=%u/%u g=%.2f,%.2f,%.2f roll=%.1f pitch=%.1f\n",
+    Serial.printf("[MAG] present=%u read=%u ready=%u overflow=%u X=%d Y=%d Z=%d |B|=%.1f heading=%s%.1f deg | [TILT] present=%u read=%u raw=%d,%d,%d g=%.2f,%.2f,%.2f roll=%.1f pitch=%.1f\n",
       sensorSuite.mag_present?1:0,sensorSuite.mag_read_ok?1:0,
       sensorSuite.mag_data_ready?1:0,sensorSuite.mag_overflow?1:0,
-      sensorSuite.mag_x,sensorSuite.mag_y,sensorSuite.mag_z,
-      sensorSuite.heading_valid?"":"--",sensorSuite.magnetic_heading_deg,
+      sensorSuite.mag_x,sensorSuite.mag_y,sensorSuite.mag_z,sensorSuite.field_magnitude,
+      sensorSuite.heading_valid?"":"INVALID ",sensorSuite.magnetic_heading_deg,
       sensorSuite.accel_present?1:0,sensorSuite.accel_read_ok?1:0,
+      sensorSuite.accel_raw_x,sensorSuite.accel_raw_y,sensorSuite.accel_raw_z,
       sensorSuite.accel_x_g,sensorSuite.accel_y_g,sensorSuite.accel_z_g,
       sensorSuite.roll_deg,sensorSuite.pitch_deg);
+    const float rawHeading=sensorSuite.mag_read_ok?sensorNormalize360(atan2f(-(float)sensorSuite.mag_y,(float)sensorSuite.mag_x)*57.2957795f):0.0f;
+    Serial.printf("[QMC-RAW] present=%u read=%u X=%d Y=%d Z=%d raw_xy_heading=%s%.1f deg\n",
+      sensorSuite.mag_present?1:0,sensorSuite.mag_read_ok?1:0,sensorSuite.mag_x,sensorSuite.mag_y,sensorSuite.mag_z,
+      sensorSuite.mag_read_ok?"":"INVALID ",rawHeading);
   }
 }

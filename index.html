@@ -751,7 +751,7 @@ async function refreshCydDeviceLink(){
 function startCydDevicePolling(){
  if(cydDevicePollTimer)clearInterval(cydDevicePollTimer);
  refreshCydDeviceLink();
- cydDevicePollTimer=setInterval(refreshCydDeviceLink,500);
+ cydDevicePollTimer=setInterval(refreshCydDeviceLink,250);
 }
 const cydAddressInput=$("cydDeviceAddress");
 if(cydAddressInput&&cydDeviceBaseUrl)cydAddressInput.value=cydDeviceBaseUrl;

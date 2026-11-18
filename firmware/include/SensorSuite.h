@@ -136,6 +136,15 @@ static void serviceSensorSuite() {
 
   static uint32_t drdyCount=0, magReadCount=0, magReadFailCount=0;
   static uint32_t lastSampleMs=0, minSampleIntervalMs=UINT32_MAX, maxSampleIntervalMs=0;
+  // V111 cumulative diagnostics: retain extrema for the whole boot so a slow
+  // manual 360-degree turn is not split across short reporting windows.
+  static uint32_t diagSampleSequence=0, diagRawBlockFail=0, diagRawMismatch=0;
+  static uint32_t diagLastSummaryMs=0, diagSampleCount=0;
+  static int16_t diagMinX=32767, diagMaxX=(-32768);
+  static int16_t diagMinY=32767, diagMaxY=(-32768);
+  static int16_t diagMinZ=32767, diagMaxZ=(-32768);
+  static float diagMinAngle=360.0f, diagMaxAngle=0.0f;
+  static int64_t diagSumX=0, diagSumY=0, diagSumZ=0;
   if(sensorSuite.mag_ready && now-qmcLastSampleMs>=QMC_SAMPLE_INTERVAL_MS) {
     qmcLastSampleMs=now;
     uint8_t status=0;
@@ -157,6 +166,35 @@ static void serviceSensorSuite() {
               if(interval>maxSampleIntervalMs)maxSampleIntervalMs=interval;
             }
             lastSampleMs=now;
+
+            // Independently read the six output bytes to verify the Adafruit
+            // library's byte order and the sensor's live register contents.
+            uint8_t rawBytes[6]={0};
+            const bool rawBlockOk=sensorReadRegisters(QMC5883P_ADDRESS,0x01,rawBytes,6);
+            int16_t wireX=0,wireY=0,wireZ=0;
+            bool rawMatch=false;
+            if(rawBlockOk) {
+              wireX=(int16_t)((uint16_t)rawBytes[1]<<8|rawBytes[0]);
+              wireY=(int16_t)((uint16_t)rawBytes[3]<<8|rawBytes[2]);
+              wireZ=(int16_t)((uint16_t)rawBytes[5]<<8|rawBytes[4]);
+              rawMatch=(wireX==x && wireY==y && wireZ==z);
+              if(!rawMatch) diagRawMismatch++;
+            } else {
+              diagRawBlockFail++;
+            }
+
+            const float sampleAngle=sensorNormalize360(atan2f(-(float)y,(float)x)*57.2957795f);
+            diagSampleSequence++;
+            diagSampleCount++;
+            diagSumX+=x; diagSumY+=y; diagSumZ+=z;
+            if(x<diagMinX)diagMinX=x; if(x>diagMaxX)diagMaxX=x;
+            if(y<diagMinY)diagMinY=y; if(y>diagMaxY)diagMaxY=y;
+            if(z<diagMinZ)diagMinZ=z; if(z>diagMaxZ)diagMaxZ=z;
+            if(sampleAngle<diagMinAngle)diagMinAngle=sampleAngle;
+            if(sampleAngle>diagMaxAngle)diagMaxAngle=sampleAngle;
+            Serial.printf("[QMC-SAMPLE] seq=%lu ms=%lu STATUS=0x%02X lib=%d,%d,%d wire=%s%d,%d,%d match=%u rawXY=%.1f\n",
+              (unsigned long)diagSampleSequence,(unsigned long)now,status,
+              x,y,z,rawBlockOk?"":"ERR/",wireX,wireY,wireZ,rawMatch?1:0,sampleAngle);
           } else {
             sensorSuite.mag_read_ok=false;
             magReadFailCount++;
@@ -194,6 +232,19 @@ static void serviceSensorSuite() {
     } else sensorSuite.accel_read_ok=false;
   }
   sensorCalculateOrientation();
+
+  if(now-diagLastSummaryMs>=5000) {
+    diagLastSummaryMs=now;
+    if(diagSampleCount) {
+      Serial.printf("[QMC-SPAN] n=%lu X=%d..%d avg=%.1f Y=%d..%d avg=%.1f Z=%d..%d avg=%.1f rawXY=%.1f..%.1f byte_fail=%lu byte_mismatch=%lu\n",
+        (unsigned long)diagSampleCount,diagMinX,diagMaxX,(double)diagSumX/diagSampleCount,
+        diagMinY,diagMaxY,(double)diagSumY/diagSampleCount,
+        diagMinZ,diagMaxZ,(double)diagSumZ/diagSampleCount,
+        diagMinAngle,diagMaxAngle,(unsigned long)diagRawBlockFail,(unsigned long)diagRawMismatch);
+    } else {
+      Serial.printf("[QMC-SPAN] n=0 DRDY has not produced a valid sample\n");
+    }
+  }
 
   static uint32_t lastLog=0;
   if(now-lastLog>=1000) {

@@ -159,6 +159,8 @@ bP6MvPJwNQzcmRk13NfIRmPVNnGuV/u3gm3c
 )PEM";
 
 TFT_eSPI tft;
+static TFT_eSprite compassSprite(&tft);
+static bool compassSpriteReady=false;
 static U8g2_for_TFT_eSPI uiFont;
 static uint8_t uiLanguage = 1; // 0=English, 1=Russian, 2=Simplified Chinese
 static uint16_t uiTextFg = TFT_WHITE;
@@ -1006,7 +1008,8 @@ static void drawDialNeedle(int cx,int cy,int length,float degrees,uint16_t color
 }
 
 static void updateDashboardCompass() {
-  const int cx=250,cy=87,r=49;
+  if(!compassSpriteReady) return;
+  constexpr int c=57, r=49;
   float heading=0.0f;
   const bool valid=sensorSuite.heading_valid;
   if(valid) {
@@ -1014,50 +1017,45 @@ static void updateDashboardCompass() {
     if(heading<0.0f) heading+=360.0f;
     if(heading>=360.0f) heading=0.0f;
   }
-
-  // The compass card rotates beneath a fixed red north pointer.
-  tft.fillCircle(cx,cy,r+8,0x0000);
-  tft.drawCircle(cx,cy,r+7,0x03BF);
-  tft.drawCircle(cx,cy,r,0x2A69);
-  tft.drawCircle(cx,cy,32,0x1A45);
-  tft.drawFastHLine(cx-r,cy,2*r,0x2A69);
-  tft.drawFastVLine(cx,cy-r,2*r,0x2A69);
+  // Draw off-screen and transfer as one frame: no visible black flash.
+  compassSprite.fillSprite(TFT_BLACK);
+  compassSprite.drawCircle(c,c,r+7,0x03BF);
+  compassSprite.drawCircle(c,c,r,0x2A69);
+  compassSprite.drawCircle(c,c,32,0x1A45);
+  compassSprite.drawFastHLine(c-r,c,2*r,0x2A69);
+  compassSprite.drawFastVLine(c,c-r,2*r,0x2A69);
   for(int a=0;a<360;a+=5) {
     const float q=(a-heading)*0.0174532925f;
     const int r1=r-2, r2=r-(a%30==0?10:(a%10==0?7:4));
     const uint16_t color=a%30==0?TFT_CYAN:0x2A69;
-    tft.drawLine(cx+(int)(r1*sinf(q)),cy-(int)(r1*cosf(q)),
-                 cx+(int)(r2*sinf(q)),cy-(int)(r2*cosf(q)),color);
+    compassSprite.drawLine(c+(int)(r1*sinf(q)),c-(int)(r1*cosf(q)),
+                           c+(int)(r2*sinf(q)),c-(int)(r2*cosf(q)),color);
   }
-
-  setUiTextDatum(MC_DATUM);
-  setUiTextColor(TFT_WHITE,0x0000);
+  compassSprite.setTextDatum(MC_DATUM);
+  compassSprite.setTextFont(2);
+  compassSprite.setTextColor(TFT_WHITE,TFT_BLACK);
   const char* labels[4]={"N","E","S","W"};
   for(int i=0;i<4;i++) {
     const float q=(i*90.0f-heading)*0.0174532925f;
-    const int tx=cx+(int)(35.0f*sinf(q));
-    const int ty=cy-(int)(35.0f*cosf(q));
-    drawUiString(labels[i],tx,ty,1);
+    compassSprite.drawString(labels[i],c+(int)(35.0f*sinf(q)),c-(int)(35.0f*cosf(q)));
   }
-
-  // Fixed red triangle: the direction at the top of the display is NORTH.
-  tft.fillTriangle(cx,cy-r+1,cx-5,cy-r+10,cx+5,cy-r+10,TFT_RED);
-  tft.drawCircle(cx,cy,14,0x1A45);
-  tft.fillCircle(cx,cy,11,0x0000);
+  // Fixed red triangle: the top of the display always indicates NORTH.
+  compassSprite.fillTriangle(c,c-r+1,c-5,c-r+10,c+5,c-r+10,TFT_RED);
+  compassSprite.drawCircle(c,c,14,0x1A45);
+  compassSprite.fillCircle(c,c,11,TFT_BLACK);
   if(valid) {
     unsigned int shown=(unsigned int)floorf(heading);
     if(shown>=360U) shown=0U;
     char value[5];
     snprintf(value,sizeof(value),"%03u",shown);
-    setUiTextColor(TFT_CYAN,0x0000);
-    drawUiString(value,cx,cy,1);
+    compassSprite.setTextColor(TFT_CYAN,TFT_BLACK);
+    compassSprite.drawString(value,c,c);
   } else {
-    tft.fillCircle(cx,cy,3,TFT_ORANGE);
+    compassSprite.fillCircle(c,c,3,TFT_ORANGE);
   }
-
-  // Keep the existing red station marker visible outside the compass hub.
-  tft.fillCircle(cx-25,cy+23,4,TFT_RED);
-  tft.drawCircle(cx-25,cy+23,6,0xF986);
+  compassSprite.fillCircle(c-25,c+23,4,TFT_RED);
+  compassSprite.drawCircle(c-25,c+23,6,0xF986);
+  compassSprite.pushSprite(193,30);
 }
 
 static void drawGpsPanel() {
@@ -2092,6 +2090,8 @@ void setup() {
   pinMode(TOUCH_IRQ_PIN,INPUT);
   touchSPI.begin(TOUCH_CLK_PIN,TOUCH_MISO_PIN,TOUCH_MOSI_PIN,TOUCH_CS);
   tft.setRotation(DISPLAY_ROTATION);
+  compassSprite.setColorDepth(16);
+  compassSpriteReady=(compassSprite.createSprite(114,114)!=nullptr);
   tft.fillScreen(TFT_BLACK);
   // Configure the four HR4988 STEP/DIR signals in a quiet state at boot.
   // No ENABLE pin is driven because its wiring/polarity is not verified.
@@ -2128,7 +2128,7 @@ void loop() {
   if(!motorTestActive) serviceSensorSuite();
   serviceMotorTest();
   const uint32_t now=millis();
-  if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastCompassRefreshAt>=250) {
+  if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastCompassRefreshAt>=50) {
     updateDashboardCompass();
     lastCompassRefreshAt=now;
   }

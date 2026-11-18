@@ -24,6 +24,12 @@
 | V101 | 2026-11-18 | [41d9078](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/41d9078d288d33cd1e0793e3f066b24f7beb513c) | Пользователь подтвердил мягкий запуск и ровное вращение ненагруженных двигателей; CI прошёл |
 | V103 | 2026-11-18 | [83f583d](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/83f583d9b199ff68437f3756e0c34e10b485b576) | Локальная телеметрия GPS/QMC5883P/ADXL345, тест моторов с сайта, удалены фиктивные напряжение/ток; CI прошёл, аппаратная проверка ожидается |
 | V104 | 2026-11-18 | [80d5a3e](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/80d5a3e4e283776a8560a60f57be2009d1ab0356) | Исправлена главная телеметрия, добавлен GPS рядом с азимутом/наклоном, тест моторов перенесён на главную; CI ожидается |
+| V105 | 2026-11-18 | [0d3596a](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/0d3596ac3fc52205cbb752446fd6073d2457a501) | Компас CYD и сайта: диапазон 0–359.9°, вращающаяся роза, неподвижный красный указатель севера; CI и аппаратная проверка ожидаются |
+| V106 | 2026-11-18 | [33b825b](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/33b825b0d78dd9b67103d6d4f0d8b9372e79b0b8) | CI прошёл, Pages preview развернут; пользователь сообщил о заметном мерцании компаса на CYD |
+| V107 | 2026-11-18 | [dc5de2f](https://github.com/OlympicBearBoss/CYD-Satellite-Tracker/commit/dc5de2f2a335ba6188e8b450f6e26be4f1c93ab1) | Пользователь прошил; компас продолжает заметно мерцать, показания в центре 110–125° |
+| V108 | 2026-11-18 | pending | Перерисовка компаса только при изменении курса (порог 0,8°; не чаще 20 FPS); подробная диагностика X/Y/Z, магнитного поля, наклона и азимута в Serial; CI и аппаратная проверка ожидаются |
+| V109 | 2026-11-18 | pending | Отдельная страница SYSTEM → MAG TEST: сырые X/Y/Z, необработанный XY-угол, min/max; отдельная диагностика QMC5883P без использования ADXL345; CI и аппаратная проверка ожидаются |
+| V110 | 2026-11-18 | pending | Удалена запись в STATUS 0x09; read-back CHIP_ID/STATUS/CONTROL1/CONTROL2; диагностика режима, ODR/OSR/DSR, DRDY и интервалов образцов; CI и аппаратная проверка ожидаются |
 
 ## Важные исторические точки интерфейса
 

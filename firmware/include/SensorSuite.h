@@ -33,8 +33,12 @@ static SensorSuiteState sensorSuite;
 static Adafruit_QMC5883P qmc5883p;
 static constexpr uint8_t QMC5883P_ADDRESS=0x2C;
 static constexpr uint8_t ADXL345_ADDRESS=0x53;
-static constexpr uint32_t SENSOR_POLL_INTERVAL_MS=100;
-static constexpr uint32_t QMC_SAMPLE_INTERVAL_MS=250;
+static constexpr uint8_t QMC_REG_CHIP_ID=0x00;
+static constexpr uint8_t QMC_REG_STATUS=0x09;
+static constexpr uint8_t QMC_REG_CONTROL1=0x0A;
+static constexpr uint8_t QMC_REG_CONTROL2=0x0B;
+static constexpr uint32_t SENSOR_POLL_INTERVAL_MS=10;
+static constexpr uint32_t QMC_SAMPLE_INTERVAL_MS=10;
 static uint32_t sensorLastPollMs=0, qmcLastSampleMs=0;
 
 static bool sensorWriteRegister(uint8_t address,uint8_t reg,uint8_t value) {
@@ -87,31 +91,35 @@ static bool beginSensorSuite() {
   Wire.setClock(100000);
   Serial.printf("[SENSOR] I2C SDA=%d SCL=%d 100kHz\n",Pins::I2C_SDA,Pins::I2C_SCL);
 
-  // These three writes and their order are retained from the previously
-  // hardware-checked QMC5883P setup. The Adafruit driver is then attached
-  // explicitly to address 0x2C on the existing Wire bus.
-  const bool q1=sensorWriteRegister(QMC5883P_ADDRESS,0x0B,0x01);
+  // QMC5883P register map: STATUS=0x09 (read-only), CONTROL1=0x0A,
+  // CONTROL2=0x0B. Keep the two established control values, but never write
+  // to STATUS. V110 reports the actual register read-back for diagnosis.
+  const bool qCtrl2=sensorWriteRegister(QMC5883P_ADDRESS,QMC_REG_CONTROL2,0x01);
   delay(10);
-  const bool q2=sensorWriteRegister(QMC5883P_ADDRESS,0x0A,0x01);
-  delay(10);
-  const bool q3=sensorWriteRegister(QMC5883P_ADDRESS,0x09,0x1D);
+  const bool qCtrl1=sensorWriteRegister(QMC5883P_ADDRESS,QMC_REG_CONTROL1,0x01);
   delay(20);
-  Serial.printf("[QMC5883P] startup writes 0B=%s 0A=%s 09=%s\n",
-    q1?"ACK":"FAIL",q2?"ACK":"FAIL",q3?"ACK":"FAIL");
-  if(q1&&q2&&q3) {
+  Serial.printf("[QMC5883P] control writes CTRL2=%s CTRL1=%s; STATUS write skipped (read-only)\n",
+    qCtrl2?"ACK":"FAIL",qCtrl1?"ACK":"FAIL");
+  if(qCtrl1&&qCtrl2) {
     sensorSuite.mag_present=true;
     sensorSuite.mag_ready=qmc5883p.begin(QMC5883P_ADDRESS,&Wire);
     if(!sensorSuite.mag_ready) sensorSuite.mag_present=false;
   }
-  Serial.printf("[QMC5883P] present=%u begin=%s addr=0x2C\n",
-    sensorSuite.mag_present?1:0,sensorSuite.mag_ready?"OK":"FAIL");
+  uint8_t chipId=0, status=0, ctrl1=0, ctrl2=0;
+  const bool chipOk=sensorReadRegister(QMC5883P_ADDRESS,QMC_REG_CHIP_ID,chipId);
+  const bool statusOk=sensorReadRegister(QMC5883P_ADDRESS,QMC_REG_STATUS,status);
+  const bool ctrl1Ok=sensorReadRegister(QMC5883P_ADDRESS,QMC_REG_CONTROL1,ctrl1);
+  const bool ctrl2Ok=sensorReadRegister(QMC5883P_ADDRESS,QMC_REG_CONTROL2,ctrl2);
+  Serial.printf("[QMC5883P] present=%u begin=%s CHIP_ID=%s0x%02X STATUS=%s0x%02X CTRL1=%s0x%02X CTRL2=%s0x%02X\n",
+    sensorSuite.mag_present?1:0,sensorSuite.mag_ready?"OK":"FAIL",
+    chipOk?"":"ERR/",chipId,statusOk?"":"ERR/",status,ctrl1Ok?"":"ERR/",ctrl1,ctrl2Ok?"":"ERR/",ctrl2);
 
   uint8_t devid=0;
   sensorSuite.accel_present=sensorReadRegister(ADXL345_ADDRESS,0x00,devid) && devid==0xE5;
   if(sensorSuite.accel_present) {
-    const bool rateOk=sensorWriteRegister(ADXL345_ADDRESS,0x2C,0x0A); // 100 Hz
-    const bool formatOk=sensorWriteRegister(ADXL345_ADDRESS,0x31,0x08); // full resolution, +/-2 g
-    const bool powerOk=sensorWriteRegister(ADXL345_ADDRESS,0x2D,0x08); // measurement mode
+    const bool rateOk=sensorWriteRegister(ADXL345_ADDRESS,0x2C,0x0A);
+    const bool formatOk=sensorWriteRegister(ADXL345_ADDRESS,0x31,0x08);
+    const bool powerOk=sensorWriteRegister(ADXL345_ADDRESS,0x2D,0x08);
     sensorSuite.accel_read_ok=rateOk&&formatOk&&powerOk;
   }
   Serial.printf("[ADXL345] present=%u DEVID=0x%02X init=%s addr=0x53\n",
@@ -126,15 +134,81 @@ static void serviceSensorSuite() {
   if(now-sensorLastPollMs<SENSOR_POLL_INTERVAL_MS)return;
   sensorLastPollMs=now;
 
+  static uint32_t drdyCount=0, magReadCount=0, magReadFailCount=0;
+  static uint32_t lastSampleMs=0, minSampleIntervalMs=UINT32_MAX, maxSampleIntervalMs=0;
+  // V111 cumulative diagnostics: retain extrema for the whole boot so a slow
+  // manual 360-degree turn is not split across short reporting windows.
+  static uint32_t diagSampleSequence=0, diagRawBlockFail=0, diagRawMismatch=0;
+  static uint32_t diagLastSummaryMs=0, diagSampleCount=0;
+  static int16_t diagMinX=32767, diagMaxX=(-32768);
+  static int16_t diagMinY=32767, diagMaxY=(-32768);
+  static int16_t diagMinZ=32767, diagMaxZ=(-32768);
+  static float diagMinAngle=360.0f, diagMaxAngle=0.0f;
+  static int64_t diagSumX=0, diagSumY=0, diagSumZ=0;
   if(sensorSuite.mag_ready && now-qmcLastSampleMs>=QMC_SAMPLE_INTERVAL_MS) {
     qmcLastSampleMs=now;
-    sensorSuite.mag_data_ready=qmc5883p.isDataReady();
-    sensorSuite.mag_overflow=qmc5883p.isOverflow();
-    int16_t x=0,y=0,z=0;
-    sensorSuite.mag_read_ok=qmc5883p.getRawMagnetic(&x,&y,&z);
-    if(sensorSuite.mag_read_ok) {
-      sensorSuite.mag_x=x; sensorSuite.mag_y=y; sensorSuite.mag_z=z;
-      sensorSuite.mag_last_good_ms=now;
+    uint8_t status=0;
+    if(sensorReadRegister(QMC5883P_ADDRESS,QMC_REG_STATUS,status)) {
+      sensorSuite.mag_data_ready=(status&0x01)!=0;
+      sensorSuite.mag_overflow=(status&0x02)!=0;
+      if(sensorSuite.mag_data_ready) {
+        drdyCount++;
+        if(!sensorSuite.mag_overflow) {
+          int16_t x=0,y=0,z=0;
+          if(qmc5883p.getRawMagnetic(&x,&y,&z)) {
+            sensorSuite.mag_read_ok=true;
+            sensorSuite.mag_x=x; sensorSuite.mag_y=y; sensorSuite.mag_z=z;
+            sensorSuite.mag_last_good_ms=now;
+            magReadCount++;
+            if(lastSampleMs) {
+              const uint32_t interval=now-lastSampleMs;
+              if(interval<minSampleIntervalMs)minSampleIntervalMs=interval;
+              if(interval>maxSampleIntervalMs)maxSampleIntervalMs=interval;
+            }
+            lastSampleMs=now;
+
+            // Independently read the six output bytes to verify the Adafruit
+            // library's byte order and the sensor's live register contents.
+            uint8_t rawBytes[6]={0};
+            const bool rawBlockOk=sensorReadRegisters(QMC5883P_ADDRESS,0x01,rawBytes,6);
+            int16_t wireX=0,wireY=0,wireZ=0;
+            bool rawMatch=false;
+            if(rawBlockOk) {
+              wireX=(int16_t)((uint16_t)rawBytes[1]<<8|rawBytes[0]);
+              wireY=(int16_t)((uint16_t)rawBytes[3]<<8|rawBytes[2]);
+              wireZ=(int16_t)((uint16_t)rawBytes[5]<<8|rawBytes[4]);
+              rawMatch=(wireX==x && wireY==y && wireZ==z);
+              if(!rawMatch) diagRawMismatch++;
+            } else {
+              diagRawBlockFail++;
+            }
+
+            const float sampleAngle=sensorNormalize360(atan2f(-(float)y,(float)x)*57.2957795f);
+            diagSampleSequence++;
+            diagSampleCount++;
+            diagSumX+=x; diagSumY+=y; diagSumZ+=z;
+            if(x<diagMinX)diagMinX=x; if(x>diagMaxX)diagMaxX=x;
+            if(y<diagMinY)diagMinY=y; if(y>diagMaxY)diagMaxY=y;
+            if(z<diagMinZ)diagMinZ=z; if(z>diagMaxZ)diagMaxZ=z;
+            if(sampleAngle<diagMinAngle)diagMinAngle=sampleAngle;
+            if(sampleAngle>diagMaxAngle)diagMaxAngle=sampleAngle;
+            Serial.printf("[QMC-SAMPLE] seq=%lu ms=%lu STATUS=0x%02X lib=%d,%d,%d wire=%s%d,%d,%d match=%u rawXY=%.1f\n",
+              (unsigned long)diagSampleSequence,(unsigned long)now,status,
+              x,y,z,rawBlockOk?"":"ERR/",wireX,wireY,wireZ,rawMatch?1:0,sampleAngle);
+          } else {
+            sensorSuite.mag_read_ok=false;
+            magReadFailCount++;
+          }
+        } else {
+          sensorSuite.mag_read_ok=false;
+        }
+      } else {
+        sensorSuite.mag_data_ready=false;
+      }
+    } else {
+      sensorSuite.mag_read_ok=false;
+      sensorSuite.mag_data_ready=false;
+      magReadFailCount++;
     }
   }
 
@@ -159,16 +233,50 @@ static void serviceSensorSuite() {
   }
   sensorCalculateOrientation();
 
+  if(now-diagLastSummaryMs>=5000) {
+    diagLastSummaryMs=now;
+    if(diagSampleCount) {
+      Serial.printf("[QMC-SPAN] n=%lu X=%d..%d avg=%.1f Y=%d..%d avg=%.1f Z=%d..%d avg=%.1f rawXY=%.1f..%.1f byte_fail=%lu byte_mismatch=%lu\n",
+        (unsigned long)diagSampleCount,diagMinX,diagMaxX,(double)diagSumX/diagSampleCount,
+        diagMinY,diagMaxY,(double)diagSumY/diagSampleCount,
+        diagMinZ,diagMaxZ,(double)diagSumZ/diagSampleCount,
+        diagMinAngle,diagMaxAngle,(unsigned long)diagRawBlockFail,(unsigned long)diagRawMismatch);
+    } else {
+      Serial.printf("[QMC-SPAN] n=0 DRDY has not produced a valid sample\n");
+    }
+  }
+
   static uint32_t lastLog=0;
-  if(now-lastLog>=5000) {
+  if(now-lastLog>=1000) {
     lastLog=now;
-    Serial.printf("[SENSORS] QMC=%u/%u RDY=%u OVF=%u raw=%d,%d,%d hdg=%s%.1f | ADXL=%u/%u g=%.2f,%.2f,%.2f roll=%.1f pitch=%.1f\n",
+    uint8_t chipId=0, status=0, ctrl1=0, ctrl2=0;
+    const bool chipOk=sensorReadRegister(QMC5883P_ADDRESS,QMC_REG_CHIP_ID,chipId);
+    const bool statusOk=sensorReadRegister(QMC5883P_ADDRESS,QMC_REG_STATUS,status);
+    const bool ctrl1Ok=sensorReadRegister(QMC5883P_ADDRESS,QMC_REG_CONTROL1,ctrl1);
+    const bool ctrl2Ok=sensorReadRegister(QMC5883P_ADDRESS,QMC_REG_CONTROL2,ctrl2);
+    const uint8_t mode=ctrl1&0x03, odr=(ctrl1>>2)&0x03, osr=(ctrl1>>4)&0x03, dsr=(ctrl1>>6)&0x03;
+    const uint8_t range=(ctrl2>>2)&0x03, setreset=ctrl2&0x03;
+    const float rawHeading=sensorSuite.mag_read_ok?sensorNormalize360(atan2f(-(float)sensorSuite.mag_y,(float)sensorSuite.mag_x)*57.2957795f):0.0f;
+    Serial.printf("[MAG] present=%u read=%u ready=%u overflow=%u X=%d Y=%d Z=%d |B|=%.1f heading=%s%.1f deg | [TILT] present=%u read=%u raw=%d,%d,%d g=%.2f,%.2f,%.2f roll=%.1f pitch=%.1f\n",
       sensorSuite.mag_present?1:0,sensorSuite.mag_read_ok?1:0,
       sensorSuite.mag_data_ready?1:0,sensorSuite.mag_overflow?1:0,
-      sensorSuite.mag_x,sensorSuite.mag_y,sensorSuite.mag_z,
-      sensorSuite.heading_valid?"":"--",sensorSuite.magnetic_heading_deg,
+      sensorSuite.mag_x,sensorSuite.mag_y,sensorSuite.mag_z,sensorSuite.field_magnitude,
+      sensorSuite.heading_valid?"":"INVALID ",sensorSuite.magnetic_heading_deg,
       sensorSuite.accel_present?1:0,sensorSuite.accel_read_ok?1:0,
+      sensorSuite.accel_raw_x,sensorSuite.accel_raw_y,sensorSuite.accel_raw_z,
       sensorSuite.accel_x_g,sensorSuite.accel_y_g,sensorSuite.accel_z_g,
       sensorSuite.roll_deg,sensorSuite.pitch_deg);
+    Serial.printf("[QMC-REG] CHIP_ID=%s0x%02X STATUS=%s0x%02X CTRL1=%s0x%02X mode=%u odr=%u osr=%u dsr=%u CTRL2=%s0x%02X range=%u setreset=%u\n",
+      chipOk?"":"ERR/",chipId,statusOk?"":"ERR/",status,ctrl1Ok?"":"ERR/",ctrl1,mode,odr,osr,dsr,ctrl2Ok?"":"ERR/",ctrl2,range,setreset);
+    Serial.printf("[QMC-RATE] DRDY=%lu READ_OK=%lu READ_FAIL=%lu sample_interval_ms=%s%lu..%lu\n",
+      (unsigned long)drdyCount,(unsigned long)magReadCount,(unsigned long)magReadFailCount,
+      minSampleIntervalMs==UINT32_MAX?"n/a ":"",
+      (unsigned long)(minSampleIntervalMs==UINT32_MAX?0:minSampleIntervalMs),
+      (unsigned long)maxSampleIntervalMs);
+    Serial.printf("[QMC-RAW] present=%u read=%u X=%d Y=%d Z=%d raw_xy_heading=%s%.1f deg\n",
+      sensorSuite.mag_present?1:0,sensorSuite.mag_read_ok?1:0,sensorSuite.mag_x,sensorSuite.mag_y,sensorSuite.mag_z,
+      sensorSuite.mag_read_ok?"":"INVALID ",rawHeading);
+    drdyCount=magReadCount=magReadFailCount=0;
+    minSampleIntervalMs=UINT32_MAX; maxSampleIntervalMs=0;
   }
 }

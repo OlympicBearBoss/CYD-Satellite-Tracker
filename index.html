@@ -523,6 +523,7 @@ body[data-theme="terminal"] .content:before{opacity:.28}
  <div class="panel-title"><h2>Компас · QMC5883P</h2><span class="status-pill" id="liveCompassState">НЕТ ДАННЫХ</span></div>
  <div class="statusline"><span>Магнитный курс</span><b id="liveCompassHeading">—</b></div>
  <div class="statusline"><span>Сырые X / Y / Z</span><b id="liveMagRaw">—</b></div>
+ <div class="statusline"><span>Возраст выборки</span><b id="liveCompassAge">—</b></div>
  <div class="statusline"><span>Модуль</span><b id="liveCompassCalibration">Калибровка не выполнена</b></div>
  <p class="hint">Курс магнитный, без hard-iron / soft-iron калибровки и поправки магнитного склонения.</p>
 </article>
@@ -531,6 +532,7 @@ body[data-theme="terminal"] .content:before{opacity:.28}
  <div class="statusline"><span>Roll</span><b id="liveTiltRoll">—</b></div>
  <div class="statusline"><span>Pitch</span><b id="liveTiltPitch">—</b></div>
  <div class="statusline"><span>Ускорение X / Y / Z</span><b id="liveAccelRaw">—</b></div>
+ <div class="statusline"><span>Возраст выборки</span><b id="liveTiltAge">—</b></div>
  <p class="hint">Это наклон платы с ADXL345, а не измерение угла механической оси ротатора.</p>
 </article>
 </div>
@@ -641,7 +643,7 @@ function setRuntimeMode(connected,status=null){
  const synthetic=$("syntheticDataState");if(synthetic){synthetic.textContent=connected?"OFF":"ON";synthetic.classList.toggle("on",!connected);}
  const safe=$("safeModeState");if(safe){safe.textContent="ON";safe.classList.add("on");}
  const put=(id,value)=>{const n=$(id);if(n)n.textContent=value;};
- const gps=!!(status&&status.gps_valid===true);
+ const gps=!!(status&&status.gps_valid===true),gpsConnected=!!(status&&status.gps_connected===true)||(hardware&&hardware.gps_connected===true);
  const gpsBadge=$("gpsStatus");if(gpsBadge){gpsBadge.innerHTML="<i></i>"+(gps?"GPS FIX":"GPS НЕТ FIX");gpsBadge.style.color=gps?"#7fe1b7":"#ffbf83";}
  put("gpsLat",gps?Number(status.latitude).toFixed(5)+"°":"—");
  put("gpsLon",gps?Number(status.longitude).toFixed(5)+"°":"—");
@@ -663,12 +665,14 @@ function setRuntimeMode(connected,status=null){
  put("liveCompassState",!connected?"НЕТ СВЯЗИ":magReady?"ДАННЫЕ":"НЕ ГОТОВ");
  put("liveCompassHeading",mag.heading_valid===true&&typeof mag.magnetic_heading_deg==="number"?mag.magnetic_heading_deg.toFixed(1)+"° MAG":"—");
  put("liveMagRaw",magReady&&[mag.raw_x,mag.raw_y,mag.raw_z].every(v=>typeof v==="number")?[mag.raw_x,mag.raw_y,mag.raw_z].join(" / "):"—");
+ put("liveCompassAge",typeof mag.sample_age_ms==="number"?mag.sample_age_ms+" мс":"—");
  put("liveCompassCalibration",mag.calibrated===true?"ОТКАЛИБРОВАН":"НЕ ОТКАЛИБРОВАН");
  put("liveTiltState",!connected?"НЕТ СВЯЗИ":tiltReady?"ДАННЫЕ":"НЕ ГОТОВ");
  put("liveTiltRoll",accel.tilt_valid===true&&typeof accel.roll_deg==="number"?accel.roll_deg.toFixed(1)+"°":"—");
  put("liveTiltPitch",accel.tilt_valid===true&&typeof accel.pitch_deg==="number"?accel.pitch_deg.toFixed(1)+"°":"—");
  put("liveAccelRaw",tiltReady&&[accel.x_g,accel.y_g,accel.z_g].every(v=>typeof v==="number")?[accel.x_g,accel.y_g,accel.z_g].map(v=>v.toFixed(2)+"g").join(" / "):"—");
- put("liveGpsState",!connected?"НЕТ СВЯЗИ":gps?"FIX":"ПОИСК");
+ put("liveTiltAge",typeof accel.sample_age_ms==="number"?accel.sample_age_ms+" мс":"—");
+ put("liveGpsState",!connected?"НЕТ СВЯЗИ":!gpsConnected?"НЕ НАЙДЕН":gps?"FIX":"ПОИСК");
  put("liveGpsCoords",gps?Number(status.latitude).toFixed(5)+", "+Number(status.longitude).toFixed(5):"—");
  put("liveGpsAltitude",typeof status.altitude_m==="number"?status.altitude_m.toFixed(0)+" м":typeof status.altitude==="number"?status.altitude.toFixed(0)+" м":"—");
  put("liveGpsQuality",(status.gps_satellites??"—")+" / "+(typeof status.gps_hdop==="number"?status.gps_hdop.toFixed(1):"—"));

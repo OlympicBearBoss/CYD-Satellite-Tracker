@@ -742,7 +742,7 @@ async function refreshCloudTelemetry(){
  cloudTelemetryBusy=true;
  try{
   const response=await fetch("/api/devices/telemetry",{credentials:"same-origin",cache:"no-store"});
-  if(response.status===401){cloudTelemetryOnline=false;return;}
+  if(response.status===401){cloudTelemetryOnline=false;cloudTelemetryHadDevice=false;if(!cydDeviceBaseUrl)setRuntimeMode(false);return;}
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(data.error||"Cloud telemetry unavailable");
   const devices=data.devices||[];

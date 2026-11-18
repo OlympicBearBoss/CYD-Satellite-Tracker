@@ -1972,7 +1972,7 @@ refreshStatus();setInterval(refreshStatus,1000);
         out["message"]="Тест двигателей уже выполняется.";
         String body; serializeJson(out,body); localServer.send(409,"application/json",body); return;
       }
-      if(req["confirmed"]!=true) {
+      if(!req["confirmed"].is<bool>() || !req["confirmed"].as<bool>()) {
         out["ok"]=false; out["error"]="confirmation_required";
         out["message"]="Для запуска требуется явное подтверждение в интерфейсе.";
         String body; serializeJson(out,body); localServer.send(400,"application/json",body); return;

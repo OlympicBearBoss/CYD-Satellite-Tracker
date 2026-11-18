@@ -1282,6 +1282,10 @@ static bool claimCloudDevice() {
     cloudPairMessage="Сначала подключите CYD к Wi-Fi";
     return false;
   }
+  if(time(nullptr)<1700000000) {
+    cloudPairMessage="Ожидание синхронизации времени NTP";
+    return false;
+  }
   if(cloudPairCode.length()!=8) {
     cloudPairMessage="Введите все 8 цифр";
     return false;
@@ -1358,7 +1362,7 @@ static void cloudHeartbeatWorker(void* parameter) {
 }
 
 static void serviceCloudTelemetry() {
-  if(WiFi.status()!=WL_CONNECTED||!cloudDeviceToken.length()) return;
+  if(WiFi.status()!=WL_CONNECTED||!cloudDeviceToken.length()||time(nullptr)<1700000000) return;
   const uint32_t now=millis();
   if(cloudHeartbeatTaskRunning) return;
   if(cloudLastHeartbeatAt&&now-cloudLastHeartbeatAt<15000) return;
@@ -2330,6 +2334,8 @@ void loop() {
     else { setupMessage="Enter your router details"; showWifiSetup(); }
   } else if(!displayDiagnosticActive && screen==Screen::Connecting) {
     if(WiFi.status()==WL_CONNECTED) {
+      // Start NTP immediately so certificate validation works for HTTPS pairing and telemetry.
+      startOrbitTimeSync();
       // Start the local HTTP API immediately on link-up, before optional cloud work.
       startLocalApi();
       screen=Screen::Connected;

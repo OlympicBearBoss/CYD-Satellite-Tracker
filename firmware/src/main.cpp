@@ -177,7 +177,7 @@ static constexpr uint16_t TOUCH_THRESHOLD = 250;
 static constexpr uint16_t FIELD_HIT_TOP = 24;
 static constexpr uint16_t FIELD_HIT_BOTTOM = 99;
 
-enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, Failed };
+enum class Screen : uint8_t { Splash, TouchTest, Init, WifiSetup, Connecting, Connected, Dashboard, Satellite, Antenna, SystemInfo, MotorTestConfirm, MotorTestRunning, Failed };
 static Screen screen = Screen::Splash;
 static uint32_t screenStartedAt = 0;
 static uint32_t wifiAttemptAt = 0;
@@ -208,6 +208,14 @@ static String setupMessage;
 static String deviceHardwareId;
 static WebServer localServer(80);
 static bool localApiStarted=false;
+// Manual motor pulse test state. Only STEP/DIR are driven; no ENABLE pin is assumed.
+static bool motorTestActive=false;
+static bool motorTestStepHigh=false;
+static uint8_t motorTestAxis=0;       // 0=AZ, 1=EL
+static uint8_t motorTestDirection=0;  // 0=DIR HIGH, 1=DIR LOW
+static uint16_t motorTestPulseCount=0;
+static uint32_t motorTestNextEdgeUs=0;
+static uint32_t motorTestLastUiMs=0;
 // Local browser control state. Targets are stored only; motors remain disabled.
 static float targetAzimuthDeg=0.0f;
 static float targetElevationDeg=0.0f;
@@ -1227,8 +1235,104 @@ static void showSystemScreen() {
   drawButton(215,160,98,21,"ZH",uiLanguage==2?active:idle);
   drawButton(7,183,98,21,"TOUCH",0x035F);
   drawButton(111,183,98,21,"WI-FI",0x03B9);
-  drawButton(215,183,98,21,"API",0x03B9);
+  drawButton(215,183,98,21,"MOTOR TEST",0x03B9);
   drawNavigation(3);
+}
+
+static int motorStepPin() { return motorTestAxis==0?Pins::AZ_STEP:Pins::EL_STEP; }
+static int motorDirPin() { return motorTestAxis==0?Pins::AZ_DIR:Pins::EL_DIR; }
+static void drawMotorTestProgress() {
+  tft.fillRect(12,96,296,66,BG);
+  setUiTextDatum(MC_DATUM);
+  setUiTextColor(TFT_CYAN,BG);
+  drawUiString(motorTestAxis==0?"AZIMUTH MOTOR":"ELEVATION MOTOR",160,108,2);
+  setUiTextColor(TFT_WHITE,BG);
+  drawUiString(motorTestDirection==0?"DIRECTION 1 / 2":"DIRECTION 2 / 2",160,132,1);
+  char countText[32];
+  snprintf(countText,sizeof(countText),"PULSES %u / 300",motorTestPulseCount);
+  setUiTextColor(TFT_YELLOW,BG);
+  drawUiString(countText,160,151,1);
+}
+static void showMotorTestConfirm() {
+  screen=Screen::MotorTestConfirm;
+  header("ТЕСТ ДВИГАТЕЛЕЙ","AZ затем EL · 300 импульсов в каждую сторону");
+  setUiTextDatum(TL_DATUM);
+  setUiTextColor(TFT_WHITE,BG);
+  drawUiString("Проверьте свободный ход антенны.",14,101,1);
+  drawUiString("При полном шаге 300 импульсов = 1,5 оборота.",14,122,1);
+  setUiTextColor(TFT_ORANGE,BG);
+  drawUiString("Концевики не проверяются этим тестом!",14,145,1);
+  drawButton(15,177,140,31,"START TEST",0x07E0);
+  drawButton(165,177,140,31,"CANCEL",0xF800);
+}
+static void showMotorTestRunning() {
+  screen=Screen::MotorTestRunning;
+  header("ТЕСТ ДВИГАТЕЛЕЙ","Нажмите STOP для немедленной остановки");
+  drawMotorTestProgress();
+  drawButton(18,181,284,32,"STOP TEST",0xF800);
+  motorTestLastUiMs=millis();
+}
+static void stopMotorTest(const char* reason) {
+  motorTestActive=false;
+  motorTestStepHigh=false;
+  digitalWrite(Pins::AZ_STEP,LOW);
+  digitalWrite(Pins::EL_STEP,LOW);
+  Serial.printf("[MOTOR TEST] %s\n",reason);
+  showSystemScreen();
+}
+static void startMotorTest() {
+  motorTestAxis=0;
+  motorTestDirection=0;
+  motorTestPulseCount=0;
+  motorTestStepHigh=false;
+  motorTestActive=true;
+  digitalWrite(Pins::AZ_STEP,LOW);
+  digitalWrite(Pins::EL_STEP,LOW);
+  digitalWrite(Pins::AZ_DIR,HIGH);
+  motorTestNextEdgeUs=micros()+5000;
+  showMotorTestRunning();
+  Serial.println("[MOTOR TEST] AZ: DIR HIGH 300, DIR LOW 300; then EL: DIR HIGH 300, DIR LOW 300");
+}
+static void serviceMotorTest() {
+  if(!motorTestActive) return;
+  const uint32_t nowUs=micros();
+  if((int32_t)(nowUs-motorTestNextEdgeUs)<0) return;
+  const int stepPin=motorStepPin();
+  if(!motorTestStepHigh) {
+    digitalWrite(stepPin,HIGH);
+    motorTestStepHigh=true;
+    motorTestNextEdgeUs=nowUs+1000; // 1 ms STEP high
+  } else {
+    digitalWrite(stepPin,LOW);
+    motorTestStepHigh=false;
+    ++motorTestPulseCount;
+    if(motorTestPulseCount>=300) {
+      motorTestPulseCount=0;
+      if(motorTestDirection==0) {
+        motorTestDirection=1;
+        digitalWrite(motorDirPin(),LOW);
+        motorTestNextEdgeUs=nowUs+5000; // DIR setup time
+      } else if(motorTestAxis==0) {
+        motorTestAxis=1;
+        motorTestDirection=0;
+        digitalWrite(Pins::EL_DIR,HIGH);
+        motorTestNextEdgeUs=nowUs+5000;
+      } else {
+        motorTestActive=false;
+        digitalWrite(Pins::AZ_STEP,LOW);
+        digitalWrite(Pins::EL_STEP,LOW);
+        Serial.println("[MOTOR TEST] Completed: 300 AZ + 300 AZ reverse + 300 EL + 300 EL reverse");
+        showSystemScreen();
+        return;
+      }
+    } else {
+      motorTestNextEdgeUs=nowUs+3000; // 3 ms STEP low; 250 Hz pulse rate
+    }
+  }
+  if(millis()-motorTestLastUiMs>=150 && screen==Screen::MotorTestRunning) {
+    drawMotorTestProgress();
+    motorTestLastUiMs=millis();
+  }
 }
 
 static void showConnected() {
@@ -1333,6 +1437,12 @@ static void handleTouch(){
  rawTouchX=rx; rawTouchY=ry;
  Serial.printf("Touch stable raw=%u,%u mapped=%u,%u rot=%u screen=%u\n",rx,ry,x,y,tft.getRotation(),(unsigned)screen);
  if(screen==Screen::WifiSetup)handleKeyboardTap(x,y);
+ else if(screen==Screen::MotorTestConfirm && y>=174 && y<=214) {
+   if(x<160) startMotorTest(); else showSystemScreen();
+ }
+ else if(screen==Screen::MotorTestRunning && y>=176 && y<=220) {
+   stopMotorTest("Stopped by user");
+ }
  else if(screen==Screen::SystemInfo && y>=158 && y<=204) {
    if(y<=181) {
      if(x<108) selectUiLanguage(1);
@@ -1344,7 +1454,7 @@ static void handleTouch(){
    } else if(x<212) {
      WiFi.disconnect(false,false); editingPassword=false; setupMessage="Edit network, then press CONNECT";
      wifiScreenDrawn=false; showWifiSetup();
-   } else { Serial.printf("[LOCAL] API address: http://%s/\n",WiFi.localIP().toString().c_str()); showSystemScreen(); }
+   } else { showMotorTestConfirm(); }
  }
  else if(screen==Screen::Connecting && y>=190 && y<=235 && x>=14 && x<=157) {
    WiFi.disconnect(false,false);
@@ -1918,6 +2028,12 @@ void setup() {
   touchSPI.begin(TOUCH_CLK_PIN,TOUCH_MISO_PIN,TOUCH_MOSI_PIN,TOUCH_CS);
   tft.setRotation(DISPLAY_ROTATION);
   tft.fillScreen(TFT_BLACK);
+  // Configure the four HR4988 STEP/DIR signals in a quiet state at boot.
+  // No ENABLE pin is driven because its wiring/polarity is not verified.
+  pinMode(Pins::AZ_STEP,OUTPUT); digitalWrite(Pins::AZ_STEP,LOW);
+  pinMode(Pins::AZ_DIR,OUTPUT);  digitalWrite(Pins::AZ_DIR,LOW);
+  pinMode(Pins::EL_STEP,OUTPUT); digitalWrite(Pins::EL_STEP,LOW);
+  pinMode(Pins::EL_DIR,OUTPUT);  digitalWrite(Pins::EL_DIR,LOW);
   Serial2.begin(9600,SERIAL_8N1,Pins::GPS_RX,-1);
   beginSensorSuite();
   prefs.begin("cyd-tracker",false);
@@ -1945,6 +2061,7 @@ void loop() {
     if(gps.encode(Serial2.read()) && gps.location.isValid()) gpsSeen=true;
   }
   serviceSensorSuite();
+  serviceMotorTest();
   const uint32_t now=millis();
   if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastCompassRefreshAt>=250) {
     updateDashboardCompass();

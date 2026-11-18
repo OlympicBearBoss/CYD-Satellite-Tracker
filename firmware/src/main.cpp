@@ -215,7 +215,11 @@ static uint8_t motorTestAxis=0;       // 0=AZ, 1=EL
 static uint8_t motorTestDirection=0;  // 0=DIR HIGH, 1=DIR LOW
 static uint16_t motorTestPulseCount=0;
 static uint32_t motorTestNextEdgeUs=0;
-static uint32_t motorTestLastUiMs=0;
+static uint32_t motorTestPulsePeriodUs=25000;
+static constexpr uint32_t MOTOR_TEST_START_PERIOD_US=25000; // 40 steps/s
+static constexpr uint32_t MOTOR_TEST_CRUISE_PERIOD_US=10000; // 100 steps/s
+static constexpr uint32_t MOTOR_TEST_STEP_HIGH_US=5;
+static constexpr uint16_t MOTOR_TEST_RAMP_PULSES=100;
 // Local browser control state. Targets are stored only; motors remain disabled.
 static float targetAzimuthDeg=0.0f;
 static float targetElevationDeg=0.0f;
@@ -1280,18 +1284,28 @@ static void stopMotorTest(const char* reason) {
   Serial.printf("[MOTOR TEST] %s\n",reason);
   showSystemScreen();
 }
+static uint32_t motorTestPeriodForPulse(uint16_t pulseIndex) {
+  // Symmetric trapezoidal speed profile: ramp up, cruise, ramp down.
+  const uint16_t fromStart=pulseIndex;
+  const uint16_t fromEnd=(uint16_t)(299U-pulseIndex);
+  const uint16_t edgeDistance=fromStart<fromEnd?fromStart:fromEnd;
+  if(edgeDistance>=MOTOR_TEST_RAMP_PULSES) return MOTOR_TEST_CRUISE_PERIOD_US;
+  const uint32_t reduction=(MOTOR_TEST_START_PERIOD_US-MOTOR_TEST_CRUISE_PERIOD_US)*edgeDistance/MOTOR_TEST_RAMP_PULSES;
+  return MOTOR_TEST_START_PERIOD_US-reduction;
+}
 static void startMotorTest() {
   motorTestAxis=0;
   motorTestDirection=0;
   motorTestPulseCount=0;
+  motorTestPulsePeriodUs=MOTOR_TEST_START_PERIOD_US;
   motorTestStepHigh=false;
   motorTestActive=true;
   digitalWrite(Pins::AZ_STEP,LOW);
   digitalWrite(Pins::EL_STEP,LOW);
   digitalWrite(Pins::AZ_DIR,HIGH);
-  motorTestNextEdgeUs=micros()+5000;
+  motorTestNextEdgeUs=micros()+MOTOR_TEST_START_PERIOD_US;
   showMotorTestRunning();
-  Serial.println("[MOTOR TEST] AZ: DIR HIGH 300, DIR LOW 300; then EL: DIR HIGH 300, DIR LOW 300");
+  Serial.println("[MOTOR TEST] V101 ramp: 40->100->40 steps/s; 300 pulses each direction; AZ then EL");
 }
 static void serviceMotorTest() {
   if(!motorTestActive) return;
@@ -1299,9 +1313,10 @@ static void serviceMotorTest() {
   if((int32_t)(nowUs-motorTestNextEdgeUs)<0) return;
   const int stepPin=motorStepPin();
   if(!motorTestStepHigh) {
+    motorTestPulsePeriodUs=motorTestPeriodForPulse(motorTestPulseCount);
     digitalWrite(stepPin,HIGH);
     motorTestStepHigh=true;
-    motorTestNextEdgeUs=nowUs+1000; // 1 ms STEP high
+    motorTestNextEdgeUs=nowUs+MOTOR_TEST_STEP_HIGH_US;
   } else {
     digitalWrite(stepPin,LOW);
     motorTestStepHigh=false;
@@ -1312,11 +1327,13 @@ static void serviceMotorTest() {
         motorTestDirection=1;
         digitalWrite(motorDirPin(),LOW);
         motorTestNextEdgeUs=nowUs+5000; // DIR setup time
+        drawMotorTestProgress();
       } else if(motorTestAxis==0) {
         motorTestAxis=1;
         motorTestDirection=0;
         digitalWrite(Pins::EL_DIR,HIGH);
         motorTestNextEdgeUs=nowUs+5000;
+        drawMotorTestProgress();
       } else {
         motorTestActive=false;
         digitalWrite(Pins::AZ_STEP,LOW);
@@ -1326,12 +1343,11 @@ static void serviceMotorTest() {
         return;
       }
     } else {
-      motorTestNextEdgeUs=nowUs+3000; // 3 ms STEP low; 250 Hz pulse rate
+      // Keep the STEP low interval long enough while preserving the target period.
+      const uint32_t lowUs=motorTestPulsePeriodUs>MOTOR_TEST_STEP_HIGH_US
+        ? motorTestPulsePeriodUs-MOTOR_TEST_STEP_HIGH_US : 5;
+      motorTestNextEdgeUs=nowUs+lowUs;
     }
-  }
-  if(millis()-motorTestLastUiMs>=150 && screen==Screen::MotorTestRunning) {
-    drawMotorTestProgress();
-    motorTestLastUiMs=millis();
   }
 }
 
@@ -2061,7 +2077,7 @@ void loop() {
   while(Serial2.available()) {
     if(gps.encode(Serial2.read()) && gps.location.isValid()) gpsSeen=true;
   }
-  serviceSensorSuite();
+  if(!motorTestActive) serviceSensorSuite();
   serviceMotorTest();
   const uint32_t now=millis();
   if(!displayDiagnosticActive && screen==Screen::Dashboard && now-lastCompassRefreshAt>=250) {
@@ -2096,15 +2112,15 @@ void loop() {
     }
   }
   if(!displayDiagnosticActive) handleTouch();
-  if(!displayDiagnosticActive && screen!=Screen::Splash && screen!=Screen::TouchTest && now-lastHeaderIconsAt>=500) {
+  if(!displayDiagnosticActive && !motorTestActive && screen!=Screen::Splash && screen!=Screen::TouchTest && now-lastHeaderIconsAt>=500) {
     drawHeaderConnectionIcons();
     lastHeaderIconsAt=now;
   }
   // Service local requests before optional outbound HTTPS work.
-  if(!displayDiagnosticActive) serviceLocalApi();
-  if(!displayDiagnosticActive) updateSelectedOrbit();
+  if(!displayDiagnosticActive && !motorTestActive) serviceLocalApi();
+  if(!displayDiagnosticActive && !motorTestActive) updateSelectedOrbit();
   // Refresh only dynamic telemetry; keep artwork and navigation static.
-  if(!displayDiagnosticActive && now-lastDashboardRefreshAt>=1000) {
+  if(!displayDiagnosticActive && !motorTestActive && now-lastDashboardRefreshAt>=1000) {
     if(screen==Screen::Dashboard) { updateGpsTelemetry(); updateTargetTelemetry(); }
     if(screen==Screen::Antenna) updateTargetTelemetry();
     if(screen==Screen::Satellite) updateOrbitTelemetry();

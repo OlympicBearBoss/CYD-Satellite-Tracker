@@ -599,19 +599,19 @@ function applyCompassHeading(value){
   window.demoDeviceHeading=null;
   if(rotor)rotor.style.transform="rotate(0deg)";
   if(rose)rose.style.transform="rotate(0deg)";
-  if(cardinals){cardinals.style.transform="rotate(0deg)";cardinals.querySelectorAll("span").forEach(el=>el.style.transform="rotate(0deg)");}
+  if(cardinals){cardinals.style.transform="rotate(0deg)";cardinals.querySelectorAll("span").forEach(el=>el.style.transform="translate(-50%,-50%) rotate(0deg)");}
   if(readout)readout.textContent="—";
   if(direction)direction.textContent="Нет данных компаса CYD";
   return;
  }
  window.demoDeviceHeading=heading;
  const angle=-heading;
- if(rotor){rotor.style.transition="transform 180ms linear";rotor.style.transform="rotate("+angle+"deg)";}
- if(rose){rose.style.transition="transform 180ms linear";rose.style.transform="rotate("+angle+"deg)";}
+ if(rotor){rotor.style.transition="transform 90ms linear";rotor.style.transform="rotate("+angle+"deg)";}
+ if(rose){rose.style.transition="transform 90ms linear";rose.style.transform="rotate("+angle+"deg)";}
  if(cardinals){
-  cardinals.style.transition="transform 180ms linear";
+  cardinals.style.transition="transform 90ms linear";
   cardinals.style.transform="rotate("+angle+"deg)";
-  cardinals.querySelectorAll("span").forEach(el=>el.style.transform="rotate("+(-angle)+"deg)");
+  cardinals.querySelectorAll("span").forEach(el=>el.style.transform="translate(-50%,-50%) rotate("+(-angle)+"deg)");
  }
  if(rose)rose.querySelectorAll(".compass-label").forEach(el=>el.style.transform="translate(-50%,-50%) rotate("+(-angle)+"deg)");
  if(readout)readout.textContent=heading.toFixed(1)+"°";
@@ -751,7 +751,7 @@ async function refreshCydDeviceLink(){
 function startCydDevicePolling(){
  if(cydDevicePollTimer)clearInterval(cydDevicePollTimer);
  refreshCydDeviceLink();
- cydDevicePollTimer=setInterval(refreshCydDeviceLink,250);
+ cydDevicePollTimer=setInterval(refreshCydDeviceLink,100);
 }
 const cydAddressInput=$("cydDeviceAddress");
 if(cydAddressInput&&cydDeviceBaseUrl)cydAddressInput.value=cydDeviceBaseUrl;

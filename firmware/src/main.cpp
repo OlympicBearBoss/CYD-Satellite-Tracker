@@ -211,6 +211,12 @@ static String cloudPairCode;
 static String cloudPairMessage="Код привязки создаётся в личном кабинете сайта";
 static uint32_t cloudLastHeartbeatAt=0;
 static volatile bool cloudHeartbeatTaskRunning=false;
+static volatile bool cloudClaimTaskRunning=false;
+static volatile bool cloudClaimResultReady=false;
+static volatile bool cloudClaimSucceeded=false;
+static char cloudClaimTokenResult[257]={0};
+static char cloudClaimMessageResult[160]={0};
+static portMUX_TYPE cloudClaimMux=portMUX_INITIALIZER_UNLOCKED;
 static volatile bool cloudTokenRejected=false;
 static volatile int cloudHeartbeatHttpCode=0;
 static volatile bool cloudHeartbeatOk=false;
@@ -1277,19 +1283,12 @@ static void showCloudPairing() {
   drawButton(164,207,144,28,"CANCEL",0xF800);
 }
 
-static bool claimCloudDevice() {
-  if(WiFi.status()!=WL_CONNECTED) {
-    cloudPairMessage="Сначала подключите CYD к Wi-Fi";
-    return false;
-  }
-  if(time(nullptr)<1700000000) {
-    cloudPairMessage="Ожидание синхронизации времени NTP";
-    return false;
-  }
-  if(cloudPairCode.length()!=8) {
-    cloudPairMessage="Введите все 8 цифр";
-    return false;
-  }
+struct CloudClaimJob { String code; };
+
+static void cloudClaimWorker(void* parameter) {
+  CloudClaimJob* job=(CloudClaimJob*)parameter;
+  String token="",message="Ошибка привязки";
+  bool success=false;
   WiFiClientSecure client;
   client.setCACert(CELESTRAK_CA_BUNDLE);
   HTTPClient http;
@@ -1297,37 +1296,103 @@ static bool claimCloudDevice() {
   http.setTimeout(8000);
   const String url="https://cyd-satellite-tracker.pages.dev/api/devices/claim";
   if(!http.begin(client,url)) {
-    cloudPairMessage="Не удалось открыть HTTPS соединение";
-    return false;
+    message="Не удалось открыть HTTPS соединение";
+  } else {
+    http.addHeader("Content-Type","application/json");
+    JsonDocument request;
+    request["code"]=job->code;
+    request["device_name"]="CYD Satellite Tracker";
+    String body;
+    serializeJson(request,body);
+    const int code=http.POST(body);
+    const String response=http.getString();
+    http.end();
+    JsonDocument reply;
+    const DeserializationError parseError=deserializeJson(reply,response);
+    if(code<200||code>=300||parseError) {
+      const char* error=reply["error"]|"";
+      message=(error&&strlen(error))?String(error):("Ошибка привязки · HTTP "+String(code));
+    } else {
+      token=reply["device_token"]|"";
+      if(token.length()<32||token.length()>256) {
+        message="Сервер не вернул корректный токен";
+      } else {
+        success=true;
+        message="Плата привязана · облачная связь включена";
+      }
+    }
   }
-  http.addHeader("Content-Type","application/json");
-  JsonDocument request;
-  request["code"]=cloudPairCode;
-  request["device_name"]="CYD Satellite Tracker";
-  String body;
-  serializeJson(request,body);
-  const int code=http.POST(body);
-  const String response=http.getString();
-  http.end();
-  JsonDocument reply;
-  const DeserializationError parseError=deserializeJson(reply,response);
-  if(code<200||code>=300||parseError) {
-    const char* error=reply["error"]|"";
-    cloudPairMessage=(error&&strlen(error))?String(error):("Ошибка привязки · HTTP "+String(code));
-    return false;
+  delete job;
+  portENTER_CRITICAL(&cloudClaimMux);
+  strncpy(cloudClaimTokenResult,token.c_str(),sizeof(cloudClaimTokenResult)-1);
+  cloudClaimTokenResult[sizeof(cloudClaimTokenResult)-1]='\0';
+  strncpy(cloudClaimMessageResult,message.c_str(),sizeof(cloudClaimMessageResult)-1);
+  cloudClaimMessageResult[sizeof(cloudClaimMessageResult)-1]='\0';
+  cloudClaimSucceeded=success;
+  cloudClaimResultReady=true;
+  cloudClaimTaskRunning=false;
+  portEXIT_CRITICAL(&cloudClaimMux);
+  Serial.printf("[CLOUD] claim completed: %s\n",success?"OK":"FAILED");
+  vTaskDelete(nullptr);
+}
+
+static void startCloudClaim() {
+  if(WiFi.status()!=WL_CONNECTED) {
+    cloudPairMessage="Сначала подключите CYD к Wi-Fi";
+    return;
   }
-  const String token=reply["device_token"]|"";
-  if(token.length()<32||token.length()>256) {
-    cloudPairMessage="Сервер не вернул корректный токен";
-    return false;
+  if(time(nullptr)<1700000000) {
+    cloudPairMessage="Ожидание синхронизации времени NTP";
+    return;
   }
-  cloudDeviceToken=token;
-  prefs.putString("cloudtok",cloudDeviceToken);
-  cloudLastHeartbeatAt=0;
-  cloudPairCode="";
-  cloudPairMessage="Плата привязана · облачная связь включена";
-  Serial.println("[CLOUD] device pairing completed; token stored in NVS");
-  return true;
+  if(cloudPairCode.length()!=8) {
+    cloudPairMessage="Введите все 8 цифр";
+    return;
+  }
+  if(tleFetchInProgress||cloudHeartbeatTaskRunning||cloudClaimTaskRunning) {
+    cloudPairMessage="Ожидание завершения сетевого запроса";
+    return;
+  }
+  CloudClaimJob* job=new CloudClaimJob();
+  if(!job) {
+    cloudPairMessage="Недостаточно памяти для привязки";
+    return;
+  }
+  job->code=cloudPairCode;
+  cloudClaimTaskRunning=true;
+  const BaseType_t started=xTaskCreatePinnedToCore(cloudClaimWorker,"cyd-claim",12288,job,1,nullptr,0);
+  if(started!=pdPASS) {
+    cloudClaimTaskRunning=false;
+    delete job;
+    cloudPairMessage="Не удалось запустить задачу привязки";
+    return;
+  }
+  cloudPairMessage="Проверка кода и привязка…";
+}
+
+static void serviceCloudClaimResult() {
+  char token[257]={0};
+  char message[160]={0};
+  bool success=false,ready=false;
+  portENTER_CRITICAL(&cloudClaimMux);
+  if(cloudClaimResultReady) {
+    strncpy(token,cloudClaimTokenResult,sizeof(token)-1);
+    strncpy(message,cloudClaimMessageResult,sizeof(message)-1);
+    success=cloudClaimSucceeded;
+    cloudClaimResultReady=false;
+    ready=true;
+  }
+  portEXIT_CRITICAL(&cloudClaimMux);
+  if(!ready) return;
+  if(success) {
+    cloudDeviceToken=token;
+    prefs.putString("cloudtok",cloudDeviceToken);
+    cloudLastHeartbeatAt=0;
+    cloudPairCode="";
+    Serial.println("[CLOUD] device token stored in NVS");
+  }
+  cloudPairMessage=message;
+  if(screen==Screen::CloudPairing) showCloudPairing();
 }
 
 struct CloudHeartbeatJob {
@@ -1362,7 +1427,7 @@ static void cloudHeartbeatWorker(void* parameter) {
 }
 
 static void serviceCloudTelemetry() {
-  if(WiFi.status()!=WL_CONNECTED||!cloudDeviceToken.length()||time(nullptr)<1700000000) return;
+  if(WiFi.status()!=WL_CONNECTED||!cloudDeviceToken.length()||time(nullptr)<1700000000||tleFetchInProgress||cloudClaimTaskRunning) return;
   const uint32_t now=millis();
   if(cloudHeartbeatTaskRunning) return;
   if(cloudLastHeartbeatAt&&now-cloudLastHeartbeatAt<15000) return;
@@ -1432,7 +1497,7 @@ static void serviceCloudTelemetry() {
   job->token=cloudDeviceToken;
   job->payload=payload;
   cloudHeartbeatTaskRunning=true;
-  const BaseType_t started=xTaskCreatePinnedToCore(cloudHeartbeatWorker,"cyd-cloud",8192,job,1,nullptr,0);
+  const BaseType_t started=xTaskCreatePinnedToCore(cloudHeartbeatWorker,"cyd-cloud",12288,job,1,nullptr,0);
   if(started!=pdPASS) {
     cloudHeartbeatTaskRunning=false;
     delete job;
@@ -1443,10 +1508,7 @@ static void serviceCloudTelemetry() {
 static void handleCloudPairingTap(uint16_t x,uint16_t y) {
   if(y>=207&&y<=237) {
     if(x<160) {
-      cloudPairMessage="Проверка кода и привязка…";
-      showCloudPairing();
-      const bool linked=claimCloudDevice();
-      (void)linked;
+      startCloudClaim();
       showCloudPairing();
     } else showSystemScreen();
     return;
@@ -1858,6 +1920,7 @@ static void tleFetchWorker(void* parameter) {
   vTaskDelete(nullptr);
 }
 static void startSelectedTleFetch() {
+  if(cloudHeartbeatTaskRunning||cloudClaimTaskRunning) return;
   portENTER_CRITICAL(&tleFetchMux);
   const bool busy=tleFetchInProgress;
   if(!busy) tleFetchInProgress=true;
@@ -2356,6 +2419,7 @@ void loop() {
   // Service local requests before optional outbound HTTPS work.
   if(!displayDiagnosticActive && !motorTestActive) serviceLocalApi();
   if(!displayDiagnosticActive && !motorTestActive) serviceCloudTelemetry();
+  serviceCloudClaimResult();
   if(cloudTokenRejected) {
     cloudTokenRejected=false;
     cloudDeviceToken="";

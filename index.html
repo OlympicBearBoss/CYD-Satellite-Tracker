@@ -515,12 +515,47 @@ body[data-theme="terminal"] .content:before{opacity:.28}
 </div><div class="note" data-i18n="freq_warning">Частоты указаны для демонстрации и могут быть неполными или устаревшими. Перед работой сверяйтесь с актуальными источниками и правилами радиосвязи.</div>
 </section>
 <section class="view" id="view-telemetry">
-<div class="page-heading"><div><div class="eyebrow" data-i18n="telemetry_eyebrow">МОНИТОРИНГ ОБОРУДОВАНИЯ</div><h1 data-i18n="telemetry_heading">Телеметрия и диагностика</h1><p data-i18n="telemetry_desc">Пример показаний питания, приводов и вычислительного модуля.</p></div><span class="status-pill" id="telemetryModeBadge"><i></i>NO LIVE DATA</span></div>
+<div class="page-heading"><div><div class="eyebrow" data-i18n="telemetry_eyebrow">МОНИТОРИНГ ОБОРУДОВАНИЯ</div><h1 data-i18n="telemetry_heading">Телеметрия и диагностика</h1><p data-i18n="telemetry_desc">Показания GPS, компаса QMC5883P, акселерометра ADXL345 и состояния Wi-Fi.</p></div><span class="status-pill" id="telemetryModeBadge"><i></i>NO LIVE DATA</span></div>
 <div class="telemetry-grid"><div class="panel gauge"><span data-i18n="voltage">НАПРЯЖЕНИЕ</span><b id="liveVoltageValue">—</b><div class="gauge-ring green-ring"><span id="liveVoltageGauge">—</span></div><small id="liveVoltageNote">Нет данных от CYD</small></div><div class="panel gauge"><span data-i18n="az_current">ТОК ДВИГАТЕЛЯ AZ</span><b id="liveAzCurrent">—</b><div class="gauge-ring blue-ring"><span>—</span></div><small>Драйвер не передаёт телеметрию</small></div><div class="panel gauge"><span data-i18n="el_current">ТОК ДВИГАТЕЛЯ EL</span><b id="liveElCurrent">—</b><div class="gauge-ring purple-ring"><span>—</span></div><small>Драйвер не передаёт телеметрию</small></div><div class="panel gauge"><span data-i18n="temperature">ТЕМПЕРАТУРА</span><b id="liveTemperature">—</b><div class="gauge-ring orange-ring"><span>—</span></div><small>Нет данных от датчика температуры</small></div></div>
-<div class="bottom-grid"><article class="panel"><div class="panel-title"><h2 data-i18n="compute_load">Нагрузка контроллера</h2></div><div class="health-list"><div><span>CPU</span><b>—</b><div class="progress"><i style="width:0%"></i></div></div><div><span data-i18n="memory">Память</span><b>—</b><div class="progress"><i style="width:0%"></i></div></div><div><span>Wi-Fi RSSI</span><b id="telemetryWifiRssi">—</b><div class="progress"><i id="telemetryWifiBar" style="width:0%"></i></div></div></div></article><article class="panel"><div class="panel-title"><h2 data-i18n="motor_status">Состояние приводов</h2></div><div class="driver-row"><span class="driver-icon">AZ</span><div><b data-i18n="az_driver">Азимутальный привод</b><small>NEMA17 · TMC2209</small></div><span class="status-pill" id="azDriverStatus">НЕ ПОДКЛЮЧЁН</span></div><div class="driver-row"><span class="driver-icon">EL</span><div><b data-i18n="el_driver">Элевационный привод</b><small>NEMA17 · TMC2209</small></div><span class="status-pill" id="elDriverStatus">НЕ ПОДКЛЮЧЁН</span></div></article></div><div class="note" id="telemetryRuntimeNote" data-i18n="telemetry_note">Все значения телеметрии являются тестовыми и не считываются с реального CYD или драйверов.</div>
+<div class="bottom-grid"><article class="panel"><div class="panel-title"><h2 data-i18n="compute_load">Нагрузка контроллера</h2></div><div class="health-list"><div><span>CPU</span><b>—</b><div class="progress"><i style="width:0%"></i></div></div><div><span data-i18n="memory">Память</span><b>—</b><div class="progress"><i style="width:0%"></i></div></div><div><span>Wi-Fi RSSI</span><b id="telemetryWifiRssi">—</b><div class="progress"><i id="telemetryWifiBar" style="width:0%"></i></div></div></div></article><article class="panel"><div class="panel-title"><h2 data-i18n="motor_status">Состояние приводов</h2></div><div class="driver-row"><span class="driver-icon">AZ</span><div><b data-i18n="az_driver">Азимутальный привод</b><small>US-17HS4401S · HR4988</small></div><span class="status-pill" id="azDriverStatus">НЕ ПОДТВЕРЖДЁН</span></div><div class="driver-row"><span class="driver-icon">EL</span><div><b data-i18n="el_driver">Элевационный привод</b><small>US-17HS4401S · HR4988</small></div><span class="status-pill" id="elDriverStatus">НЕ ПОДТВЕРЖДЁН</span></div></article></div>
+<div class="bottom-grid">
+<article class="panel">
+ <div class="panel-title"><h2>Компас · QMC5883P</h2><span class="status-pill" id="liveCompassState">НЕТ ДАННЫХ</span></div>
+ <div class="statusline"><span>Магнитный курс</span><b id="liveCompassHeading">—</b></div>
+ <div class="statusline"><span>Сырые X / Y / Z</span><b id="liveMagRaw">—</b></div>
+ <div class="statusline"><span>Возраст выборки</span><b id="liveCompassAge">—</b></div>
+ <div class="statusline"><span>Модуль</span><b id="liveCompassCalibration">Калибровка не выполнена</b></div>
+ <p class="hint">Курс магнитный, без hard-iron / soft-iron калибровки и поправки магнитного склонения.</p>
+</article>
+<article class="panel">
+ <div class="panel-title"><h2>Наклон · ADXL345</h2><span class="status-pill" id="liveTiltState">НЕТ ДАННЫХ</span></div>
+ <div class="statusline"><span>Roll</span><b id="liveTiltRoll">—</b></div>
+ <div class="statusline"><span>Pitch</span><b id="liveTiltPitch">—</b></div>
+ <div class="statusline"><span>Ускорение X / Y / Z</span><b id="liveAccelRaw">—</b></div>
+ <div class="statusline"><span>Возраст выборки</span><b id="liveTiltAge">—</b></div>
+ <p class="hint">Это наклон платы с ADXL345, а не измерение угла механической оси ротатора.</p>
+</article>
+</div>
+<div class="bottom-grid">
+<article class="panel">
+ <div class="panel-title"><h2>GPS · NEO-6M</h2><span class="status-pill" id="liveGpsState">НЕТ ДАННЫХ</span></div>
+ <div class="statusline"><span>Координаты</span><b id="liveGpsCoords">—</b></div>
+ <div class="statusline"><span>Высота</span><b id="liveGpsAltitude">—</b></div>
+ <div class="statusline"><span>Спутники / HDOP</span><b id="liveGpsQuality">—</b></div>
+ <div class="statusline"><span>Возраст данных</span><b id="liveGpsAge">—</b></div>
+</article>
+<article class="panel">
+ <div class="panel-title"><h2>Состав аппаратуры</h2><span class="status-pill" id="liveHardwareState">—</span></div>
+ <div class="statusline"><span>Компас QMC5883P</span><b id="liveHardwareCompass">—</b></div>
+ <div class="statusline"><span>Наклон ADXL345</span><b id="liveHardwareAccel">—</b></div>
+ <div class="statusline"><span>Драйверы HR4988</span><b id="liveHardwareDrivers">НЕ ПОДТВЕРЖДЕНЫ</b></div>
+ <div class="statusline"><span>Концевики</span><b id="liveHardwareLimits">НЕ ПОДТВЕРЖДЕНЫ</b></div>
+</article>
+</div>
+<div class="note" id="telemetryRuntimeNote" data-i18n="telemetry_note">Все значения телеметрии являются тестовыми и не считываются с реального CYD или драйверов.</div>
 </section>
 <section class="view" id="view-connection">
-<div class="page-heading"><div><div class="eyebrow" data-i18n="network_eyebrow">СЕТЕВОЙ ИНТЕРФЕЙС</div><h1 data-i18n="connection_heading">Подключение к CYD</h1><p data-i18n="connection_desc">Макет панели сетевого соединения с контроллером ESP32.</p></div></div>
+<div class="page-heading"><div><div class="eyebrow" data-i18n="network_eyebrow">СЕТЕВОЙ ИНТЕРФЕЙС</div><h1 data-i18n="connection_heading">Подключение к CYD</h1><p data-i18n="connection_desc">Панель состояния соединения и облачной телеметрии CYD.</p></div></div>
 <div class="connection-layout"><article class="panel device-panel"><div class="device-visual"><div class="device-board"><div class="board-screen"><span>CYD</span><small>SATELLITE TRACKER</small><i>◉</i></div><div class="board-pin"></div></div></div><div><div class="device-label">ESP32-2432S028R</div><h2>CYD Controller</h2><p class="muted" data-i18n="cyd_desc">2.8″ цветной дисплей · Wi-Fi · ESP32</p><span class="status-pill" id="liveDeviceBadge"><i></i><span>Нет подключённого устройства</span></span><p class="muted" id="liveDeviceInfo">Войдите в аккаунт и привяжите плату через одноразовый код.</p><button class="btn btn-primary" id="openDevicePairing">Настроить подключение</button></div></article>
 <article class="panel"><div class="panel-title"><h2 data-i18n="network_settings">Состояние устройства</h2><span class="subtle">LIVE API</span></div><div class="detail-list"><div><span>IP-адрес</span><b id="liveDeviceIp">—</b></div><div><span>Wi-Fi RSSI</span><b id="liveDeviceRssi">—</b></div><div><span>GPS</span><b id="liveDeviceGps">—</b></div><div><span>Координаты</span><b id="liveDeviceCoords">—</b></div><div><span>Последняя связь</span><b id="liveDeviceSeen">—</b></div></div><div class="note">Показания появятся после привязки и запуска сетевого обмена с ESP32.</div><button class="btn" id="testConnection" data-i18n="test_connection">Обновить состояние</button><p id="connectionResult" class="control-status"></p></article></div>
 <div class="panel architecture"><div class="panel-title"><h2 data-i18n="connection_arch">Предлагаемая архитектура связи</h2></div><div class="flow"><div><b>iPhone / iPad / Android</b><small data-i18n="client_app">Мобильное приложение</small></div><span>↔ Wi-Fi ↔</span><div><b>CYD · ESP32</b><small data-i18n="controller_fw">Прошивка и API</small></div><span>↔ UART ↔</span><div><b>TMC2209</b><small data-i18n="motor_driver">Драйверы двигателей</small></div></div></div>
@@ -556,13 +591,13 @@ body[data-theme="terminal"] .content:before{opacity:.28}
 </article>
 <article class="panel about-panel"><div class="panel-title"><h2 data-i18n="about_project">О проекте</h2></div><div class="about-brand">◉ CYD <b>SATELLITE TRACKER</b></div><p class="muted">Firmware V91 · Web demo</p><p class="muted" data-i18n="about_desc">Интерфейс наземной станции слежения за спутниками на базе ESP32 CYD.</p><a href="https://github.com/OlympicBearBoss/CYD-Satellite-Tracker" target="_blank" rel="noreferrer" class="text-link">GitHub repository ↗</a></article></div>
 </section>
-<footer><span>◉ CYD SATELLITE TRACKER</span><span data-i18n="footer_note">Демо-интерфейс · Не подключён к реальному оборудованию</span><span>© 2026</span></footer>
+<footer><span>◉ CYD SATELLITE TRACKER</span><span id="footerRuntimeNote" data-i18n="footer_note">Демо-интерфейс · Не подключён к реальному оборудованию</span><span>© 2026</span></footer>
 </div></main></div>
 <script src="./satellite-catalog.js?v=20261113-satellite-images-1800"></script>
 <script>
 const translations={
 en:{
-workspace:"WORKSPACE",nav_overview:"Overview",nav_radar:"Radar",nav_control:"Antenna control",nav_satellites:"Satellites",nav_telemetry:"Telemetry",nav_connection:"Connection",nav_journal:"Event log",nav_apps:"Apps",nav_settings:"Settings",demo_active:"Demo mode active",station:"GROUND STATION",offline_demo:"Simulation",demo_title:"Demonstration mode",demo_desc:"All data is synthetic. No real hardware is connected and no commands are sent to ESP32.",eyebrow:"CONTROL CENTER · CYD ESP32",welcome:"Welcome to the station",welcome_desc:"Satellite monitoring, antenna position and equipment status.",open_control:"Open controls ↗",earth_view:"Orbital overview",orbit_demo:"Schematic orbit visualization",selected_sat:"Selected satellite",tracking_demo:"DEMO",azimuth:"AZIMUTH",elevation:"ELEVATION",next_pass:"NEXT PASS",in_12:"In 12 minutes",max_elev:"Maximum elevation: 78.4°",all_satellites:"Satellite catalog →",axis_az:"AZIMUTH AXIS",axis_el:"ELEVATION AXIS",motor_current:"MOTOR CURRENT",supply_voltage:"SUPPLY VOLTAGE",demo_value:"Synthetic value",nominal_demo:"Nominal · demo",system_health:"System health",details:"Details →",memory:"Memory",recent_events:"Recent events",all_events:"Full log →",event_track:"ISS tracking started",event_sat:"NOAA 19 satellite detected",event_wifi:"Demo connection active",radar_eyebrow:"OBSERVATION",radar_heading:"Satellite radar",radar_desc:"Schematic object positions relative to the ground station.",sky_radar:"Sky view",object_list:"Tracked objects",radar_note:"Demo radar: positions are not calculated from current TLE data and do not represent the real sky.",rotator_eyebrow:"DUAL-AXIS ROTATOR",control_heading:"Antenna control",control_desc:"Set azimuth and elevation axis positions.",simulation_only:"SIMULATION ONLY",antenna_model:"Antenna model",current_position:"CURRENT POSITION",mechanic_note:"Illustrative model. Geometry is not a mechanical drawing.",axis_settings:"Axis settings",az_axis:"Azimuth · AZ",el_axis:"Elevation · EL",target_for_control:"Target object",center_axes:"Center axes",track_target:"Point to target",stop_motion:"■ Stop",sim_ready:"Simulation ready",catalog_eyebrow:"OBJECT LIBRARY",catalog_heading:"Satellite catalog",catalog_desc:"Sample objects and reference radio frequencies.",station_type:"Station",weather_type:"Weather",amateur_type:"Amateur",downlink:"Receive",uplink:"Transmit",iss_desc:"International Space Station in low Earth orbit.",noaa_desc:"POES weather satellite for Earth observation.",ao_desc:"Amateur radio satellite with a communications repeater.",select_target:"Select object",freq_warning:"Frequencies are shown for demonstration and may be incomplete or outdated. Check current sources and amateur radio regulations before operating.",telemetry_eyebrow:"EQUIPMENT MONITORING",telemetry_heading:"Telemetry & diagnostics",telemetry_desc:"Example readings for power, drives and computing module.",voltage:"SUPPLY VOLTAGE",az_current:"AZ MOTOR CURRENT",el_current:"EL MOTOR CURRENT",temperature:"TEMPERATURE",voltage_ok:"Within demo reference range",temp_demo:"Simulated sensor",compute_load:"Controller load",motor_status:"Motor drivers",az_driver:"Azimuth drive",el_driver:"Elevation drive",normal:"NORMAL",telemetry_note:"All telemetry values are test data and are not read from a real CYD or motor drivers.",network_eyebrow:"NETWORK INTERFACE",connection_heading:"Connect to CYD",connection_desc:"Mock network connection panel for the ESP32 controller.",cyd_desc:"2.8″ color display · Wi-Fi · ESP32",demo_connected:"Demo connection",network_settings:"Network parameters",protocol:"Protocol",api_note:"* Proposed architecture only. The API and real network communication are not implemented yet.",test_connection:"Test demo connection",connection_arch:"Proposed connection architecture",client_app:"Mobile application",controller_fw:"Firmware and API",motor_driver:"Motor drivers",events_eyebrow:"SYSTEM EVENTS",journal_heading:"Event log",journal_desc:"History of actions in the demo interface.",clear_log:"Clear log",event_history:"Event history",mobile_eyebrow:"MOBILE ECOSYSTEM",apps_heading:"CYD Tracker apps",apps_desc:"A unified interface for station control from different devices.",one_app:"One station.<br>Any device.",app_copy:"The planned app will connect to CYD over Wi-Fi, select satellites, display telemetry and control the rotator.",app_feature1:"Wi-Fi connection to ESP32",app_feature2:"Satellite radar and catalog",app_feature3:"Manual control and tracking",app_feature4:"System status and event log",design_stage:"Design stage",ios_status:"iOS · Planned",ipad_status:"iPadOS · Planned",android_status:"Android · Planned",apps_note:"This is an app concept screen. Mobile builds and connection to a real controller are not available yet.",preferences:"PREFERENCES",settings_heading:"Interface settings",settings_desc:"Language and demo panel preferences.",language_settings:"Interface language",language_desc:"Choose the language for all dashboard sections.",demo_settings:"Demonstration mode",synthetic_data:"Synthetic data",synthetic_desc:"Use test readings and satellite positions.",safe_mode:"Safe mode",safe_desc:"Do not send commands to real hardware.",device_link:"CYD device link",device_link_desc:"Enter the board's local address. The catalog Follow action will send the selected NORAD ID to CYD.",device_address:"Local CYD address",connect_device:"CONNECT CYD",device_not_connected:"Device is not connected. Your computer and CYD must be on the same Wi-Fi network.",about_project:"About the project",about_desc:"Satellite ground station interface based on ESP32 CYD.",footer_note:"Demo interface · Not connected to real hardware",connection_test_ok:"Demo check complete: sample connection parameters are displayed.",log_cleared:"Event log cleared.",target_selected:"Selected target: ",stopped:"Demo motion stopped.",centered:"Demo axes centered.",tracking:"Demo target selected: ",radar_bearing:"Selected satellite bearing",radar_rise:"Next rise azimuth",firmware_title:"Latest firmware update",firmware_desc:"Engineering-blueprint splash and improved satellite-pass navigation.",firmware_ci:"CI build passed",firmware_splash:"Engineering drawing splash screen — artwork and project title only.",firmware_countdown:"Single-line countdown to the selected satellite rising above or setting below the horizon.",firmware_radar:"Radar shows the current satellite bearing and the azimuth of its next rise.",firmware_hardware:"V91 passed automated build checks; physical CYD testing is still pending.",firmware_build_link:"GitHub Actions build #329 ↗"
+workspace:"WORKSPACE",nav_overview:"Overview",nav_radar:"Radar",nav_control:"Antenna control",nav_satellites:"Satellites",nav_telemetry:"Telemetry",nav_connection:"Connection",nav_journal:"Event log",nav_apps:"Apps",nav_settings:"Settings",demo_active:"Demo mode active",station:"GROUND STATION",offline_demo:"Simulation",demo_title:"Demonstration mode",demo_desc:"All data is synthetic. No real hardware is connected and no commands are sent to ESP32.",eyebrow:"CONTROL CENTER · CYD ESP32",welcome:"Welcome to the station",welcome_desc:"Satellite monitoring, antenna position and equipment status.",open_control:"Open controls ↗",earth_view:"Orbital overview",orbit_demo:"Schematic orbit visualization",selected_sat:"Selected satellite",tracking_demo:"DEMO",azimuth:"AZIMUTH",elevation:"ELEVATION",next_pass:"NEXT PASS",in_12:"In 12 minutes",max_elev:"Maximum elevation: 78.4°",all_satellites:"Satellite catalog →",axis_az:"AZIMUTH AXIS",axis_el:"ELEVATION AXIS",motor_current:"MOTOR CURRENT",supply_voltage:"SUPPLY VOLTAGE",demo_value:"Synthetic value",nominal_demo:"Nominal · demo",system_health:"System health",details:"Details →",memory:"Memory",recent_events:"Recent events",all_events:"Full log →",event_track:"ISS tracking started",event_sat:"NOAA 19 satellite detected",event_wifi:"Demo connection active",radar_eyebrow:"OBSERVATION",radar_heading:"Satellite radar",radar_desc:"Schematic object positions relative to the ground station.",sky_radar:"Sky view",object_list:"Tracked objects",radar_note:"Demo radar: positions are not calculated from current TLE data and do not represent the real sky.",rotator_eyebrow:"DUAL-AXIS ROTATOR",control_heading:"Antenna control",control_desc:"Set azimuth and elevation axis positions.",simulation_only:"SIMULATION ONLY",antenna_model:"Antenna model",current_position:"CURRENT POSITION",mechanic_note:"Illustrative model. Geometry is not a mechanical drawing.",axis_settings:"Axis settings",az_axis:"Azimuth · AZ",el_axis:"Elevation · EL",target_for_control:"Target object",center_axes:"Center axes",track_target:"Point to target",stop_motion:"■ Stop",sim_ready:"Simulation ready",catalog_eyebrow:"OBJECT LIBRARY",catalog_heading:"Satellite catalog",catalog_desc:"Sample objects and reference radio frequencies.",station_type:"Station",weather_type:"Weather",amateur_type:"Amateur",downlink:"Receive",uplink:"Transmit",iss_desc:"International Space Station in low Earth orbit.",noaa_desc:"POES weather satellite for Earth observation.",ao_desc:"Amateur radio satellite with a communications repeater.",select_target:"Select object",freq_warning:"Frequencies are shown for demonstration and may be incomplete or outdated. Check current sources and amateur radio regulations before operating.",telemetry_eyebrow:"EQUIPMENT MONITORING",telemetry_heading:"Telemetry & diagnostics",telemetry_desc:"Live readings from GPS, QMC5883P compass, ADXL345 tilt sensor and Wi-Fi.",voltage:"SUPPLY VOLTAGE",az_current:"AZ MOTOR CURRENT",el_current:"EL MOTOR CURRENT",temperature:"TEMPERATURE",voltage_ok:"Within demo reference range",temp_demo:"Simulated sensor",compute_load:"Controller load",motor_status:"Motor drivers",az_driver:"Azimuth drive",el_driver:"Elevation drive",normal:"NORMAL",telemetry_note:"All telemetry values are test data and are not read from a real CYD or motor drivers.",network_eyebrow:"NETWORK INTERFACE",connection_heading:"Connect to CYD",connection_desc:"Live connection and cloud telemetry status for the CYD ESP32 controller.",cyd_desc:"2.8″ color display · Wi-Fi · ESP32",demo_connected:"Demo connection",network_settings:"Network parameters",protocol:"Protocol",api_note:"* Proposed architecture only. The API and real network communication are not implemented yet.",test_connection:"Test demo connection",connection_arch:"Proposed connection architecture",client_app:"Mobile application",controller_fw:"Firmware and API",motor_driver:"Motor drivers",events_eyebrow:"SYSTEM EVENTS",journal_heading:"Event log",journal_desc:"History of actions in the demo interface.",clear_log:"Clear log",event_history:"Event history",mobile_eyebrow:"MOBILE ECOSYSTEM",apps_heading:"CYD Tracker apps",apps_desc:"A unified interface for station control from different devices.",one_app:"One station.<br>Any device.",app_copy:"The planned app will connect to CYD over Wi-Fi, select satellites, display telemetry and control the rotator.",app_feature1:"Wi-Fi connection to ESP32",app_feature2:"Satellite radar and catalog",app_feature3:"Manual control and tracking",app_feature4:"System status and event log",design_stage:"Design stage",ios_status:"iOS · Planned",ipad_status:"iPadOS · Planned",android_status:"Android · Planned",apps_note:"This is an app concept screen. Mobile builds and connection to a real controller are not available yet.",preferences:"PREFERENCES",settings_heading:"Interface settings",settings_desc:"Language and demo panel preferences.",language_settings:"Interface language",language_desc:"Choose the language for all dashboard sections.",demo_settings:"Demonstration mode",synthetic_data:"Synthetic data",synthetic_desc:"Use test readings and satellite positions.",safe_mode:"Safe mode",safe_desc:"Do not send commands to real hardware.",device_link:"CYD device link",device_link_desc:"Enter the board's local address. The catalog Follow action will send the selected NORAD ID to CYD.",device_address:"Local CYD address",connect_device:"CONNECT CYD",device_not_connected:"Device is not connected. Your computer and CYD must be on the same Wi-Fi network.",about_project:"About the project",about_desc:"Satellite ground station interface based on ESP32 CYD.",footer_note:"Demo interface · Not connected to real hardware",connection_test_ok:"Demo check complete: sample connection parameters are displayed.",log_cleared:"Event log cleared.",target_selected:"Selected target: ",stopped:"Demo motion stopped.",centered:"Demo axes centered.",tracking:"Demo target selected: ",radar_bearing:"Selected satellite bearing",radar_rise:"Next rise azimuth",firmware_title:"Latest firmware update",firmware_desc:"Engineering-blueprint splash and improved satellite-pass navigation.",firmware_ci:"CI build passed",firmware_splash:"Engineering drawing splash screen — artwork and project title only.",firmware_countdown:"Single-line countdown to the selected satellite rising above or setting below the horizon.",firmware_radar:"Radar shows the current satellite bearing and the azimuth of its next rise.",firmware_hardware:"V91 passed automated build checks; physical CYD testing is still pending.",firmware_build_link:"GitHub Actions build #329 ↗"
 },
 ru:{}
 };
@@ -608,7 +643,7 @@ function setRuntimeMode(connected,status=null){
  const synthetic=$("syntheticDataState");if(synthetic){synthetic.textContent=connected?"OFF":"ON";synthetic.classList.toggle("on",!connected);}
  const safe=$("safeModeState");if(safe){safe.textContent="ON";safe.classList.add("on");}
  const put=(id,value)=>{const n=$(id);if(n)n.textContent=value;};
- const gps=!!(status&&status.gps_valid===true);
+ const gps=!!(status&&status.gps_valid===true),gpsConnected=!!(status&&status.gps_connected===true)||(hardware&&hardware.gps_connected===true);
  const gpsBadge=$("gpsStatus");if(gpsBadge){gpsBadge.innerHTML="<i></i>"+(gps?"GPS FIX":"GPS НЕТ FIX");gpsBadge.style.color=gps?"#7fe1b7":"#ffbf83";}
  put("gpsLat",gps?Number(status.latitude).toFixed(5)+"°":"—");
  put("gpsLon",gps?Number(status.longitude).toFixed(5)+"°":"—");
@@ -616,11 +651,38 @@ function setRuntimeMode(connected,status=null){
  put("gpsAccuracy","—");
  put("gpsSatCount",status&&status.gps_satellites!=null?String(status.gps_satellites):"—");
  put("gpsTime",gps&&status.time_valid?"UTC "+new Date(Number(status.utc_epoch)*1000).toLocaleTimeString():"—");
- const sensorNote=$("deviceSensorNote");if(sensorNote)sensorNote.textContent=connected?"GPS: данные непосредственно от CYD. Точность и компас API прошивки не передаёт.":"Нет связи с CYD: данные GPS от платы недоступны.";
+ const mag=status&&status.magnetometer||{},accel=status&&status.accelerometer||{},hardware=status&&status.hardware||{};
+ const sensorNote=$("deviceSensorNote");if(sensorNote)sensorNote.textContent=connected?"GPS, QMC5883P и ADXL345 передают данные непосредственно от CYD. Магнитный курс пока не откалиброван.":"Нет связи с CYD: телеметрия платы недоступна.";
  ["kpiAz","kpiEl","overviewAz","overviewEl","azOut","elOut","dishAz","dishEl"].forEach(id=>put(id,"—"));
- put("liveVoltageValue","—");put("liveVoltageGauge","—");put("liveVoltageNote","API CYD не передаёт напряжение питания");
- put("liveAzCurrent","—");put("liveElCurrent","—");put("liveTemperature","—");put("liveAzCurrentKpi","—");put("azDriverStatus",connected&&status.hardware&&status.hardware.motor_drivers_connected?"ПОДКЛЮЧЁН":"НЕ ПОДКЛЮЧЁН");put("elDriverStatus",connected&&status.hardware&&status.hardware.motor_drivers_connected?"ПОДКЛЮЧЁН":"НЕ ПОДКЛЮЧЁН");put("liveSupplyVoltage","—");put("telemetryWifiRssi",connected&&status.wifi_rssi!=null?status.wifi_rssi+" dBm":"—");const wifiBar=$("telemetryWifiBar");if(wifiBar)wifiBar.style.width=connected?Math.max(0,Math.min(100,(Number(status.wifi_rssi)+100)*2))+"%":"0%";const telemetryBadge=$("telemetryModeBadge");if(telemetryBadge)telemetryBadge.textContent=connected?"CYD LIVE · ЧАСТИЧНЫЕ ДАННЫЕ":"NO LIVE DATA";
- const telem=$("telemetryRuntimeNote");if(telem)telem.textContent=connected?"Реальные данные CYD: GPS и Wi-Fi. Напряжение, токи, температура и фактические углы осей API не передаёт. Датчики угла/компас, драйверы и концевики не подключены; моторы заблокированы.":"Телеметрия CYD недоступна. Неподтверждённые показания не отображаются.";
+ put("liveVoltageValue","—");put("liveVoltageGauge","—");put("liveVoltageNote","Датчик напряжения не установлен");
+ put("liveAzCurrent","—");put("liveElCurrent","—");put("liveTemperature","—");put("liveAzCurrentKpi","—");
+ put("azDriverStatus","НЕ ПОДТВЕРЖДЁН");put("elDriverStatus","НЕ ПОДТВЕРЖДЁН");put("liveSupplyVoltage","—");
+ put("telemetryWifiRssi",connected&&typeof status.wifi_rssi==="number"?status.wifi_rssi+" dBm":"—");
+ const wifiBar=$("telemetryWifiBar");if(wifiBar)wifiBar.style.width=connected&&typeof status.wifi_rssi==="number"?Math.max(0,Math.min(100,(status.wifi_rssi+100)*2))+"%":"0%";
+ const telemetryBadge=$("telemetryModeBadge");if(telemetryBadge)telemetryBadge.textContent=connected?"CYD LIVE · GPS + QMC + ADXL":"NO LIVE DATA";
+ const magPresent=connected&&mag.present===true,accelPresent=connected&&accel.present===true;
+ const magReady=magPresent&&mag.read_ok===true,tiltReady=accelPresent&&accel.read_ok===true;
+ put("liveCompassState",!connected?"НЕТ СВЯЗИ":magReady?"ДАННЫЕ":"НЕ ГОТОВ");
+ put("liveCompassHeading",mag.heading_valid===true&&typeof mag.magnetic_heading_deg==="number"?mag.magnetic_heading_deg.toFixed(1)+"° MAG":"—");
+ put("liveMagRaw",magReady&&[mag.raw_x,mag.raw_y,mag.raw_z].every(v=>typeof v==="number")?[mag.raw_x,mag.raw_y,mag.raw_z].join(" / "):"—");
+ put("liveCompassAge",typeof mag.sample_age_ms==="number"?mag.sample_age_ms+" мс":"—");
+ put("liveCompassCalibration",mag.calibrated===true?"ОТКАЛИБРОВАН":"НЕ ОТКАЛИБРОВАН");
+ put("liveTiltState",!connected?"НЕТ СВЯЗИ":tiltReady?"ДАННЫЕ":"НЕ ГОТОВ");
+ put("liveTiltRoll",accel.tilt_valid===true&&typeof accel.roll_deg==="number"?accel.roll_deg.toFixed(1)+"°":"—");
+ put("liveTiltPitch",accel.tilt_valid===true&&typeof accel.pitch_deg==="number"?accel.pitch_deg.toFixed(1)+"°":"—");
+ put("liveAccelRaw",tiltReady&&[accel.x_g,accel.y_g,accel.z_g].every(v=>typeof v==="number")?[accel.x_g,accel.y_g,accel.z_g].map(v=>v.toFixed(2)+"g").join(" / "):"—");
+ put("liveTiltAge",typeof accel.sample_age_ms==="number"?accel.sample_age_ms+" мс":"—");
+ put("liveGpsState",!connected?"НЕТ СВЯЗИ":!gpsConnected?"НЕ НАЙДЕН":gps?"FIX":"ПОИСК");
+ put("liveGpsCoords",gps?Number(status.latitude).toFixed(5)+", "+Number(status.longitude).toFixed(5):"—");
+ put("liveGpsAltitude",typeof status.altitude_m==="number"?status.altitude_m.toFixed(0)+" м":typeof status.altitude==="number"?status.altitude.toFixed(0)+" м":"—");
+ put("liveGpsQuality",(status.gps_satellites??"—")+" / "+(typeof status.gps_hdop==="number"?status.gps_hdop.toFixed(1):"—"));
+ put("liveGpsAge",typeof status.gps_age_ms==="number"?status.gps_age_ms+" мс":"—");
+ put("liveHardwareState",connected?"CYD LIVE":"—");
+ put("liveHardwareCompass",magPresent?(magReady?"ПОДКЛЮЧЁН":"НЕТ ДАННЫХ"):"НЕ НАЙДЕН");
+ put("liveHardwareAccel",accelPresent?(tiltReady?"ПОДКЛЮЧЁН":"НЕТ ДАННЫХ"):"НЕ НАЙДЕН");
+ put("liveHardwareDrivers","НЕ ПОДТВЕРЖДЕНЫ");put("liveHardwareLimits","НЕ ПОДТВЕРЖДЕНЫ");
+ put("footerRuntimeNote",connected?"CYD LIVE · Реальная телеметрия устройства":"Демо-интерфейс · Нет связи с реальным оборудованием");
+ const telem=$("telemetryRuntimeNote");if(telem)telem.textContent=connected?"Реальные данные: GPS NEO-6M, магнитометр QMC5883P, акселерометр ADXL345 и Wi-Fi. Напряжение питания, токи двигателей и температура не измеряются. Данные ADXL345 показывают наклон самого датчика, не положение оси. Драйверы и концевики не подтверждены.":"Телеметрия CYD недоступна. Неподтверждённые показания не отображаются.";
  Object.assign(objectData.iss,{az:132.4,el:67.8,real:false});Object.assign(objectData.noaa,{az:218.6,el:34.2,real:false});Object.assign(objectData.ao91,{az:74.2,el:21.5,real:false});Object.assign(objectData.starlink,{az:305,el:18,real:false});
  if(connected&&status.orbit&&status.orbit.position_valid===true){
   const norad=String(status.orbit.norad_id||"");
@@ -639,8 +701,9 @@ function setRuntimeMode(connected,status=null){
  put("liveDeviceSeen",connected?new Date().toLocaleTimeString():"—");
  renderTarget();
 }
+let cloudTelemetryOnline=false,cloudTelemetryHadDevice=false,cloudTelemetryBusy=false;
 async function refreshCydDeviceLink(){
- if(!cydDeviceBaseUrl||cydDevicePollBusy)return;
+ if(cloudTelemetryOnline||!cydDeviceBaseUrl||cydDevicePollBusy)return;
  cydDevicePollBusy=true;
  try{
   const response=await fetch(cydDeviceBaseUrl+"/api/v1/status",{cache:"no-store",mode:"cors"});
@@ -678,6 +741,64 @@ async function connectCydDevice(){
  await refreshCydDeviceLink();
  if(cydLiveConnected)startCydDevicePolling();
 }
+
+async function refreshCloudTelemetry(){
+ if(cloudTelemetryBusy)return;
+ cloudTelemetryBusy=true;
+ try{
+  const response=await fetch("/api/devices/telemetry",{credentials:"same-origin",cache:"no-store"});
+  if(response.status===401){cloudTelemetryOnline=false;cloudTelemetryHadDevice=false;if(!cydDeviceBaseUrl)setRuntimeMode(false);return;}
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||"Cloud telemetry unavailable");
+  const devices=data.devices||[];
+  const device=devices.find(d=>d.status==="online")||devices[0]||null;
+  if(!device){
+   cloudTelemetryOnline=false;
+   if(cloudTelemetryHadDevice&&!cydDeviceBaseUrl)setRuntimeMode(false);
+   cloudTelemetryHadDevice=false;
+   return;
+  }
+  cloudTelemetryHadDevice=true;
+  const t=device.telemetry||{};
+  if(device.status!=="online"){
+   cloudTelemetryOnline=false;
+   if(!cydDeviceBaseUrl)setRuntimeMode(false);
+   const label=$("liveDeviceBadge")?.querySelector("span");
+   if(label)label.textContent="CYD не в сети";
+   $("liveDeviceInfo").textContent=device.device_name+" · последняя связь устарела";
+   return;
+  }
+  cloudTelemetryOnline=true;
+  const status={
+   ...t,ok:true,altitude_m:t.altitude,
+   magnetometer:t.magnetometer||{},accelerometer:t.accelerometer||{},
+   hardware:{
+    gps_connected:t.gps_connected===true,
+    angle_sensor_connected:t.angle_sensor_connected===true,
+    azimuth_sensor_connected:t.compass_connected===true,
+    compass_connected:t.compass_connected===true,
+    accelerometer_connected:t.angle_sensor_connected===true,
+    motor_drivers_connected:t.motor_drivers_connected===true,
+    limit_switches_connected:t.limit_switches_connected===true
+   }
+  };
+  setRuntimeMode(true,status);
+  const label=$("liveDeviceBadge")?.querySelector("span");
+  if(label)label.textContent="CYD передаёт данные в облако";
+  $("liveDeviceInfo").textContent=device.device_name+" · "+(t.firmware||"прошивка не указана");
+  $("liveDeviceIp").textContent=t.ip||"—";
+  $("liveDeviceRssi").textContent=typeof t.wifi_rssi==="number"?t.wifi_rssi+" dBm":"—";
+  $("liveDeviceGps").textContent=t.gps_valid?"FIX · "+(t.gps_satellites??"—")+" спутн.":"Нет FIX";
+  $("liveDeviceCoords").textContent=t.gps_valid&&typeof t.latitude==="number"&&typeof t.longitude==="number"?t.latitude.toFixed(5)+", "+t.longitude.toFixed(5):"—";
+  $("liveDeviceSeen").textContent=device.telemetry_at?new Date(device.telemetry_at*1000).toLocaleString():"—";
+  const result=$("connectionResult");if(result)result.textContent="Облачная телеметрия получена от "+device.device_name;
+  setCydDeviceStatus("CYD подключён к облаку · "+(t.firmware||"прошивка не указана"),true);
+ }catch(error){
+  // Authentication may be absent on a public/demo visit; keep the page usable.
+ }finally{cloudTelemetryBusy=false;}
+}
+refreshCloudTelemetry();
+setInterval(refreshCloudTelemetry,5000);
 function resolveSatelliteImageNorad(norad,nameHint=""){
  const id=String(norad||"");
  const record=(window.cydSatelliteCatalogRecords||[]).find(item=>String(item&&item.NORAD_CAT_ID)===id);

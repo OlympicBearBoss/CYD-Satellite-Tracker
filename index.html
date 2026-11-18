@@ -531,7 +531,7 @@ body[data-theme="terminal"] .content:before{opacity:.28}
 </section>
 <section class="view" id="view-connection">
 <div class="page-heading"><div><div class="eyebrow" data-i18n="network_eyebrow">СЕТЕВОЙ ИНТЕРФЕЙС</div><h1 data-i18n="connection_heading">Подключение к CYD</h1><p data-i18n="connection_desc">Макет панели сетевого соединения с контроллером ESP32.</p></div></div>
-<div class="connection-layout"><article class="panel device-panel"><div class="device-visual"><div class="device-board"><div class="board-screen"><span>CYD</span><small>SATELLITE TRACKER</small><i>◉</i></div><div class="board-pin"></div></div></div><div><div class="device-label">ESP32-2432S028R</div><h2>CYD Controller</h2><p class="muted" data-i18n="cyd_desc">2.8″ цветной дисплей · Wi-Fi · ESP32</p><span class="status-pill" id="liveDeviceBadge"><i></i><span>Нет подключённого устройства</span></span><p class="muted" id="liveDeviceInfo">Подключите браузер и CYD к одной Wi-Fi сети, затем укажите локальный IP платы.</p><button class="btn btn-primary" id="openDevicePairing">Настроить подключение</button></div></article>
+<div class="connection-layout"><article class="panel device-panel"><div class="device-visual"><div class="device-board"><div class="board-screen"><span>CYD</span><small>SATELLITE TRACKER</small><i>◉</i></div><div class="board-pin"></div></div></div><div><div class="device-label">ESP32-2432S028R</div><h2>CYD Controller</h2><p class="muted" data-i18n="cyd_desc">2.8″ цветной дисплей · Wi-Fi · ESP32</p><span class="status-pill" id="liveDeviceBadge"><i></i><span>Нет подключённого устройства</span></span><p class="muted" id="liveDeviceInfo">Подключите браузер и CYD к одной Wi-Fi сети, затем укажите локальный IP платы.</p><button class="btn btn-primary" id="openDevicePairing" type="button">Настроить локальный Wi-Fi</button></div></article>
 <article class="panel"><div class="panel-title"><h2 data-i18n="network_settings">Состояние устройства</h2><span class="subtle">LIVE API</span></div><div class="detail-list"><div><span>IP-адрес</span><b id="liveDeviceIp">—</b></div><div><span>Wi-Fi RSSI</span><b id="liveDeviceRssi">—</b></div><div><span>GPS</span><b id="liveDeviceGps">—</b></div><div><span>Координаты</span><b id="liveDeviceCoords">—</b></div><div><span>Последняя связь</span><b id="liveDeviceSeen">—</b></div></div><div class="note">Сайт получает телеметрию напрямую с локального HTTP API CYD. Облачная привязка не требуется.</div><button class="btn" id="testConnection" data-i18n="test_connection">Обновить состояние</button><p id="connectionResult" class="control-status"></p></article></div>
 <div class="panel architecture"><div class="panel-title"><h2 data-i18n="connection_arch">Предлагаемая архитектура связи</h2></div><div class="flow"><div><b>iPhone / iPad / Android</b><small data-i18n="client_app">Мобильное приложение</small></div><span>↔ Wi-Fi ↔</span><div><b>CYD · ESP32</b><small data-i18n="controller_fw">Прошивка и API</small></div><span>↔ STEP / DIR ↔</span><div><b>HR4988</b><small data-i18n="motor_driver">Драйверы двигателей</small></div></div></div>
 </section>
@@ -815,6 +815,7 @@ async function sendSelectedSatelliteToCyd(record){
  }
 }
 if($("connectCydDevice"))$("connectCydDevice").addEventListener("click",connectCydDevice);
+const openLocalConnection=$("openDevicePairing");if(openLocalConnection)openLocalConnection.addEventListener("click",()=>{showView("connection");cydAddressInput?.focus();});
 
 function renderTarget(){
  const o=objectData[selected];
@@ -1933,8 +1934,7 @@ body>.realistic-earth-scene.orbit-large-screen .orbit-live-info{position:fixed!i
 </style>
 <div id="profileDevicesDialog" hidden role="dialog" aria-modal="true" aria-labelledby="pdTitle">
  <section class="pd-card">
-  <div class="pd-head"><h2 id="pdTitle">Профиль и устройства</h2><button type="button" id="pdClose">Закрыть ✕</button></div>
-  <div class="pd-tabs"><button type="button" class="active" data-pd-tab="profile">Профиль</button><button type="button" data-pd-tab="devices">Мои устройства</button></div>
+  <div class="pd-head"><h2 id="pdTitle">Профиль</h2><button type="button" id="pdClose">Закрыть ✕</button></div>
   <div id="pdMessage" class="pd-muted" role="status"></div>
   <section id="pdProfile">
    <label class="pd-field">Отображаемое имя<input id="pdName" maxlength="80" autocomplete="name"></label>
@@ -1942,34 +1942,18 @@ body>.realistic-earth-scene.orbit-large-screen .orbit-live-info{position:fixed!i
    <label class="pd-field">URL аватара (HTTPS)<input id="pdAvatar" type="url" maxlength="500" placeholder="https://…"></label>
    <button type="button" id="pdSave">Сохранить профиль</button>
   </section>
-  <section id="pdDevices" hidden>
-   <div class="pd-row" style="align-items:flex-start;display:block;margin:8px 0 14px;padding:12px;border:1px solid #28516e;border-radius:10px;background:#07182a"><strong>Локальная сеть Wi‑Fi</strong><p class="pd-muted" style="margin:7px 0 0">Автопоиск устройств выполняется в мобильном приложении. Браузерная версия сайта работает через HTTPS и не может безопасно сканировать вашу локальную сеть. Если CYD уже передаёт телеметрию в облако, его локальный IP появится в карточке ниже — откройте локальную панель напрямую.</p></div>
-   <p class="pd-muted">1. Нажми «Создать код привязки» на сайте. 2. На CYD открой SYSTEM → LINK и введи восьмизначный код. Код действует 10 минут и используется один раз.</p>
-   <label class="pd-field">Название устройства<input id="pdDeviceName" maxlength="80" value="CYD ESP32"></label>
-   <button type="button" id="pdCreateCode">Создать код привязки</button>
-   <div id="pdCodeWrap" hidden><div class="pd-code" id="pdCode"></div><div class="pd-muted" id="pdCodeExpiry"></div></div>
-   <div class="pd-row" style="margin-top:14px"><div><strong>Состояние сервера</strong><div class="pd-muted" id="pdServerState">Не проверено</div></div><button type="button" id="pdCheckServer">Проверить связь</button></div>
-   <h3>Привязанные устройства</h3><div id="pdDeviceList" class="pd-muted">Загрузка…</div><button type="button" id="pdRefreshDevices" style="margin-top:10px">Обновить список</button>
-  </section>
  </section>
 </div>
-<script id="cyd-profile-devices-ui">
+<script id="cyd-profile-ui">
 (()=> {
  const $=id=>document.getElementById(id),dialog=$('profileDevicesDialog');if(!dialog||!$('accountProfileOpen'))return;
- let tab='profile',profile=null;
- const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const fmt=v=>v?new Date(Number(v)*1000).toLocaleString():'—';
+ let profile=null;
  async function api(path,method='GET',body){const r=await fetch(path,{method,credentials:'same-origin',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Ошибка запроса');return d;}
  function message(s){$('pdMessage').textContent=s||'';}
- function setTab(t){tab=t;document.querySelectorAll('[data-pd-tab]').forEach(b=>b.classList.toggle('active',b.dataset.pdTab===t));$('pdProfile').hidden=t!=='profile';$('pdDevices').hidden=t!=='devices';message('');if(t==='devices')loadDevices();}
- async function open(){dialog.hidden=false;setTab('profile');try{const d=await api('/api/account/profile');profile=d.user;$('pdName').value=profile.display_name||'';$('pdEmail').value=profile.email||'';$('pdAvatar').value=profile.avatar_url||'';}catch(e){message(e.message);}}
- async function loadDevices(){try{const d=await api('/api/devices');let live={devices:[]};try{live=await api('/api/devices/telemetry');}catch{}const telemetryById=new Map((live.devices||[]).map(x=>[x.id,x]));const list=$('pdDeviceList');list.replaceChildren();const activeDevices=d.devices.filter(device=>!device.revoked_at);if(!activeDevices.length){list.textContent='Пока нет привязанных устройств.';return;}for(const device of activeDevices){const row=document.createElement('div');row.className='pd-row';const info=document.createElement('div');const state={online:['В сети','#69e6b0'],offline:['Нет связи','#ffb86b'],never_seen:['Ожидает первого подключения','#9bb5ca'],pending:['Ожидает привязки','#9bb5ca'],revoked:['Отключено','#ff8294']}[device.status]||['Неизвестно','#9bb5ca'];const liveDevice=telemetryById.get(device.id),tv=liveDevice?.telemetry;let extra='';if(tv){const hardwareId=tv.hardware_id?'<div class="pd-muted">ID платы: '+esc(tv.hardware_id)+'</div>':'';const moduleState='Модули: GPS '+(tv.gps_connected?'подключён':'не подключён')+' · датчик угла '+(tv.angle_sensor_connected?'подключён':'не подключён')+' · компас '+(tv.compass_connected?'подключён':'не подключён')+' · драйверы '+(tv.motor_drivers_connected?'подключены':'не подключены')+' · концевики '+(tv.limit_switches_connected?'подключены':'не подключены');const ip=String(tv.ip||'');const safeLanIp=/^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(ip)&&/^[0-9.]+$/.test(ip);extra=hardwareId+'<div class="pd-muted">'+moduleState+'</div><div class="pd-muted">IP: '+esc(ip||'—')+' · Wi-Fi: '+esc(tv.wifi_rssi??'—')+' dBm · GPS: '+(tv.gps_valid?'FIX':'нет FIX')+'</div>'+(safeLanIp?'<div style="margin-top:7px"><a href="http://'+encodeURIComponent(ip)+'/" target="_blank" rel="noopener" style="color:#70d0ff;font-weight:700">Открыть локальную панель CYD ↗</a></div>':'')+(tv.gps_valid?'<div class="pd-muted">Координаты: '+esc(Number(tv.latitude).toFixed(5))+', '+esc(Number(tv.longitude).toFixed(5))+'</div>':'');}info.innerHTML='<strong>'+esc(device.device_name)+'</strong><div class="pd-muted">'+esc(device.platform)+' · <span style="color:'+state[1]+'">'+state[0]+'</span></div><div class="pd-muted">Привязано: '+esc(fmt(device.linked_at))+' · Последняя связь: '+esc(fmt(device.last_seen_at))+'</div>'+extra;row.append(info);if(!device.revoked_at){const b=document.createElement('button');b.className='pd-danger';b.textContent='Удалить';b.setAttribute('aria-label','Удалить устройство '+device.device_name);b.addEventListener('click',async()=>{if(!confirm('Удалить привязку устройства «'+device.device_name+'»? Оно потеряет доступ к аккаунту.'))return;b.disabled=true;try{await api('/api/devices?id='+encodeURIComponent(device.id),'DELETE');message('Привязка устройства удалена.');await loadDevices();}catch(e){message(e.message);b.disabled=false;}});row.append(b);}list.append(row);}}catch(e){message(e.message);}}
+ async function open(){dialog.hidden=false;try{const d=await api('/api/account/profile');profile=d.user;$('pdName').value=profile.display_name||'';$('pdEmail').value=profile.email||'';$('pdAvatar').value=profile.avatar_url||'';}catch(e){message(e.message);}}
  $('accountProfileOpen').addEventListener('click',()=>{$('accountPopover').hidden=true;open();});
  $('pdClose').addEventListener('click',()=>dialog.hidden=true);dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.hidden=true;});
- document.querySelectorAll('[data-pd-tab]').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.pdTab)));
  $('pdSave').addEventListener('click',async()=>{try{const d=await api('/api/account/profile','POST',{display_name:$('pdName').value,avatar_url:$('pdAvatar').value});profile=d.user;message('Профиль сохранён.');const label=$('accountTriggerLabel');if(label)label.textContent=profile.display_name||profile.email.split('@')[0];}catch(e){message(e.message);}});
- $('pdCheckServer').addEventListener('click',async()=>{const state=$('pdServerState');state.textContent='Проверка…';try{const d=await api('/api/devices');state.textContent='Сервер доступен · '+d.devices.length+' устройств в аккаунте · '+new Date(d.server_time*1000).toLocaleTimeString();}catch(e){state.textContent='Ошибка: '+e.message;}});$('pdRefreshDevices').addEventListener('click',loadDevices);
- $('pdCreateCode').addEventListener('click',async()=>{try{const d=await api('/api/devices','POST',{device_name:$('pdDeviceName').value});$('pdCode').textContent=d.code;$('pdCodeWrap').hidden=false;$('pdCodeExpiry').textContent='Код действует 10 минут. Введите его на устройстве до '+fmt(d.expires_at)+'.';message('Код создан. Он будет показан только сейчас.');loadDevices();}catch(e){message(e.message);}});
  document.addEventListener('keydown',e=>{if(e.key==='Escape')dialog.hidden=true;});
 })();
 </script>

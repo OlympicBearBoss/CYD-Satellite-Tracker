@@ -1303,8 +1303,8 @@ static void startMotorTest() {
   digitalWrite(Pins::AZ_STEP,LOW);
   digitalWrite(Pins::EL_STEP,LOW);
   digitalWrite(Pins::AZ_DIR,HIGH);
-  motorTestNextEdgeUs=micros()+MOTOR_TEST_START_PERIOD_US;
   showMotorTestRunning();
+  motorTestNextEdgeUs=micros()+MOTOR_TEST_START_PERIOD_US;
   Serial.println("[MOTOR TEST] V101 ramp: 40->100->40 steps/s; 300 pulses each direction; AZ then EL");
 }
 static void serviceMotorTest() {
@@ -1326,14 +1326,14 @@ static void serviceMotorTest() {
       if(motorTestDirection==0) {
         motorTestDirection=1;
         digitalWrite(motorDirPin(),LOW);
-        motorTestNextEdgeUs=nowUs+5000; // DIR setup time
         drawMotorTestProgress();
+        motorTestNextEdgeUs=micros()+MOTOR_TEST_START_PERIOD_US; // DIR setup + gentle restart
       } else if(motorTestAxis==0) {
         motorTestAxis=1;
         motorTestDirection=0;
         digitalWrite(Pins::EL_DIR,HIGH);
-        motorTestNextEdgeUs=nowUs+5000;
         drawMotorTestProgress();
+        motorTestNextEdgeUs=micros()+MOTOR_TEST_START_PERIOD_US;
       } else {
         motorTestActive=false;
         digitalWrite(Pins::AZ_STEP,LOW);
